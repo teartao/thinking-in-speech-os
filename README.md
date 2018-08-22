@@ -10,7 +10,7 @@
   - 网络通讯（Networking）
   - 安全机制（Security）
   - 用户界面（User interface）
-  - 驱动程序（Device drivers
+  - 驱动程序（Device drivers)
   
 ## 主要操作系统
 
