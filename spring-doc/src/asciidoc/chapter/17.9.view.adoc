@@ -1,0 +1,82 @@
+[[view-bind-macros]]
+===== The bind macros
+A standard set of macros are maintained within the `spring-webmvc.jar` file for both
+languages, so they are always available to a suitably configured application.
+
+Some of the macros defined in the Spring libraries are considered internal (private) but
+no such scoping exists in the macro definitions making all macros visible to calling
+code and user templates. The following sections concentrate only on the macros you need
+to be directly calling from within your templates. If you wish to view the macro code
+directly, the files are called spring.vm / spring.ftl and are in the packages
+`org.springframework.web.servlet.view.velocity` or
+`org.springframework.web.servlet.view.freemarker` respectively.
+
+
+[[view-simple-binding]]
+===== Simple binding
+In your html forms (vm / ftl templates) that act as the 'formView' for a Spring form
+controller, you can use code similar to the following to bind to field values and
+display error messages for each input field in similar fashion to the JSP equivalent.
+Note that the name of the command object is "command" by default, but can be overridden
+in your MVC configuration by setting the 'commandName' bean property on your form
+controller. Example code is shown below for the `personFormV` and `personFormF` views
+configured earlier;
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<!-- velocity macros are automatically available -->
+	<html>
+		...
+		<form action="" method="POST">
+			Name:
+			#springBind( "command.name" )
+			<input type="text"
+				name="${status.expression}"
+				value="$!status.value" /><br>
+			#foreach($error in $status.errorMessages) <b>$error</b> <br> #end
+			<br>
+			...
+			<input type="submit" value="submit"/>
+		</form>
+		...
+	</html>
+----
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<!-- freemarker macros have to be imported into a namespace. We strongly
+	recommend sticking to 'spring' -->
+	<#import "/spring.ftl" as spring />
+	<html>
+		...
+		<form action="" method="POST">
+			Name:
+			<@spring.bind "command.name" />
+			<input type="text"
+				name="${spring.status.expression}"
+				value="${spring.status.value?default("")}" /><br>
+			<#list spring.status.errorMessages as error> <b>${error}</b> <br> </#list>
+			<br>
+			...
+			<input type="submit" value="submit"/>
+		</form>
+		...
+	</html>
+----
+
+`#springBind` / `<@spring.bind>` requires a 'path' argument which consists of the name
+of your command object (it will be 'command' unless you changed it in your
+FormController properties) followed by a period and the name of the field on the command
+object you wish to bind to. Nested fields can be used too such as
+"command.address.street". The `bind` macro assumes the default HTML escaping behavior
+specified by the ServletContext parameter `defaultHtmlEscape` in web.xml
+
+The optional form of the macro called `#springBindEscaped` / `<@spring.bindEscaped>`
+takes a second argument and explicitly specifies whether HTML escaping should be used in
+the status error messages or values. Set to true or false as required. Additional form
+handling macros simplify the use of HTML escaping and these macros should be used
+wherever possible. They are explained in the next section.
+
+

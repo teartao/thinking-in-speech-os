@@ -1,0 +1,50 @@
+[[aop-aspectj-programmatic]]
+=== Programmatic creation of @AspectJ Proxies
+In addition to declaring aspects in your configuration using either `<aop:config>` or
+`<aop:aspectj-autoproxy>`, it is also possible programmatically to create proxies that
+advise target objects. For the full details of Spring's AOP API, see the next chapter.
+Here we want to focus on the ability to automatically create proxies using @AspectJ
+aspects.
+
+The class `org.springframework.aop.aspectj.annotation.AspectJProxyFactory` can be used
+to create a proxy for a target object that is advised by one or more @AspectJ aspects.
+Basic usage for this class is very simple, as illustrated below. See the javadocs for
+full information.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	// create a factory that can generate a proxy for the given target object
+	AspectJProxyFactory factory = new AspectJProxyFactory(targetObject);
+
+	// add an aspect, the class must be an @AspectJ aspect
+	// you can call this as many times as you need with different aspects
+	factory.addAspect(SecurityManager.class);
+
+	// you can also add existing aspect instances, the type of the object supplied must be an @AspectJ aspect
+	factory.addAspect(usageTracker);
+
+	// now get the proxy object...
+	MyInterfaceType proxy = factory.getProxy();
+----
+
+
+
+
+[[aop-using-aspectj]]
+=== Using AspectJ with Spring applications
+Everything we've covered so far in this chapter is pure Spring AOP. In this section,
+we're going to look at how you can use the AspectJ compiler/weaver instead of, or in
+addition to, Spring AOP if your needs go beyond the facilities offered by Spring AOP
+alone.
+
+Spring ships with a small AspectJ aspect library, which is available standalone in your
+distribution as `spring-aspects.jar`; you'll need to add this to your classpath in order
+to use the aspects in it. <<aop-atconfigurable>> and <<aop-ajlib-other>> discuss the
+content of this library and how you can use it. <<aop-aj-configure>> discusses how to
+dependency inject AspectJ aspects that are woven using the AspectJ compiler. Finally,
+<<aop-aj-ltw>> provides an introduction to load-time weaving for Spring applications
+using AspectJ.
+
+
+

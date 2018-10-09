@@ -1,0 +1,56 @@
+[[portlet-controller-simple]]
+==== Other simple controllers
+Although you can extend `AbstractController`, Spring Portlet MVC provides a number of
+concrete implementations which offer functionality that is commonly used in simple MVC
+applications.
+
+The `ParameterizableViewController` is basically the same as the example above, except
+for the fact that you can specify the view name that it will return in the web
+application context (no need to hard-code the view name).
+
+The `PortletModeNameViewController` uses the current mode of the portlet as the view
+name. So, if your portlet is in View mode (i.e. `PortletMode.VIEW`) then it uses "view"
+as the view name.
+
+
+
+[[portlet-controller-command]]
+==== Command Controllers
+Spring Portlet MVC has the exact same hierarchy of __command controllers__ as Spring Web
+MVC. They provide a way to interact with data objects and dynamically bind parameters
+from the `PortletRequest` to the data object specified. Your data objects don't have to
+implement a framework-specific interface, so you can directly manipulate your persistent
+objects if you desire. Let's examine what command controllers are available, to get an
+overview of what you can do with them:
+
+* `AbstractCommandController` - a command controller you can use to create your own
+  command controller, capable of binding request parameters to a data object you
+  specify. This class does not offer form functionality, it does however offer
+  validation features and lets you specify in the controller itself what to do with the
+  command object that has been filled with the parameters from the request.
+* `AbstractFormController` - an abstract controller offering form submission support.
+  Using this controller you can model forms and populate them using a command object you
+  retrieve in the controller. After a user has filled the form, `AbstractFormController`
+  binds the fields, validates, and hands the object back to the controller to take
+  appropriate action. Supported features are: invalid form submission (resubmission),
+  validation, and normal form workflow. You implement methods to determine which views
+  are used for form presentation and success. Use this controller if you need forms, but
+  don't want to specify what views you're going to show the user in the application
+  context.
+* `SimpleFormController` - a concrete `AbstractFormController` that provides even more
+  support when creating a form with a corresponding command object. The
+  `SimpleFormController` lets you specify a command object, a viewname for the form, a
+  viewname for the page you want to show the user when form submission has succeeded,
+  and more.
+* `AbstractWizardFormController` -- a concrete `AbstractFormController` that provides a
+  wizard-style interface for editing the contents of a command object across multiple
+  display pages. Supports multiple user actions: finish, cancel, or page change, all of
+  which are easily specified in request parameters from the view.
+
+These command controllers are quite powerful, but they do require a detailed
+understanding of how they operate in order to use them efficiently. Carefully review the
+javadocs for this entire hierarchy and then look at some sample implementations before
+you start using them.
+
+
+

@@ -1,0 +1,101 @@
+[[beans-factory-overrideconfigurer]]
+===== Example: the PropertyOverrideConfigurer
+
+The `PropertyOverrideConfigurer`, another bean factory post-processor, resembles the
+`PropertyPlaceholderConfigurer`, but unlike the latter, the original definitions can
+have default values or no values at all for bean properties. If an overriding
+`Properties` file does not have an entry for a certain bean property, the default
+context definition is used.
+
+Note that the bean definition is __not__ aware of being overridden, so it is not
+immediately obvious from the XML definition file that the override configurer is being
+used. In case of multiple `PropertyOverrideConfigurer` instances that define different
+values for the same bean property, the last one wins, due to the overriding mechanism.
+
+Properties file configuration lines take this format:
+
+[literal]
+[subs="verbatim,quotes"]
+----
+beanName.property=value
+----
+
+For example:
+
+[literal]
+[subs="verbatim,quotes"]
+----
+dataSource.driverClassName=com.mysql.jdbc.Driver
+dataSource.url=jdbc:mysql:mydb
+----
+
+This example file can be used with a container definition that contains a bean called
+__dataSource__, which has __driver__ and __url__ properties.
+
+Compound property names are also supported, as long as every component of the path
+except the final property being overridden is already non-null (presumably initialized
+by the constructors). In this example...
+
+[literal]
+[subs="verbatim,quotes"]
+----
+foo.fred.bob.sammy=123
+----
+
+... the `sammy` property of the `bob` property of the `fred` property of the `foo` bean
+is set to the scalar value `123`.
+
+[NOTE]
+====
+Specified override values are always __literal__ values; they are not translated into
+bean references. This convention also applies when the original value in the XML bean
+definition specifies a bean reference.
+====
+
+With the `context` namespace introduced in Spring 2.5, it is possible to configure
+property overriding with a dedicated configuration element:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<context:property-override location="classpath:override.properties"/>
+----
+
+
+
+[[beans-factory-extension-factorybean]]
+==== Customizing instantiation logic with a FactoryBean
+
+Implement the `org.springframework.beans.factory.FactoryBean` interface for objects that
+__are themselves factories__.
+
+The `FactoryBean` interface is a point of pluggability into the Spring IoC container's
+instantiation logic. If you have complex initialization code that is better expressed in
+Java as opposed to a (potentially) verbose amount of XML, you can create your own
+`FactoryBean`, write the complex initialization inside that class, and then plug your
+custom `FactoryBean` into the container.
+
+The `FactoryBean` interface provides three methods:
+
+* `Object getObject()`: returns an instance of the object this factory creates. The
+  instance can possibly be shared, depending on whether this factory returns singletons
+  or prototypes.
+* `boolean isSingleton()`: returns `true` if this `FactoryBean` returns singletons,
+  `false` otherwise.
+* `Class getObjectType()`: returns the object type returned by the `getObject()` method
+  or `null` if the type is not known in advance.
+
+The `FactoryBean` concept and interface is used in a number of places within the Spring
+Framework; more than 50 implementations of the `FactoryBean` interface ship with Spring
+itself.
+
+When you need to ask a container for an actual `FactoryBean` instance itself instead of
+the bean it produces, preface the bean's id with the ampersand symbol ( `&`) when
+calling the `getBean()` method of the `ApplicationContext`. So for a given `FactoryBean`
+with an id of `myBean`, invoking `getBean("myBean")` on the container returns the
+product of the `FactoryBean`; whereas, invoking `getBean("&myBean")` returns the
+`FactoryBean` instance itself.
+
+
+
+

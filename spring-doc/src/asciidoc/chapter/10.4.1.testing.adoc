@@ -1,0 +1,680 @@
+[[testcontext-ctx-management]]
+===== 上下文管理
+
+每一个 `TestContext` 为它所负责的测试实例提供了上下文管理和缓存支持。测试实例不会自动地接受对配置的
+应用上下为 `ApplicationContext` 的方法。 尽管如此，如果一个测试类实现了 `ApplicationContextAware`
+接口，在测试类中一个应用上下文 `ApplicationContext` 的引用将被提供。注意，  `AbstractJUnit4SpringContextTests` 
+和 `AbstractTestNGSpringContextTests` 实现了接口 `ApplicationContextAware` ，因此自动地提供
+了对 `ApplicationContext` 对象的方法。
+
+.@Autowired ApplicationContext
+[TIP]
+====
+作为实现 `ApplicationContextAware` 接口的一种可选方式，你可以通过在字段或setter方法上增加注解 
+`@Autowired` 来为你的测试类注入应用上下文对象，例如：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RunWith(SpringJUnit4ClassRunner.class)a
+	@ContextConfiguration
+	public class MyTest {
+
+		**@Autowired**
+		private ApplicationContext applicationContext;
+
+		// 类体...
+	}
+----
+
+类似地，如果你的测试配置为加载一个  `WebApplicationContext` ，你可以注入web应用上下文到你的测试中，如下：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RunWith(SpringJUnit4ClassRunner.class)
+	**@WebAppConfiguration**
+	@ContextConfiguration
+	public class MyWebAppTest {
+		**@Autowired**
+		private WebApplicationContext wac;
+
+		// 类体...
+	}
+----
+
+通过注解 `@Autowired` 依赖注入功能由 `DependencyInjectionTestExecutionListener` 提供，该
+监听器属于默认配置（具体可参考 <<testcontext-fixture-di>> ）。
+====
+
+使用测试框架的类不需要继承特定的类或实现特定的接口。反而，在类级别声明一个 `@ContextConfiguration` 注解
+就可以简单地配置。如果你的测试类没有明确地声明应用上下文资源 `位置` 或注解 `类`，配置的上下文加载器
+`ContextLoader` 将决定如何从默认的位置或默认的配置类上加载上下文。 除了上下文资源 `位置` 和注解 `类` 的
+方式，你还可以通过应用上下文初始化器 `initializers` 的方式。
+
+下述章节，解释了配置应用上下文 `ApplicationContext` 的几种方式，通过XML配置文件，通过注解类（典型的是
+增加了 `@Configuration` 注解的类），或者通过使用Spring的  `@ContextConfiguration`  注解的初始化器
+的方式。 可选地， 为了高级的用例，你还可以实现和配置你自己的智能上下文加载器类 `SmartContextLoader`。
+
+[[testcontext-ctx-management-xml]]
+====== 使用XML资源的上下文配置
+
+使用XML配置文件为你的测试加载一个应用上下文 `ApplicationContext` ， 使用 `@ContextConfiguration`
+注解你的测试类并以数组的形式配置 `locations` 属性，该属性包含XML配置元数据的资源位置。一个普通的相对路径
+—— 例如，`"context.xml"` ——将会认为是相对于测试类定义所在包的相对路径。 如果一个路径以“/”开始，则该路径
+被认为是一个绝对的类路径位置，例如，`"/org/example/config.xml"`。一个表示资源的URL（例如，一个路径前缀
+为 `classpath:` , `file:` , `http:` , 等等）路径顾名思义。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RunWith(SpringJUnit4ClassRunner.class)
+	// 应用上下文将会从类路径根下的 "/app-config.xml" 和 "/test-config.xml" 加载
+	**@ContextConfiguration(locations={"/app-config.xml", "/test-config.xml"})**
+	public class MyTest {
+		// 类体...
+	}
+----
+
+注解 `@ContextConfiguration` 通过标准的Java `value` 属性支持  `locations` 属性的别名。
+因此，如果在注解 `@ContextConfiguration` 中没有别的属性需要设置， 你可以忽略 `locations` 属性
+的名字使用一种如下示例的简洁方式进行声明。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RunWith(SpringJUnit4ClassRunner.class)
+	**@ContextConfiguration({"/app-config.xml", "/test-config.xml"})**
+	public class MyTest {
+		// 类体...
+	}
+----
+如果你同时忽略了 `@ContextConfiguration` 注解的 `locations` 和 `value` 属性， 那么测试上下文框架
+将会尝试探测默认的XML资源位置。确切地说，`GenericXmlContextLoader` 和 `GenericXmlWebContextLoader` 会
+基于测试类的名字探测默认的位置，如果你的测试类命名为 `com.example.MyTest` ，`GenericXmlContextLoader` 类
+将从 `"classpath:com/example/MyTest-context.xml"` 位置加载应用上下文。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package com.example;
+
+	@RunWith(SpringJUnit4ClassRunner.class)
+	// 应用上下文将从 "classpath:com/example/MyTest-context.xml" 位置加载
+	**@ContextConfiguration**
+	public class MyTest {
+		// 类体...
+	}
+----
+
+[[testcontext-ctx-management-groovy]]
+====== 使用Groovy脚本配置上下文
+
+使用Groovy脚本为你的测试类加载一个应用上下文 `ApplicationContext`，可以利用 <<groovy-bean-definition-dsl,Groovy DSL>>
+注解你的测试类， 在注解 `@ContextConfiguration` 的 `locations` 和 `value` 属性中使用一个包含Groovy 脚本
+的资源位置的数组配置属性。资源查找的语义和<<testcontext-ctx-management-xml,XML 配置文件>>的描述是一致的。
+
+.启动 Groovy 脚本支持
+[TIP]
+====
+如果Groovy在类路径上，在测试上下文框架中使用Groovy脚本加载应用上下文 `ApplicationContext` 的支持是自动启动的。
+====
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RunWith(SpringJUnit4ClassRunner.class)
+	// 应用上下文将从类路径根下的 "/AppConfig.groovy" 和 "/TestConfig.groovy" 加载
+	**@ContextConfiguration({"/AppConfig.groovy", "/TestConfig.Groovy"})**
+	public class MyTest {
+		// 类体...
+	}
+----
+
+如果你同时忽略了注解 `@ContextConfiguration` 的 `locations` 和 `value` 属性，则测试上下文框架将会
+尝试探测默认的Groovy脚本。确切地说，加载器 `GenericGroovyXmlContextLoader` 和 `GenericGroovyXmlWebContextLoader`
+基于测试类的名字探测默认的位置。如果你的测试类命名为 `com.example.MyTest` ， 那么Groovy上下文加载器将会
+从位置 `"classpath:com/example/MyTestContext.groovy"` 加载你的应用上下文。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package com.example;
+
+	@RunWith(SpringJUnit4ClassRunner.class)
+	// 应用上下文 ApplicationContext 将从位置 "classpath:com/example/MyTestContext.groovy" 加载
+	**@ContextConfiguration**
+	public class MyTest {
+		// 类体...
+	}
+----
+
+.同时声明XML 配置和Groovy脚本
+[TIP]
+====
+XML配置文件和Groovy脚本可以通过注解  `@ContextConfiguration` 的属性 `locations` 或 `value` 同时
+同时声明。如果配置的资源位置以 `.xml` 结尾，则将使用 `XmlBeanDefinitionReader` 加载，否则将会使用
+`GroovyBeanDefinitionReader` 加载。
+
+下述示例演示在集成测试中混合两种方式。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RunWith(SpringJUnit4ClassRunner.class)
+	// 应用上下文ApplicationContext 将从位置"/app-config.xml" 和 "/TestConfig.groovy"加载
+	@ContextConfiguration({ "/app-config.xml", "/TestConfig.groovy" })
+	public class MyTest {
+		// 类体...
+	}
+----
+====
+
+[[testcontext-ctx-management-javaconfig]]
+====== 使用注解类配置上下文
+使用__注解类__ （参考<<bases-java>>）为你的测试类加载一个应用上下文 `ApplicationContext` ，可以
+为你的测试类增加注解  `@ContextConfiguration` 并使用一个数组配置其 `classes` 属性，该数组包含注解
+类的引用。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RunWith(SpringJUnit4ClassRunner.class)
+	// 应用上下文ApplicationContext 将从AppConfig 和 TestConfig 配置类加载
+	**@ContextConfiguration(classes = {AppConfig.class, TestConfig.class})**
+	public class MyTest {
+		// 类体...
+	}
+----
+
+.注解类
+[TIP]
+====
+__注解类__ 可以指下述中的任何一种。
+
+* 使用注解 `@Configuration` 配置的类
+* 一个组件 (例如, 被 `@Component`, `@Service`, `@Repository`等注解的类.)
+* 一个使用 `javax.inject` 注解的 JSR-330 兼容类
+* 任意包含`@Bean`注解方法的类
+
+参阅注解 `@Configuration` 和 `@Bean` 的javadoc了解 __注解类__ 的配置和语义的深入信息，请多关注
+__`@Bean` Lite Mode__ 的讨论。
+
+====
+
+如果你忽略了直接  `@ContextConfiguration` 的 `classes` 属性，测试上下文框架将会尝试探测默认配置
+类的存在。确切地说，加载器 `AnnotationConfigContextLoader` 和 `AnnotationConfigWebContextLoader` 
+将会探测满足需求的所有测试类的静态内部类， 这些内部类通过注解 `@Configuration` 指定了其配置。下述示例
+中，测试类 `OrderServiceTest` 声明了一个名字为 `Config` 的静态内部配置类， 该类被用来为测试类加载应用
+上下文  `ApplicationContext` 。请注意，配置类的名字是任意的。除此之外，必要时，一个测试类可以包含多个
+静态内部配置类。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RunWith(SpringJUnit4ClassRunner.class)
+	// 应用上下文 ApplicationContext 将从静态内部配置类 Config加载
+	**@ContextConfiguration**
+	public class OrderServiceTest {
+
+		@Configuration
+		static class Config {
+
+			// 这个Bean将注入到OrderServiceTest中
+			@Bean
+			public OrderService orderService() {
+				OrderService orderService = new OrderServiceImpl();
+				// 设置属性， 等等操作
+				return orderService;
+			}
+		}
+
+		@Autowired
+		private OrderService orderService;
+
+		@Test
+		public void testOrderService() {
+			// 测试服务 orderService
+		}
+
+	}
+----
+
+[[testcontext-ctx-management-mixed-config]]
+====== 组合XML，Groovy脚本和注解类三种配置方式
+
+有时候，可以期望组合XML配置文件、Groovy脚本和注解类（例如，典型的 `@Configuration` 类）三种方式
+来为你的测试类配置一个应用上下文。例如，你在产品中使用XML配置，在测试中你可能决定想使用注解类 `@Configuration`
+来配置Springg管理的组件，反之亦然。
+
+
+此外，一些第三方框架（就像Spring Boot）为加载应用上下文 `ApplicationContext` 提供了优秀的支持，他们
+可以从不同类型的资源中同时加载（例如，XML配置文件，Groovy脚本和增加了 `@Configuration` 的类）。由于历史的原因，
+Spring框架没有以标准发布的形式支持混合配置。因此，Spring框架中的 `spring-test` 模块的大多数上下文
+加载器 `SmartContextLoader` 的实现在每一个测试上下文中仅支持一种资源类型；尽管如此，这并不意味着你
+不能同时使用它们。通用规则的一个例外是上下文加载器 `GenericGroovyXmlContextLoader` 和 `GenericGroovyXmlWebContextLoader`
+同时支持XML配置文件和Groovy脚本。 此外，第三方框架可能通过注解 `@ContextConfiguration` 选择支持
+`locations` 和 `classes` 的声明以及测试框架的标准测试支持， 你可以有如下的选项。
+
+如果你想使用资源位置（例如，XML或Groovy脚本） __和__ 注解 `@Configuration`类配置你的测试类，你必须
+选择一个作为 __入口点__ ，并且另外一个必须包括或者导入到另一个。例如，在XML或Groovy脚本中，你可以通过组件
+扫描或正常定义Spring beans包含 `@Configuration` 类;反过来，在注解 `@Configuration` 配置的类中，
+你可以使用注解 `@ImportResource` 导入XML配置文件。注意，这种行为与在产品中配置您的应用在语义上是等价的：
+在产品配置中，你可以定义XML或Groovy资源位置的集合，或者配置类 `@Configuration` 的集合，产品的应用上下文
+`ApplicationContext` 将从中加载， 但是你仍然有包含或导入其他类型配置的自由。
+
+[[testcontext-ctx-management-initializers]]
+====== 使用上下文初始化器配置上下文 
+使用上下文初始化器为你的测试类配置一个应用上下文 `ApplicationContext` ，可以使用  `@ContextConfiguration` 
+注解你的测试类，然后使用一个数组配置其 `initializers` 属性，该数组包含实现了 `ApplicationContextInitializer` 
+的类的引用。  声明的上下文初始化器其后将被用来初始化测试类的 `ConfigurableApplicationContext` 。注意，
+每一个具体的声明的初始化器支持的 `ConfigurableApplicationContext` 类型必须与使用 `SmartContextLoader`
+创建的应用上下文 `ApplicationContext` 类型兼容。此外，初始化器被调用的顺序依赖于它们是否实现了Spring的
+`Ordered` 接口或加注了Spring的 `@Order` 注解或加注了标准的 `@Priority` 注解。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RunWith(SpringJUnit4ClassRunner.class)
+	// 应用上下文ApplicationContext将从配置类TestConfig加载并从TestAppCtxInitializer初始化
+	**@ContextConfiguration(
+		classes = TestConfig.class,
+		initializers = TestAppCtxInitializer.class)**
+	public class MyTest {
+		//类体...
+	}
+----
+
+完全地忽略XML配置或注解类 `@ContextConfiguration` 方式的声明也成为了可能，取而代之的是仅仅声明在上
+下文中负责注册beans的类 `ApplicationContextInitializer` —— 例如，从XML文件或配置类中以编程方式
+加载bean定义。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RunWith(SpringJUnit4ClassRunner.class)
+	// ApplicationContext 将被EntireAppInitializer初始化，假定EntireAppInitializer类在上下文中注册beans 
+	**@ContextConfiguration(initializers = EntireAppInitializer.class)**
+	public class MyTest {
+		// 类体...
+	}
+----
+
+[[testcontext-ctx-management-inheritance]]
+====== 上下文配置继承
+注解 `@ContextConfiguration` 支持两个布尔属性  `inheritLocations` 和 `inheritInitializers`，这两个属性
+指的是在潮类中声明的资源位置、注解类或上下文初始化器是否可以 __继承__ 。它们两个的默认值都是 `true`。那意味着一个测试
+类默认会继承超类的资源位置、注解类或上下文初始化器的配置。确切地说，一个测试类资源位置或者是注解类配置被追加到超类声明
+的资源位置或注解类的列表上。类似地，指定测试类的初始化器将会增加到超类定义的初始化集合上。因此，子类拥有 __继承__ 资源
+位置、注解类或上下文初始化器的选项。
+
+如何 `@ContextConfiguration`' 的 `inheritLocations` 或 `inheritInitializers` 属性设置为 `false` ,
+测试类的资源位置、注解类或上下文初始化器配置将会替代超类的配置。
+
+在下述的使用XML资源位置的示例中，测试类 `ExtendedTest` 的应用上下文  `ApplicationContext` 将依序从
+__"base-config.xml"__ 和 __"extended-config.xml"__ 两个配置文件中加载。 在 __"extended-config.xml"__ 
+配置文件中定义的beans将会 __覆盖__ （例如，替换）在 __"base-config.xml"__ 配置文件中定义的beans。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RunWith(SpringJUnit4ClassRunner.class)
+	// 应用上下文ApplicationContext将从类路径根下的配置文件"/base-config.xml"中加载
+	**@ContextConfiguration("/base-config.xml")**
+	public class BaseTest {
+		// 类体...
+	}
+
+    // 应用上下文ApplicationContext将从类路径根下的配置文件 "/base-config.xml"和"/extended-config.xml"中加载
+	**@ContextConfiguration("/extended-config.xml")**
+	public class ExtendedTest extends BaseTest {
+		// 类体...
+	}
+----
+
+类似的，在下述使用注解类的示例中，`ExtendedTest` 的应用上下文 `ApplicationContext` 将会从 `BaseConfig` __和__
+`ExtendedConfig` 两个配置类中加载。在配置类 `ExtendedConfig` 中定义的beans因此将会覆盖在 `BaseConfig` 配置类中
+定义的beans。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RunWith(SpringJUnit4ClassRunner.class)
+	// 应用上下文ApplicationContext将从配置类BaseConfig中加载
+	**@ContextConfiguration(classes = BaseConfig.class)**
+	public class BaseTest {
+		// 类体...
+	}
+
+	// 应用上下文ApplicationContext将从配置类BaseConfig 和 ExtendedConfig中加载
+	**@ContextConfiguration(classes = ExtendedConfig.class)**
+	public class ExtendedTest extends BaseTest {
+		// 类体...
+	}
+----
+在下述使用上下文初始化器的示例中，测试类 `ExtendedTest` 的应用上下文 `ApplicationContext` 将使用初始化器
+`BaseInitializer` __和__ `ExtendedInitializer` 进行初始化。 注意，尽管如此，初始化器的调用顺序依赖于它们
+是否实现了Spring的 `Ordered` 接口，加注 `@Order` 注解或是标准的 `@Priority` 注解。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RunWith(SpringJUnit4ClassRunner.class)
+	// 应用上下文ApplicationContext 将通过初始化器BaseInitializer进行初始化
+	**@ContextConfiguration(initializers = BaseInitializer.class)**
+	public class BaseTest {
+		// 类体...
+	}
+
+	// 应用上下文ApplicationContext 将通过BaseInitializer和ExtendedInitializer进行初始化
+	**@ContextConfiguration(initializers = ExtendedInitializer.class)**
+	public class ExtendedTest extends BaseTest {
+		// 类体...
+	}
+----
+
+[[testcontext-ctx-management-env-profiles]]
+====== 使用环境概要进行上下文配置
+在Spring 3.1对环境和概要（也称为 __bean 定义概要__）的符号表示法引入了优秀的支持，集成测试可以
+为各种不同的测试场景配置为可以激活特定的bean 定义概要。这些可以通过在测试类上增加 `@ActiveProfiles`
+注解并为之提供一个概要的列表，这个概要列表将在为测试类加载应用上下文 `ApplicationContext` 的时候被
+激活。
+
+[NOTE]
+====
+注解 `@ActiveProfiles` 可以被用来与任何新的智能上下文加载器  `SmartContextLoader` SPI的实现配合
+使用，但是却不支持旧的上下文加载器 `ContextLoader` SPI 的实现。
+====
+
+让我们看一些基于XML配置和基于配置类注解`@Configuration`的示例。
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<!-- app-config.xml -->
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+		xmlns:jee="http://www.springframework.org/schema/jee"
+		xsi:schemaLocation="...">
+
+		<bean id="transferService"
+				class="com.bank.service.internal.DefaultTransferService">
+			<constructor-arg ref="accountRepository"/>
+			<constructor-arg ref="feePolicy"/>
+		</bean>
+
+		<bean id="accountRepository"
+				class="com.bank.repository.internal.JdbcAccountRepository">
+			<constructor-arg ref="dataSource"/>
+		</bean>
+
+		<bean id="feePolicy"
+			class="com.bank.service.internal.ZeroFeePolicy"/>
+
+		<beans profile="dev">
+			<jdbc:embedded-database id="dataSource">
+				<jdbc:script
+					location="classpath:com/bank/config/sql/schema.sql"/>
+				<jdbc:script
+					location="classpath:com/bank/config/sql/test-data.sql"/>
+			</jdbc:embedded-database>
+		</beans>
+
+		<beans profile="production">
+			<jee:jndi-lookup id="dataSource" jndi-name="java:comp/env/jdbc/datasource"/>
+		</beans>
+
+		<beans profile="default">
+			<jdbc:embedded-database id="dataSource">
+				<jdbc:script
+					location="classpath:com/bank/config/sql/schema.sql"/>
+			</jdbc:embedded-database>
+		</beans>
+
+	</beans>
+----
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package com.bank.service;
+
+	@RunWith(SpringJUnit4ClassRunner.class)
+	// 应用上下文 ApplicationContext 将从配置文件 "classpath:/app-config.xml" 中加载
+	@ContextConfiguration("/app-config.xml")
+	@ActiveProfiles("dev")
+	public class TransferServiceTest {
+
+		@Autowired
+		private TransferService transferService;
+
+		@Test
+		public void testTransferService() {
+			// test the transferService
+		}
+	}
+----
+
+当测试类 `TransferServiceTest` 运行的时候，它的应用上下文 `ApplicationContext` 将从类路径根下的
+配置文件 `app-config.xml` 中加载。如果检查配置文件，你会注意到bean `accountRepository` 依赖bean
+`dataSource` ;尽管如此，`dataSource` bean并没有被定义为一个顶层的bean。相反，它被定义了三次：分别
+在 __product__ 概要，__dev__ 概要，以及 __default__ 概要中。
+
+通过使用 `@ActiveProfiles("dev")` 注解测试类 `TransferServiceTest` ，我们提示Spring 测试框架
+使用激活的概要 `{"dev"}` 来加载应用上下文  `ApplicationContext` 。 于是，一个嵌入式数据库将被创建
+并存储测试数据，并且 `accountRepository` bean将注入一个开发的 `DataSource`。这也是我们想在集成
+测试中希望的。
+
+将bean分配给 `default` 的概要有时候是很有用的。默认概要中的bean仅当没有其他的概要被激活时使用。这可以被
+用来定义一个 _fallback_ bean，该bean被用于应用的默认状态。例如，你可以显式地提供一个 `dev` 概要和一个
+`product` 概要，但是当这两个都没有激活的情况下，你可以定义一个内存数据源作为默认值。
+
+下述的示例代码演示了如何使用 `@Configuration` 类来实现与XML相同的配置。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Configuration
+	@Profile("dev")
+	public class StandaloneDataConfig {
+
+		@Bean
+		public DataSource dataSource() {
+			return new EmbeddedDatabaseBuilder()
+				.setType(EmbeddedDatabaseType.HSQL)
+				.addScript("classpath:com/bank/config/sql/schema.sql")
+				.addScript("classpath:com/bank/config/sql/test-data.sql")
+				.build();
+		}
+	}
+----
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Configuration
+	@Profile("production")
+	public class JndiDataConfig {
+
+		@Bean
+		public DataSource dataSource() throws Exception {
+			Context ctx = new InitialContext();
+			return (DataSource) ctx.lookup("java:comp/env/jdbc/datasource");
+		}
+	}
+----
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Configuration
+	@Profile("default")
+	public class DefaultDataConfig {
+
+		@Bean
+		public DataSource dataSource() {
+			return new EmbeddedDatabaseBuilder()
+				.setType(EmbeddedDatabaseType.HSQL)
+				.addScript("classpath:com/bank/config/sql/schema.sql")
+				.build();
+		}
+	}
+----
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Configuration
+	public class TransferServiceConfig {
+
+		@Autowired DataSource dataSource;
+
+		@Bean
+		public TransferService transferService() {
+			return new DefaultTransferService(accountRepository(), feePolicy());
+		}
+
+		@Bean
+		public AccountRepository accountRepository() {
+			return new JdbcAccountRepository(dataSource);
+		}
+
+		@Bean
+		public FeePolicy feePolicy() {
+			return new ZeroFeePolicy();
+		}
+
+	}
+----
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package com.bank.service;
+
+	@RunWith(SpringJUnit4ClassRunner.class)
+	@ContextConfiguration(classes = {
+			TransferServiceConfig.class,
+			StandaloneDataConfig.class,
+			JndiDataConfig.class,
+			DefaultDataConfig.class})
+	@ActiveProfiles("dev")
+	public class TransferServiceTest {
+
+		@Autowired
+		private TransferService transferService;
+
+		@Test
+		public void testTransferService() {
+			// 测试相关逻辑
+		}
+	}
+----
+
+这次的变化，我们将XML配置拆分成了四个独立注解了 `@Configuration` 的配置类：
+
+* `TransferServiceConfig`: 通过使用注解 `@Autowired` 依赖注入获取一个数据源 `dataSource` 
+* `StandaloneDataConfig`: 定义了一个适合于开发人员测试的嵌入式数据库的数据源 `dataSource` 
+* `JndiDataConfig`: 定义一个从JNDI产品环境中获得数据源 `dataSource` 
+* `DefaultDataConfig`: 为防止没有激活的概要配置，在一个默认的嵌入式数据库中定义一个数据源 `dataSource`
+
+在使用基于XML的配置示例中， 我们仍然使用 `@ActiveProfiles("dev")` 注解测试类 `TransferServiceTest` ，
+但是这次我们通过注解 `@ContextConfiguration`指定了所有的四个配置类。测试类的本身没有发生任何改变。
+
+通常的用例是在一个项目中跨越多个测试类使用一组概要配置。因此，为了避免注解 `@ActiveProfiles` 的
+重复声明，可以在一个基类上只声明一次注解 `@ActiveProfiles`， 其子类将自动的继承父类的注解配置。在下列
+的示例中，注解 `@ActiveProfiles` 的声明被移入了抽象超类  `AbstractIntegrationTest` 中。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package com.bank.service;
+
+	@RunWith(SpringJUnit4ClassRunner.class)
+	@ContextConfiguration(classes = {
+			TransferServiceConfig.class,
+			StandaloneDataConfig.class,
+			JndiDataConfig.class,
+			DefaultDataConfig.class})
+	@ActiveProfiles("dev")
+	public abstract class AbstractIntegrationTest {
+	}
+----
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package com.bank.service;
+
+	// "dev" 概要从超类中继承
+	public class TransferServiceTest extends AbstractIntegrationTest {
+
+		@Autowired
+		private TransferService transferService;
+
+		@Test
+		public void testTransferService() {
+			// 测试逻辑
+		}
+	}
+----
+
+注解 `@ActiveProfiles` 也支持一个 `inheritProfiles` 属性，该属性可以用来禁止激活概要的继承特性。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package com.bank.service;
+
+	// "dev" 概要被 "production" 概要覆盖
+	@ActiveProfiles(profiles = "production", inheritProfiles = false)
+	public class ProductionTransferServiceTest extends AbstractIntegrationTest {
+		// 测试体 
+	}
+----
+
+[[testcontext-ctx-management-env-profiles-ActiveProfilesResolver]]
+此外，有些时候为测试类采用 __可编程__ 的方式而非声明的方式解析激活的概要是必要的 —— 例如， 基于：
+
+* 当前的操作系统
+* 是否在持续集成构建服务器上被执行 
+* 存在特定的环境变量
+* 存在用户定义的类级别的注解
+* 等等。
+
+为了可编程地解析活动bean定义概要，简单地实现一个自定义的活动概要解析器 `ActiveProfilesResolver` 并
+通过注解 `@ActiveProfiles` 的属性 `resolver` 来注册上。 下列的示例演示了如何实现一个用户自定义的
+活动概要解析器 `OperatingSystemActiveProfilesResolver` 并注册之。想了解进一步的信息，可参考相关
+的javadoc。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package com.bank.service;
+
+	// 通过自定义的解析器以编程方式覆盖 "dev" 概要
+	@ActiveProfiles(
+		resolver = OperatingSystemActiveProfilesResolver.class,
+		inheritProfiles = false)
+	public class TransferServiceTest extends AbstractIntegrationTest {
+		// 测试体
+	}
+----
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package com.bank.service.test;
+
+	public class OperatingSystemActiveProfilesResolver implements ActiveProfilesResolver {
+
+		@Override
+		String[] resolve(Class<?> testClass) {
+			String profile = ...;
+			// 基于操作系统决定概要的取值
+			return new String[] {profile};
+		}
+	}
+----
+

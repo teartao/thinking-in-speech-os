@@ -1,0 +1,26 @@
+[[jmx-interface]]
+=== Controlling the management interface of your beans
+In the previous example, you had little control over the management interface of your
+bean; __all__ of the __public__ properties and methods of each exported bean was exposed
+as JMX attributes and operations respectively. To exercise finer-grained control over
+exactly which properties and methods of your exported beans are actually exposed as JMX
+attributes and operations, Spring JMX provides a comprehensive and extensible mechanism
+for controlling the management interfaces of your beans.
+
+
+
+[[jmx-interface-assembler]]
+==== the MBeanInfoAssembler Interface
+
+Behind the scenes, the `MBeanExporter` delegates to an implementation of the
+`org.springframework.jmx.export.assembler.MBeanInfoAssembler` interface which is
+responsible for defining the management interface of each bean that is being exposed.
+The default implementation,
+`org.springframework.jmx.export.assembler.SimpleReflectiveMBeanInfoAssembler`, simply
+defines a management interface that exposes all public properties and methods (as you
+saw in the previous examples). Spring provides two additional implementations of the
+`MBeanInfoAssembler` interface that allow you to control the generated management
+interface using either source-level metadata or any arbitrary interface.
+
+
+

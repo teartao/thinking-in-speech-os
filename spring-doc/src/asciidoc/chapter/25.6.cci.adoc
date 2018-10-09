@@ -1,0 +1,108 @@
+[[cci-using-template]]
+==== the CciTemplate
+
+The `CciTemplate` is the central class of the core CCI support package (
+`org.springframework.jca.cci.core`). It simplifies the use of CCI since it handles the
+creation and release of resources. This helps to avoid common errors like forgetting to
+always close the connection. It cares for the lifecycle of connection and interaction
+objects, letting application code focus on generating input records from application
+data and extracting application data from output records.
+
+The JCA CCI specification defines two distinct methods to call operations on an EIS. The
+CCI `Interaction` interface provides two execute method signatures:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface javax.resource.cci.Interaction {
+
+		...
+
+		boolean execute(InteractionSpec spec, Record input, Record output) throws ResourceException;
+
+		Record execute(InteractionSpec spec, Record input) throws ResourceException;
+
+		...
+
+	}
+----
+
+Depending on the template method called, `CciTemplate` will know which `execute` method
+to call on the interaction. In any case, a correctly initialized `InteractionSpec`
+instance is mandatory.
+
+`CciTemplate.execute(..)` can be used in two ways:
+
+* With direct `Record` arguments. In this case, you simply need to pass the CCI input
+  record in, and the returned object be the corresponding CCI output record.
+* With application objects, using record mapping. In this case, you need to provide
+  corresponding `RecordCreator` and `RecordExtractor` instances.
+
+With the first approach, the following methods of the template will be used. These
+methods directly correspond to those on the `Interaction` interface.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class CciTemplate implements CciOperations {
+
+		public Record execute(InteractionSpec spec, Record inputRecord)
+				throws DataAccessException { ... }
+
+		public void execute(InteractionSpec spec, Record inputRecord, Record outputRecord)
+				throws DataAccessException { ... }
+
+	}
+----
+
+With the second approach, we need to specify the record creation and record extraction
+strategies as arguments. The interfaces used are those describe in the previous section
+on record conversion. The corresponding `CciTemplate` methods are the following:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class CciTemplate implements CciOperations {
+
+		public Record execute(InteractionSpec spec,
+				RecordCreator inputCreator) throws DataAccessException {
+			// ...
+		}
+
+		public Object execute(InteractionSpec spec, Record inputRecord,
+				RecordExtractor outputExtractor) throws DataAccessException {
+			// ...
+		}
+
+		public Object execute(InteractionSpec spec, RecordCreator creator,
+				RecordExtractor extractor) throws DataAccessException {
+			// ...
+		}
+
+	}
+----
+
+Unless the `outputRecordCreator` property is set on the template (see the following
+section), every method will call the corresponding `execute` method of the CCI
+`Interaction` with two parameters: `InteractionSpec` and input `Record`, receiving an
+output `Record` as return value.
+
+`CciTemplate` also provides methods to create `IndexRecord` and `MappedRecord` outside a
+`RecordCreator` implementation, through its `createIndexRecord(..)` and
+`createMappedRecord(..)` methods. This can be used within DAO implementations to create
+`Record` instances to pass into corresponding `CciTemplate.execute(..)` methods.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class CciTemplate implements CciOperations {
+
+		public IndexedRecord createIndexedRecord(String name) throws DataAccessException { ... }
+
+		public MappedRecord createMappedRecord(String name) throws DataAccessException { ... }
+
+	}
+----
+
+
+

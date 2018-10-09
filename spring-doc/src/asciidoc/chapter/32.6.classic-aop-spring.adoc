@@ -1,0 +1,54 @@
+[[classic-aop-api-advisor]]
+=== Advisor API in Spring
+In Spring, an Advisor is an aspect that contains just a single advice object associated
+with a pointcut expression.
+
+Apart from the special case of introductions, any advisor can be used with any advice.
+`org.springframework.aop.support.DefaultPointcutAdvisor` is the most commonly used
+advisor class. For example, it can be used with a `MethodInterceptor`, `BeforeAdvice` or
+`ThrowsAdvice`.
+
+It is possible to mix advisor and advice types in Spring in the same AOP proxy. For
+example, you could use a interception around advice, throws advice and before advice in
+one proxy configuration: Spring will automatically create the necessary interceptor
+chain.
+
+
+
+
+[[classic-aop-pfb]]
+=== Using the ProxyFactoryBean to create AOP proxies
+If you're using the Spring IoC container (an ApplicationContext or BeanFactory) for your
+business objects - and you should be! - you will want to use one of Spring's AOP
+FactoryBeans. (Remember that a factory bean introduces a layer of indirection, enabling
+it to create objects of a different type.)
+
+[NOTE]
+====
+The Spring 2.0 AOP support also uses factory beans under the covers.
+====
+
+The basic way to create an AOP proxy in Spring is to use the
+__org.springframework.aop.framework.ProxyFactoryBean__. This gives complete control over
+the pointcuts and advice that will apply, and their ordering. However, there are simpler
+options that are preferable if you don't need such control.
+
+
+
+[[classic-aop-pfb-1]]
+==== Basics
+The `ProxyFactoryBean`, like other Spring `FactoryBean` implementations, introduces a
+level of indirection. If you define a `ProxyFactoryBean` with name `foo`, what objects
+referencing `foo` see is not the `ProxyFactoryBean` instance itself, but an object
+created by the `ProxyFactoryBean`'s implementation of the `getObject()` method. This
+method will create an AOP proxy wrapping a target object.
+
+One of the most important benefits of using a `ProxyFactoryBean` or another IoC-aware
+class to create AOP proxies, is that it means that advices and pointcuts can also be
+managed by IoC. This is a powerful feature, enabling certain approaches that are hard to
+achieve with other AOP frameworks. For example, an advice may itself reference
+application objects (besides the target, which should be available in any AOP
+framework), benefiting from all the pluggability provided by Dependency Injection.
+
+
+

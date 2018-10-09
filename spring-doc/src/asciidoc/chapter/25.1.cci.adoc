@@ -1,0 +1,38 @@
+[[cci-config]]
+=== Configuring CCI
+
+
+
+[[cci-config-connector]]
+==== Connector configuration
+The base resource to use JCA CCI is the `ConnectionFactory` interface. The connector
+used must provide an implementation of this interface.
+
+To use your connector, you can deploy it on your application server and fetch the
+`ConnectionFactory` from the server's JNDI environment (managed mode). The connector
+must be packaged as a RAR file (resource adapter archive) and contain a `ra.xml` file to
+describe its deployment characteristics. The actual name of the resource is specified
+when you deploy it. To access it within Spring, simply use Spring's
+`JndiObjectFactoryBean` / `<jee:jndi-lookup>` fetch the factory by its JNDI name.
+
+Another way to use a connector is to embed it in your application (non-managed mode),
+not using an application server to deploy and configure it. Spring offers the
+possibility to configure a connector as a bean, through a provided `FactoryBean` (
+`LocalConnectionFactoryBean`). In this manner, you only need the connector library in
+the classpath (no RAR file and no `ra.xml` descriptor needed). The library must be
+extracted from the connector's RAR file, if necessary.
+
+Once you have got access to your `ConnectionFactory` instance, you can inject it into
+your components. These components can either be coded against the plain CCI API or
+leverage Spring's support classes for CCI access (e.g. `CciTemplate`).
+
+[NOTE]
+====
+When you use a connector in non-managed mode, you can't use global transactions because
+the resource is never enlisted / delisted in the current global transaction of the
+current thread. The resource is simply not aware of any global Java EE transactions that
+might be running.
+====
+
+
+

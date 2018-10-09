@@ -1,0 +1,184 @@
+[[context-functionality-events]]
+==== Standard and Custom Events
+Event handling in the `ApplicationContext` is provided through the `ApplicationEvent`
+class and `ApplicationListener` interface. If a bean that implements the
+`ApplicationListener` interface is deployed into the context, every time an
+`ApplicationEvent` gets published to the `ApplicationContext`, that bean is notified.
+Essentially, this is the standard __Observer__ design pattern. Spring provides the
+following standard events:
+
+[[beans-ctx-events-tbl]]
+.Built-in Events
+|===
+| Event| Explanation
+
+| `ContextRefreshedEvent`
+| Published when the `ApplicationContext` is initialized or refreshed, for example,
+  using the `refresh()` method on the `ConfigurableApplicationContext` interface.
+  "Initialized" here means that all beans are loaded, post-processor beans are detected
+  and activated, singletons are pre-instantiated, and the `ApplicationContext` object is
+  ready for use. As long as the context has not been closed, a refresh can be triggered
+  multiple times, provided that the chosen `ApplicationContext` actually supports such
+  "hot" refreshes. For example, `XmlWebApplicationContext` supports hot refreshes, but
+  `GenericApplicationContext` does not.
+
+| `ContextStartedEvent`
+| Published when the `ApplicationContext` is started, using the `start()` method on the
+  `ConfigurableApplicationContext` interface. "Started" here means that all `Lifecycle`
+  beans receive an explicit start signal. Typically this signal is used to restart beans
+  after an explicit stop, but it may also be used to start components that have not been
+  configured for autostart , for example, components that have not already started on
+  initialization.
+
+| `ContextStoppedEvent`
+| Published when the `ApplicationContext` is stopped, using the `stop()` method on the
+  `ConfigurableApplicationContext` interface. "Stopped" here means that all `Lifecycle`
+  beans receive an explicit stop signal. A stopped context may be restarted through a
+  `start()` call.
+
+| `ContextClosedEvent`
+| Published when the `ApplicationContext` is closed, using the `close()` method on the
+  `ConfigurableApplicationContext` interface. "Closed" here means that all singleton
+  beans are destroyed. A closed context reaches its end of life; it cannot be refreshed
+  or restarted.
+
+| `RequestHandledEvent`
+| A web-specific event telling all beans that an HTTP request has been serviced. This
+  event is published __after__ the request is complete. This event is only applicable to
+  web applications using Spring's `DispatcherServlet`.
+|===
+
+You can also create and publish your own custom events. This example demonstrates a
+simple class that extends Spring's `ApplicationEvent` base class:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class BlackListEvent extends ApplicationEvent {
+
+		private final String address;
+		private final String test;
+
+		public BlackListEvent(Object source, String address, String test) {
+			super(source);
+			this.address = address;
+			this.test = test;
+		}
+
+		// accessor and other methods...
+
+	}
+----
+
+To publish a custom `ApplicationEvent`, call the `publishEvent()` method on an
+`ApplicationEventPublisher`. Typically this is done by creating a class that implements
+`ApplicationEventPublisherAware` and registering it as a Spring bean. The following
+example demonstrates such a class:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class EmailService implements ApplicationEventPublisherAware {
+
+		private List<String> blackList;
+		private ApplicationEventPublisher publisher;
+
+		public void setBlackList(List<String> blackList) {
+			this.blackList = blackList;
+		}
+
+		public void setApplicationEventPublisher(ApplicationEventPublisher publisher) {
+			this.publisher = publisher;
+		}
+
+		public void sendEmail(String address, String text) {
+			if (blackList.contains(address)) {
+				BlackListEvent event = new BlackListEvent(this, address, text);
+				publisher.publishEvent(event);
+				return;
+			}
+			// send email...
+		}
+
+	}
+----
+
+At configuration time, the Spring container will detect that `EmailService` implements
+`ApplicationEventPublisherAware` and will automatically call
+`setApplicationEventPublisher()`. In reality, the parameter passed in will be the Spring
+container itself; you're simply interacting with the application context via its
+`ApplicationEventPublisher` interface.
+
+To receive the custom `ApplicationEvent`, create a class that implements
+`ApplicationListener` and register it as a Spring bean. The following example
+demonstrates such a class:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class BlackListNotifier implements ApplicationListener<BlackListEvent> {
+
+		private String notificationAddress;
+
+		public void setNotificationAddress(String notificationAddress) {
+			this.notificationAddress = notificationAddress;
+		}
+
+		public void onApplicationEvent(BlackListEvent event) {
+			// notify appropriate parties via notificationAddress...
+		}
+
+	}
+----
+
+Notice that `ApplicationListener` is generically parameterized with the type of your
+custom event, `BlackListEvent`. This means that the `onApplicationEvent()` method can
+remain type-safe, avoiding any need for downcasting. You may register as many event
+listeners as you wish, but note that by default event listeners receive events
+synchronously. This means the `publishEvent()` method blocks until all listeners have
+finished processing the event. One advantage of this synchronous and single-threaded
+approach is that when a listener receives an event, it operates inside the transaction
+context of the publisher if a transaction context is available. If another strategy for
+event publication becomes necessary, refer to the JavaDoc for Spring's
+`ApplicationEventMulticaster` interface.
+
+The following example shows the bean definitions used to register and configure each of
+the classes above:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="emailService" class="example.EmailService">
+		<property name="blackList">
+			<list>
+				<value>known.spammer@example.org</value>
+				<value>known.hacker@example.org</value>
+				<value>john.doe@example.org</value>
+			</list>
+		</property>
+	</bean>
+
+	<bean id="blackListNotifier" class="example.BlackListNotifier">
+		<property name="notificationAddress" value="blacklist@example.org"/>
+	</bean>
+----
+
+Putting it all together, when the `sendEmail()` method of the `emailService` bean is
+called, if there are any emails that should be blacklisted, a custom event of type
+`BlackListEvent` is published. The `blackListNotifier` bean is registered as an
+`ApplicationListener` and thus receives the `BlackListEvent`, at which point it can
+notify appropriate parties.
+
+[NOTE]
+====
+Spring's eventing mechanism is designed for simple communication between Spring beans
+within the same application context. However, for more sophisticated enterprise
+integration needs, the separately-maintained
+http://projects.spring.io/spring-integration/[Spring Integration] project provides
+complete support for building lightweight,
+http://www.enterpriseintegrationpatterns.com[pattern-oriented], event-driven
+architectures that build upon the well-known Spring programming model.
+====
+
+
+

@@ -1,0 +1,120 @@
+[[beans-factory-scopes-other-injection]]
+===== 将上述作用域的bean作为依赖
+Spring IoC 容器不仅负责管理对象（beans）的创建，也负责有合作（依赖）关系对象之间的组装。
+如果你想将一个HTTP 请求作用域的bean注入到另一个 bean，必须注入一个 AOP 代理来取代请求作用域的bean本身。
+也就是说，你得有一个和作用域bean实现了相同接口、能在相应作用域（例如，HTTP 请求）
+访问真正的请求域bean目标对象的代理对象，而且这个代理对象要能把方法调用委派给真正的请求域bean，
+然后把代理对象注入到请求域bean该注入的地方。
+
+[NOTE]
+====
+对于作用域为 `singletons` （单例）或 `prototypes`（原型）的bean ， __不需要__ 使用 `<aop:scoped‐proxy/>` 元素
+====
+
+下述代码虽然只有一行，但读者不仅要“知其然”，更要“知其所以然”。
+
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns:aop="http://www.springframework.org/schema/aop"
+		xsi:schemaLocation="http://www.springframework.org/schema/beans
+			http://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.springframework.org/schema/aop
+			http://www.springframework.org/schema/aop/spring-aop.xsd">
+
+		
+        <!-- 将一个HTTP Session bean 暴露为一个代理bean -->
+		<bean id="userPreferences" class="com.foo.UserPreferences" scope="session">
+			
+            <!-- 通知Spring容器去代理这个bean -->
+			<aop:scoped-proxy/>
+		</bean>
+
+		
+        <!-- 将上述bean 的代理注入到一个单例bean -->
+		<bean id="userService" class="com.foo.SimpleUserService">
+		
+            <!-- 引用被代理的 userPreferences bean -->
+			<property name="userPreferences" ref="userPreferences"/>
+		</bean>
+	</beans>
+----
+
+为了创建上文提到的代理对象，要在 `request` 请求、 `session` 会话、 `globalSession` 全局会话
+和自定义作用域的bean声明中加入 `<aop:scoped‐proxy/>`  子元素。
+（参考 <<beans-factory-scopes-other-injection-proxies>> 和
+<<xsd-config>>）
+。为什么要这么做呢？让我们将这几个作用域的bean定义与单例作用域的bean定义做个对比。
+（下列代码的 `userPreferences` bean定义实际是 __不完整的__ ）。
+
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="userPreferences" class="com.foo.UserPreferences" scope="session"/>
+
+	<bean id="userManager" class="com.foo.UserManager">
+		<property name="userPreferences" ref="userPreferences"/>
+	</bean>
+----
+
+在上述例子中，将HTTP `Session` 会话域的 `userPreferences` bean 注入进了单例域 `userManager`。
+代码的关键在于userManager  是个单例bean，它在每个Spring 容器中只会被初始化 __一次__，
+它的依赖对象（在这个例子中是 `userPreferences` bean）也只会被注入一次。这就意味着 `userManager`  
+每次操作的都是在最开始注入进来的同一个 `userPreferences` 对象。
+
+
+当你把一个生命周期较短的bean注入至一个生命周期较长的bean时，例如把HTTP `Session` bean注入到单例bean，
+这种情况肯定 __不是__ 你所期望的。相反，你希望有个唯一的 `userManager` 单例对象，在每个HTTP `Session`的生命周期内，
+都能有一个专门的 `userPreferences`  对象供 `userManager` 使用。因此，Spring容器会创建一个代理类，
+使之与  `UserPreferences` 类实现相同的接口（理论上也是一个 `UserPreferences` 对象），并能根据作用域（HTTP 请求、 `Session`，等等）去获得真正的 `UserPreferences` 对象。
+Spring容器将这个代理类的对象注入到  `userManager` ， 但是 `userManager` 并不清楚它获得的 `UserPreferences` 其实是个代理。
+在这个例子中，当UserManager 实例调用注入的 `UserPreferences` 对象的某个方法时，实际上调用的是代理对象的方法。
+然后，代理对象从HTTP `Session` 中获取、并将方法调用委派给真正的 `UserPreferences` 对象。
+
+
+所以，当你需要将 `request-`, `session-`, and `globalSession-scoped` 作用域的 bean 注入至其他合作者bean的时候，要按照下面的方法去正确地配置。
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="userPreferences" class="com.foo.UserPreferences" scope="session">
+		<aop:scoped-proxy/>
+	</bean>
+	<bean id="userManager" class="com.foo.UserManager">
+		<property name="userPreferences" ref="userPreferences"/>
+	</bean>
+----
+
+[[beans-factory-scopes-other-injection-proxies]]
+====== 选择要创建的代理类型
+默认情况下，对于使用了 `<aop:scoped-proxy/>` 元素的bean，Spring容器会创建一个 __基于CGLIB类代理机制的代理类__。
+
+
+[NOTE]
+====
+CGLIB 代理只能拦截 public方法！不要在代理类上调用 非 public方法，那样不会委派给真正的目标对象。
+====
+
+或者，你也可以指定 `<aop:scoped-proxy/>` 元素的 `proxy-target-class` 属性为 `false` ，
+从而让Spring容器创建标准的、基于接口机制的JDK 代理类。使用 JDK 代理类意味着你不需要在应用程序的classpath 指定额外的类库。
+但是，这也意味着你的 scoped-bean 至少得实现一个接口，而且 __所有__ 合作者必须通过其中一个接口来引用被注入的scoped-bean。
+
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+    <!-- DefaultUserPreferences 实现了 UserPreferences 接口 -->
+	<bean id="userPreferences" class="com.foo.DefaultUserPreferences" scope="session">
+		<aop:scoped-proxy proxy-target-class="false"/>
+	</bean>
+	<bean id="userManager" class="com.foo.UserManager">
+		<property name="userPreferences" ref="userPreferences"/>
+	</bean>
+----
+
+到底该选择基于类的还是基于接口的代理机制呢？可参考 <<aop-proxying,aop代理>> 了解更多细节信息。

@@ -1,0 +1,61 @@
+[[cci-object-mapping-comm-area]]
+==== MappingCommAreaOperation
+
+Some connectors use records based on a COMMAREA which represents an array of bytes
+containing parameters to send to the EIS and data returned by it. Spring provides a
+special operation class for working directly on COMMAREA rather than on records. The
+`MappingCommAreaOperation` class extends the `MappingRecordOperation` class to provide
+such special COMMAREA support. It implicitly uses the `CommAreaRecord` class as input
+and output record type, and provides two new methods to convert an input object into an
+input COMMAREA and the output COMMAREA into an output object.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public abstract class MappingCommAreaOperation extends MappingRecordOperation {
+
+		...
+
+		protected abstract byte[] objectToBytes(Object inObject)
+				throws IOException, DataAccessException;
+
+		protected abstract Object bytesToObject(byte[] bytes)
+			throws IOException, DataAccessException;
+
+		...
+
+	}
+----
+
+
+
+[[cci-automatic-record-gen]]
+==== Automatic output record generation
+As every `MappingRecordOperation` subclass is based on CciTemplate internally, the same
+way to automatically generate output records as with `CciTemplate` is available. Every
+operation object provides a corresponding `setOutputRecordCreator(..)` method. For
+further information, see <<automatic-output-generation>>.
+
+
+
+[[cci-object-summary]]
+==== Summary
+The operation object approach uses records in the same manner as the `CciTemplate` class.
+
+[[cci-interaction-methods]]
+.Usage of Interaction execute methods
+[cols="3,1,3"]
+|===
+| MappingRecordOperation method signature| MappingRecordOperation outputRecordCreator property| execute method called on the CCI Interaction
+
+| Object execute(Object)
+| not set
+| Record execute(InteractionSpec, Record)
+
+| Object execute(Object)
+| set
+| boolean execute(InteractionSpec, Record, Record)
+|===
+
+
+

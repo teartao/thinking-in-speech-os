@@ -1,0 +1,173 @@
+[[testcontext-framework]]
+==== Spring TestContext Framework
+__Spring TestContext Framework__ (在 `org.springframework.test.context` 包中) 提供了通用的, 
+注解驱动的单元测试和集成测试支持，而不限定这些测试所使用的具体的测试套件。 Spring TestContext Framework
+尤其重视 __惯例配置__ ，于是放置了大量的默认配置，你也可以基于注解的配置对默认值进行覆盖。
+
+除了通用的测试设施，Spring TestContext framework 以 `抽象` 支持类的形式对JUnit和TestNG提供了直接的
+支持。测试框架对JUnit提供了一个用户自定义的JUnit `Runner` ,这个运行器是一个被称为 __POJO的测试类__ ，
+它不需要继承一个特定的类层次。
+
+接下来的章节将提供TestContext framework的概览。如果你仅仅对如何使用这个框架感兴趣，而对如何使用自定义的
+监听器或加载器扩展它，那么，请直接参考配置（<<testcontext-ctx-management,上下文管理>>，
+<<testcontext-fixture-di,依赖注入>>，<<testcontext-tx,事务管理>>），<<testcontext-support-classes,支持类>>
+和 <<integration-testing-annotations,注解支持>> 章节。
+
+
+[[testcontext-key-abstractions]]
+===== 核心概述
+测试框架的核心由 `TestContext` 和 `TestContextManager` 类以及 `TestExecutionListener`, `ContextLoader`, 和
+`SmartContextLoader` 接口组成。 `TestContextManager` 实例在每一个基本测试单元（如JUnit中的测试方法执行时）
+执行时被创建。`TestContextManager`对象用来管理持有当前测试上下文的`TestContext`实例，它也更新 `TestContext`类的
+状态来指示测试进度，并且它将依赖注入，事务管理等功能委托给++TestExecutionListener++s类进行处理。`ContextLoader`
+类负责对指定的测试类加载 `ApplicationContext`实例。请参考javadocs文件来了解进一步的信息和各种示例的实现。
+
+
+* `TestContext`: 测试执行时为测试实例封装测试上下文，对实际使用的测试框架透明，提供上下文管理和缓存支持
+同时在必要时为加载 `ApplicationContext`实例委托于 `ContextLoader`类（或 `SmartContextLoader`类）。
+
+* `TestContextManager`: __Spring TestContext Framework__ 的主要入口点，在良好定义的测试执行点
+管理单个 `TestContext`和所有的已注册的 ++TestExecutionListener++s类：
+** 在特定的测试框架中的任何 __before class methods__ 前
+** 测试实例准备
+** 特定测试框架中的任何 __before methods__ 前
+** 特定的测试框架中任的任何 __after methods__ 之后
+** 特定的测试框架中的任何 __after class methods__ 之后
+* `TestExecutionListener`: 为 `TestContextManager` 对象发布的测试执行事件定义一个  __listener__ API
+，查看 <<testcontext-tel-config>> 。
+
+* `ContextLoader`: 在Spring 2.5中引入的策略接口，用来为Spring TestContext Framework管理的集成测试加载
+一个  `ApplicationContext` 实例。 
+
++
+
+为了提供对注解类、激活的bean定义配置、测试属性源、上下文层次和 ++WebApplicationContext++s的支持， `SmartContextLoader`
+是一个接口的替代实现。
+
+* `SmartContextLoader`:   `ContextLoader` 接口的扩展在Spring 3.1中引入。
+
++
+
+`SmartContextLoader` SPI 在Spring 2.5中被引入，用来替代  `ContextLoader` SPI 。特定地， `SmartContextLoader` 
+可以选择用来处理资源 `位置`，注解的 `类`，或上下文 `初始化器`。进一步地，你可以在其加载的上下文中设置 
+`SmartContextLoader`类来激活bean定义配置和测试属性源。
+
++
+
+Spring 提供了如下的实现：
+
++
+
+** `DelegatingSmartContextLoader`: 两个默认的加载器中的一个，在内部委托给`AnnotationConfigContextLoader`、
+`GenericXmlContextLoader` 或 `GenericGroovyXmlContextLoader` 类，具体依赖于测试类的配置声明、默认位置
+或默认的配置类。 Groovy的支持需要Groovy（相关Jar）在Java类路径上。
+** `WebDelegatingSmartContextLoader`: 两个默认的加载器中的一个，在内部委托给`AnnotationConfigContextLoader`、
+`GenericXmlContextLoader` 或 `GenericGroovyXmlContextLoader` 类，具体依赖于测试类的配置声明、默认位置
+或默认的配置类。 如果在测试类上出现了 `@WebAppConfiguration` 注解，则仅仅使用 Web类加载器 `ContextLoader` 。
+Groovy的支持需要Groovy（相关Jar）在Java类路径上。
+** `AnnotationConfigContextLoader`: 根据 __注解的类__ 加载一个标准的应用上下文 `ApplicationContext` 实例。
+** `AnnotationConfigWebContextLoader`: 根据 __注解的类__ 加载一个标准的应用上下文 `WebApplicationContext` 实例。
+
+** `GenericGroovyXmlContextLoader`: 根据 __资源路径__ 加载一个标准的应用上下文 `ApplicationContext` 实例，
+该资源路径可以是Groovy脚本或者是XML配置文件。
+** `GenericGroovyXmlWebContextLoader`: 根据 __资源路径__ 加载一个标准的应用上下文 `WebApplicationContext` 实例，
+该资源路径可以是Groovy脚本或者是XML配置文件。
+** `GenericXmlContextLoader`: 根据XML __资源路径__ 加载一个标准的应用上下文 `ApplicationContext` 实例。
+** `GenericXmlWebContextLoader`: 根据XML __资源路径__ 加载一个标准的应用上下文 `WebApplicationContext` 实例。
+** `GenericPropertiesContextLoader`: 根据 Java 属性文件加载一个标准的应用上下文 `ApplicationContext` 实例。
+
+下述的章节将解释如何通过注解配置TestContext framework并且提供使用测试框架配置单元及集成测试的可以工作的示例。
+
+[[testcontext-tel-config]]
+===== TestExecutionListener 配置
+
+Spring提供了如下测试执行监听器 `TestExecutionListener` 实现，它们将按如下顺序默认被注册。
+
+* `ServletTestExecutionListener`: 为WEB应用上下文 `WebApplicationContext` 对象配置Servlet API 模拟器
+* `DependencyInjectionTestExecutionListener`: 为测试实例提供依赖注入。
+* `DirtiesContextTestExecutionListener`: 处理 `@DirtiesContext` 注解
+* `TransactionalTestExecutionListener`: 提供带有默认回滚语义的事务性测试执行
+* `SqlScriptsTestExecutionListener`: 执行通过 `@Sql` 注解配置的SQL脚本
+
+[[testcontext-tel-config-registering-tels]]
+====== 注册用户自定义的 TestExecutionListeners
+
+用户自定义的测试执行监听器 ++TestExecutionListener++s 可以通过注解 `@TestExecutionListeners` 注册到测试类及其
+子类中。了解注解 `@TestExecutionListeners` 的详情和示例，请参阅<<integration-testing-annotations,注解支持>>
+和javadocs。
+
+[[testcontext-tel-config-automatic-discovery]]
+======  默认 TestExecutionListeners的自动发现
+
+通过注解 `@TestExecutionListeners` 注册用户自定义的测试执行监听器 ++TestExecutionListener++s 适合用户
+自定义监听器的有限测试场景；尽管如此，当用户自定义监听器跨越测试套件的时候将会非常麻烦。为了解决这个问题，Spring 框架
+4.1 通过 `SpringFactoriesLoader` 机制支持 _默认_ 测试执行监听器 `TestExecutionListener` 实现的自动发现。
+
+具体的，`spring-test` 模块在属性文件 `META-INF/spring.factories` 下以`org.springframework.test.context.TestExecutionListener`
+为键声明所有的核心默认测试执行监听器 ++TestExecutionListener++s 。第三方框架和开发人员可以以相同的方式在属性文件中
+增加他们自己的测试执行监听器 ++TestExecutionListener++s 。
+
+[[testcontext-tel-config-ordering]]
+====== TestExecutionListeners 的顺序
+
+当TestContext框架通过前述的 `SpringFactoriesLoader` 机制发现默认的测试执行监听器 ++TestExecutionListeners++，
+实例化的监听器使用spring的比较器 `AnnotationAwareOrderComparator` 进行排序，该比较器实现了 `Ordered` 接口并加注
+了 `@Order` 注解。spring提供的 `AbstractTestExecutionListener` 和所有的默认的测试执行监听器 ++TestExecutionListener++s
+都使用适当的值实现了 `Ordered` 接口。 因此，第三方框架和开发人员也要确保他们的 _默认_ 测试执行监听器 ++TestExecutionListener++s
+使用适当的顺序注册，通过实现 `Ordered` 接口或者声明 `@Order` 注解。为了弄清楚每一个核心监听器赋值详情，可以查阅Javadoc来了解
+默认的核心测试执行监听器 ++TestExecutionListener++s 的 `getOrder()` 方法。
+
+[[testcontext-tel-config-merging]]
+====== 合并 TestExecutionListeners
+
+如果通过 `@TestExecutionListeners` 注解注册了用户自定义的测试执行监听器 `TestExecutionListener`，则 _default_ 
+监听器将不再注册。在大多数测试场景下，这有效地强制了开发人员手动声明除了自定义监听器以外的所有默认监听器。下述的列表演示了
+这种配置风格。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@ContextConfiguration
+	@TestExecutionListeners({
+		MyCustomTestExecutionListener.class,
+		ServletTestExecutionListener.class,
+		DependencyInjectionTestExecutionListener.class,
+		DirtiesContextTestExecutionListener.class,
+		TransactionalTestExecutionListener.class,
+		SqlScriptsTestExecutionListener.class
+	})
+	public class MyTest {
+		// 类体...
+	}
+----
+
+这种方法的挑战时它需要开发人员确切地了解哪些监听器会默认注册。而且，这些默认的监听器在不同的版本之间还会变更--
+例如，`SqlScriptsTestExecutionListener` 监听器时在spring 4.1中被引入的。此外，第三方框架喜欢通过前述的
+<<testcontext-tel-config-automatic-discovery, 自动发现机制>> 来注册他们自己的默认的测试执行监听器
+++TestExecutionListener++。
+
+为了避免必须知道或者时重新声明 **所有** _默认_ 监听器，测试执行监听器注解 `@TestExecutionListeners`的
+`mergeMode` 属性可以设置为 `MergeMode.MERGE_WITH_DEFAULTS`。 该属性用来指示本地声明的监听器应该与默认的
+监听器进行合并。合并算法确保重复的监听器将从列表中删除并且合并的监听器结果集合是根据 `AnnotationAwareOrderComparator`
+的语义有序排列的，其排序应该与 <<testcontext-tel-config-ordering>> 中的描述一致。如果一个监听器实现了
+`Ordered` 接口或者时声明了 `@Order` 注解，它将影响与默认的监听器合并所在的位置，否则在合并的时候本地声明
+的监听器将简单地追加到默认的监听器列表上。
+
+例如，在前面的示例配置中，如果监听器 `MyCustomTestExecutionListener` 类的 `order` 值（例如，`500`）
+小于 `ServletTestExecutionListener` 类的值（碰巧是`1000`），于是 `MyCustomTestExecutionListener`
+将自动地合并到 `ServletTestExecutionListener` 类的 _前面_ ，前面的示例将替换成下述的形式。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@ContextConfiguration
+	@TestExecutionListeners(
+		listeners = MyCustomTestExecutionListener.class,
+		mergeMode = MERGE_WITH_DEFAULTS,
+	)
+	public class MyTest {
+		// 类体...
+	}
+----
+
+

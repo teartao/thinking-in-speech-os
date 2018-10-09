@@ -1,0 +1,123 @@
+[[jdbc-simple-jdbc-call-3]]
+==== Calling a stored function using SimpleJdbcCall
+You call a stored function in almost the same way as you call a stored procedure, except
+that you provide a function name rather than a procedure name. You use the
+`withFunctionName` method as part of the configuration to indicate that we want to make
+a call to a function, and the corresponding string for a function call is generated. A
+specialized execute call, `executeFunction,` is used to execute the function and it
+returns the function return value as an object of a specified type, which means you do
+not have to retrieve the return value from the results map. A similar convenience method
+named `executeObject` is also available for stored procedures that only have one `out`
+parameter. The following example is based on a stored function named `get_actor_name`
+that returns an actor's full name. Here is the MySQL source for this function:
+
+[source,sql,indent=0]
+[subs="verbatim,quotes"]
+----
+	CREATE FUNCTION get_actor_name (in_id INTEGER)
+	RETURNS VARCHAR(200) READS SQL DATA
+	BEGIN
+		DECLARE out_name VARCHAR(200);
+		SELECT concat(first_name, ' ', last_name)
+			INTO out_name
+			FROM t_actor where id = in_id;
+		RETURN out_name;
+	END;
+----
+
+To call this function we again create a `SimpleJdbcCall` in the initialization method.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class JdbcActorDao implements ActorDao {
+
+		private JdbcTemplate jdbcTemplate;
+		private SimpleJdbcCall funcGetActorName;
+
+		public void setDataSource(DataSource dataSource) {
+			this.jdbcTemplate = new JdbcTemplate(dataSource);
+			JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+			jdbcTemplate.setResultsMapCaseInsensitive(true);
+			this.funcGetActorName = new SimpleJdbcCall(jdbcTemplate)
+					.withFunctionName("get_actor_name");
+		}
+
+		public String getActorName(Long id) {
+			SqlParameterSource in = new MapSqlParameterSource()
+					.addValue("in_id", id);
+			String name = funcGetActorName.executeFunction(String.class, in);
+			return name;
+		}
+
+		// ... additional methods
+
+	}
+----
+
+The execute method used returns a `String` containing the return value from the function
+call.
+
+
+
+[[jdbc-simple-jdbc-call-4]]
+==== Returning ResultSet/REF Cursor from a SimpleJdbcCall
+Calling a stored procedure or function that returns a result set is a bit tricky. Some
+databases return result sets during the JDBC results processing while others require an
+explicitly registered `out` parameter of a specific type. Both approaches need
+additional processing to loop over the result set and process the returned rows. With
+the `SimpleJdbcCall` you use the `returningResultSet` method and declare a `RowMapper`
+implementation to be used for a specific parameter. In the case where the result set is
+returned during the results processing, there are no names defined, so the returned
+results will have to match the order in which you declare the `RowMapper`
+implementations. The name specified is still used to store the processed list of results
+in the results map that is returned from the execute statement.
+
+The next example uses a stored procedure that takes no IN parameters and returns all
+rows from the t_actor table. Here is the MySQL source for this procedure:
+
+[source,sql,indent=0]
+[subs="verbatim,quotes"]
+----
+	CREATE PROCEDURE read_all_actors()
+	BEGIN
+	 SELECT a.id, a.first_name, a.last_name, a.birth_date FROM t_actor a;
+	END;
+----
+
+To call this procedure you declare the `RowMapper`. Because the class you want to map to
+follows the JavaBean rules, you can use a `ParameterizedBeanPropertyRowMapper` that is
+created by passing in the required class to map to in the `newInstance` method.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class JdbcActorDao implements ActorDao {
+
+		private SimpleJdbcCall procReadAllActors;
+
+		public void setDataSource(DataSource dataSource) {
+			JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+			jdbcTemplate.setResultsMapCaseInsensitive(true);
+			this.procReadAllActors = new SimpleJdbcCall(jdbcTemplate)
+					.withProcedureName("read_all_actors")
+					.returningResultSet("actors",
+					ParameterizedBeanPropertyRowMapper.newInstance(Actor.class));
+		}
+
+		public List getActorsList() {
+			Map m = procReadAllActors.execute(new HashMap<String, Object>(0));
+			return (List) m.get("actors");
+		}
+
+		// ... additional methods
+
+	}
+----
+
+The execute call passes in an empty Map because this call does not take any parameters.
+The list of Actors is then retrieved from the results map and returned to the caller.
+
+
+
+

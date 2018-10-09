@@ -1,0 +1,127 @@
+[[mvc-config-static-resources]]
+==== 资源服务
+
+该选项允许由 `ResourceHttpRequestHandler` 来处理遵循特定 URL 模式的静态资源请求，这些请求可以是来自一系列任意的 `Resource` 路径。它提供了一种处理静态资源的便利方式，静态资源可以处于任意位置（包括类路径下的位置）而不仅仅是 web 应用程序的根路径。`cache-period` 属性可以用来设置很久以后才到期的 header（比如 Page Speed 和 YSlow 等优化工具建议设置为一年），以便客户端可以更为有效的利用它们。该处理器还会正确计算 `Last-Modified` header（如果存在的话），因此将返回一个对应的 `304` 状态码，以避免不必要的客户端缓存资源的开销。例如，将 URL 模式 `/resources/**` 的资源请求映射到 web 应用程序根路径下的 `public-resources` 目录，应该使用下列配置：
+
+[source,java,indent=0]
+[subs="verbatim"]
+----
+	@Configuration
+	@EnableWebMvc
+	public class WebConfig extends WebMvcConfigurerAdapter {
+
+		@Override
+		public void addResourceHandlers(ResourceHandlerRegistry registry) {
+			registry.addResourceHandler("/resources/**").addResourceLocations("/public-resources/");
+		}
+
+	}
+----
+
+在 XML 配置中实现相同配置：
+
+[source,xml,indent=0]
+[subs="verbatim"]
+----
+	<mvc:resources mapping="/resources/**" location="/public-resources/"/>
+----
+
+为了确保最大程度地利用浏览器缓存和减少浏览器发出的 HTTP 请求，可以使这些资源在一年后到期：
+
+[source,java,indent=0]
+[subs="verbatim"]
+----
+    @Configuration
+    @EnableWebMvc
+    public class WebConfig extends WebMvcConfigurerAdapter {
+
+        @Override
+        public void addResourceHandlers(ResourceHandlerRegistry registry) {
+            registry.addResourceHandler("/resources/**").addResourceLocations("/public-resources/").setCachePeriod(31556926);
+        }
+
+    }
+----
+
+XML 配置：
+
+[source,xml,indent=0]
+[subs="verbatim"]
+----
+	<mvc:resources mapping="/resources/**" location="/public-resources/" cache-period="31556926"/>
+----
+
+查看 <<mvc-caching-static-resources>> 来了解更多细节。
+
+`mapping` 属性必须符合 Ant 模式，以便 `SimpleUrlHandlerMapping` 可以使用它，`location` 属性必须指定一个或多个有效的资源目录路径。可以使用逗号分隔的值列表来指定多个资源路径。对每一个请求，都会根据资源出现的顺序来检查指定的路径。例如，来开启来自 web 应用程序根路径和类路径下任意 jar 中的已知的 `/META-INF/public-web-resources/` 路径，使用下列 Java 配置：
+
+[source,java,indent=0]
+[subs="verbatim"]
+----
+	@EnableWebMvc
+	@Configuration
+	public class WebConfig extends WebMvcConfigurerAdapter {
+
+		@Override
+		public void addResourceHandlers(ResourceHandlerRegistry registry) {
+			registry.addResourceHandler("/resources/**")
+					.addResourceLocations("/", "classpath:/META-INF/public-web-resources/");
+		}
+
+	}
+----
+
+XML 配置：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<mvc:resources mapping="/resources/**" location="/, classpath:/META-INF/public-web-resources/"/>
+----
+
+资源服务可能会发生变化。当部署了一个新版本的应用程序时，建议你在用于请求资源的映射模式中添加一个版本字符串，以便强制客户请求应用程序资源的新部署版本。框架支持版本化 URL，可以在资源处理器上配置资源链（resource chain）来进行启用。一个或多个 `ResourceResolver` 实例后可以跟一个或多个 `ResourceTransformer` 实例，这就组成了资源链。它们在一起可以对资源进行任意的解析和转换。
+
+可以为内建的 `VersionResourceResolver` 配置不同的策略。例如，`FixedVersionStrategy` 可以使用一个属性、日期等作为版本。`ContentVersionStrategy` 使用通过资源内容计算而来的 MD5 哈希值（称为 “指纹” URL）。
+
+使用 `ContentVersionStrategy` 是一个优秀的默认选择，除非在某些情况下不能使用它（例如，使用了 JavaScript 模块加载器）。针对不同的模式，你可以配置不同的版本策略，如下所示。还要注意的是，基于内容的计算需要一定开销，因此在生产环境下应该启用资源链的缓存。
+
+Java 配置示例：
+
+[source,java,indent=0]
+[subs="verbatim"]
+----
+	@Configuration
+	@EnableWebMvc
+	public class WebConfig extends WebMvcConfigurerAdapter {
+
+		@Override
+		public void addResourceHandlers(ResourceHandlerRegistry registry) {
+			registry.addResourceHandler("/resources/**")
+					.addResourceLocations("/public-resources/")
+					.resourceChain(true).addResolver(
+						new VersionResourceResolver().addContentVersionStrategy("/**"));
+		}
+
+	}
+----
+
+XML 示例：
+
+[source,xml,indent=0]
+[subs="verbatim"]
+----
+<mvc:resources mapping="/resources/**" location="/public-resources/">
+	<mvc:resource-chain>
+		<mvc:resource-cache />
+		<mvc:resolvers>
+			<mvc:version-resolver>
+				<mvc:content-version-strategy patterns="/**"/>
+			</mvc:version-resolver>
+		</mvc:resolvers>
+	</mvc:resource-chain>
+</mvc:resources>
+----
+
+为了使上述配置能够工作，应用程序还必须渲染带有版本的 URL。最简单的方式是配置 `ResourceUrlEncodingFilter`，它对响应进行包装并重写了其 `encodeURL` 方法。 包括 JSP、FreeMarker、Velocity，以及其他所有调用了响应的 `encodeURL` 方法的视图技术，这种方式都能工作。另外，也可以注入 `ResourceUrlProvider` bean，应用程序会直接使用它。可以使用 MVC Java 配置和 MVC 命名空间来自动声明这个 bean。
+
+`WebJarsResourceResolver` 也支持 Webjar。如果类路径下存在 `"org.webjars:webjars-locator"` 库的话，会自动注册 `WebJarsResourceResolver`。该解析器允许资源链解析未知版本的库，例如 `"GET /jquery/jquery.min.js"` 这个 HTTP GET 请求会返回 `"/jquery/1.2.0/jquery.min.js"` 这个资源。该解析器还支持在模板中重写资源 URL，例如 `<script src="/jquery/jquery.min.js"/> → <script src="/jquery/1.2.0/jquery.min.js"/>`。

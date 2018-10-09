@@ -1,0 +1,95 @@
+[[jdbc-embedded-database-support]]
+=== Embedded database support
+The `org.springframework.jdbc.datasource.embedded` package provides support for embedded
+Java database engines. Support for http://www.hsqldb.org[HSQL],
+http://www.h2database.com[H2], and http://db.apache.org/derby[Derby] is provided
+natively. You can also use an extensible API to plug in new embedded database types and
+`DataSource` implementations.
+
+
+
+[[jdbc-why-embedded-database]]
+==== Why use an embedded database?
+An embedded database is useful during the development phase of a project because of its
+lightweight nature. Benefits include ease of configuration, quick startup time,
+testability, and the ability to rapidly evolve SQL during development.
+
+
+
+[[jdbc-embedded-database-xml]]
+==== Creating an embedded database instance using Spring XML
+If you want to expose an embedded database instance as a bean in a Spring
+ApplicationContext, use the embedded-database tag in the spring-jdbc namespace:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<jdbc:embedded-database id="dataSource">
+		<jdbc:script location="classpath:schema.sql"/>
+		<jdbc:script location="classpath:test-data.sql"/>
+	</jdbc:embedded-database>
+----
+
+The preceding configuration creates an embedded HSQL database populated with SQL from
+schema.sql and testdata.sql resources in the classpath. The database instance is made
+available to the Spring container as a bean of type `javax.sql.DataSource`. This bean
+can then be injected into data access objects as needed.
+
+
+
+[[jdbc-embedded-database-java]]
+==== Creating an embedded database instance programmatically
+The `EmbeddedDatabaseBuilder` class provides a fluent API for constructing an embedded
+database programmatically. Use this when you need to create an embedded database
+instance in a standalone environment, such as a data access object unit test:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	EmbeddedDatabaseBuilder builder = new EmbeddedDatabaseBuilder();
+	EmbeddedDatabase db = builder.setType(H2).addScript("my-schema.sql").addScript("my-test-data.sql").build();
+	// do stuff against the db (EmbeddedDatabase extends javax.sql.DataSource)
+	db.shutdown()
+----
+
+
+
+[[jdbc-embedded-database-extension]]
+==== Extending the embedded database support
+Spring JDBC embedded database support can be extended in two ways:
+
+* Implement `EmbeddedDatabaseConfigurer` to support a new embedded database type, such
+  as Apache Derby.
+* Implement `DataSourceFactory` to support a new DataSource implementation, such as a
+  connection pool, to manage embedded database connections.
+
+You are encouraged to contribute back extensions to the Spring community at
+https://jira.spring.io/browse/SPR[jira.spring.io].
+
+
+
+[[jdbc-embedded-database-using-HSQL]]
+==== Using HSQL
+Spring supports HSQL 1.8.0 and above. HSQL is the default embedded database if no type
+is specified explicitly. To specify HSQL explicitly, set the `type` attribute of the
+`embedded-database` tag to `HSQL`. If you are using the builder API, call the
+`setType(EmbeddedDatabaseType)` method with `EmbeddedDatabaseType.HSQL`.
+
+
+
+[[jdbc-embedded-database-using-H2]]
+==== Using H2
+Spring supports the H2 database as well. To enable H2, set the `type` attribute of the
+`embedded-database` tag to `H2`. If you are using the builder API, call the
+`setType(EmbeddedDatabaseType)` method with `EmbeddedDatabaseType.H2`.
+
+
+
+[[jdbc-embedded-database-using-Derby]]
+==== Using Derby
+Spring also supports Apache Derby 10.5 and above. To enable Derby, set the `type`
+attribute of the `embedded-database` tag to `Derby`. If using the builder API, call the
+`setType(EmbeddedDatabaseType)` method with `EmbeddedDatabaseType.Derby`.
+
+
+

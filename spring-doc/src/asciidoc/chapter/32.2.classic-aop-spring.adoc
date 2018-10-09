@@ -1,0 +1,97 @@
+[[classic-aop-api-pointcuts-attribute-driven]]
+====== Attribute-driven pointcuts
+An important type of static pointcut is a __metadata-driven__ pointcut. This uses the
+values of metadata attributes: typically, source-level metadata.
+
+
+[[classic-aop-api-pointcuts-dynamic]]
+===== Dynamic pointcuts
+Dynamic pointcuts are costlier to evaluate than static pointcuts. They take into account
+method__arguments__, as well as static information. This means that they must be
+evaluated with every method invocation; the result cannot be cached, as arguments will
+vary.
+
+The main example is the `control flow` pointcut.
+
+[[classic-aop-api-pointcuts-cflow]]
+====== Control flow pointcuts
+Spring control flow pointcuts are conceptually similar to AspectJ __cflow__ pointcuts,
+although less powerful. (There is currently no way to specify that a pointcut executes
+below a join point matched by another pointcut.) A control flow pointcut matches the
+current call stack. For example, it might fire if the join point was invoked by a method
+in the `com.mycompany.web` package, or by the `SomeCaller` class. Control flow pointcuts
+are specified using the `org.springframework.aop.support.ControlFlowPointcut` class.
+[NOTE]
+====
+Control flow pointcuts are significantly more expensive to evaluate at runtime than even
+other dynamic pointcuts. In Java 1.4, the cost is about 5 times that of other dynamic
+pointcuts.
+====
+
+
+
+[[classic-aop-api-pointcuts-superclasses]]
+==== Pointcut superclasses
+Spring provides useful pointcut superclasses to help you to implement your own pointcuts.
+
+Because static pointcuts are most useful, you'll probably subclass
+StaticMethodMatcherPointcut, as shown below. This requires implementing just one
+abstract method (although it's possible to override other methods to customize behavior):
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	class TestStaticPointcut extends StaticMethodMatcherPointcut {
+
+		public boolean matches(Method m, Class targetClass) {
+			// return true if custom criteria match
+		}
+
+	}
+----
+
+There are also superclasses for dynamic pointcuts.
+
+You can use custom pointcuts with any advice type in Spring 1.0 RC2 and above.
+
+
+
+[[classic-aop-api-pointcuts-custom]]
+==== Custom pointcuts
+Because pointcuts in Spring AOP are Java classes, rather than language features (as in
+AspectJ) it's possible to declare custom pointcuts, whether static or dynamic. Custom
+pointcuts in Spring can be arbitrarily complex. However, using the AspectJ pointcut
+expression language is recommended if possible.
+
+[NOTE]
+====
+Later versions of Spring may offer support for "semantic pointcuts" as offered by JAC:
+for example, "all methods that change instance variables in the target object."
+====
+
+
+
+
+[[classic-aop-api-advice]]
+=== Advice API in Spring
+Let's now look at how Spring AOP handles advice.
+
+
+
+[[classic-aop-api-advice-lifecycle]]
+==== Advice lifecycles
+Each advice is a Spring bean. An advice instance can be shared across all advised
+objects, or unique to each advised object. This corresponds to __per-class__ or
+__per-instance__ advice.
+
+Per-class advice is used most often. It is appropriate for generic advice such as
+transaction advisors. These do not depend on the state of the proxied object or add new
+state; they merely act on the method and arguments.
+
+Per-instance advice is appropriate for introductions, to support mixins. In this case,
+the advice adds state to the proxied object.
+
+It's possible to use a mix of shared and per-instance advice in the same AOP proxy.
+
+
+

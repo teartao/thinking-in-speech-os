@@ -1,0 +1,116 @@
+[[validation-beanvalidation]]
+=== Spring Validation
+Spring 3 introduces several enhancements to its validation support. First, the JSR-303
+Bean Validation API is now fully supported. Second, when used programmatically, Spring's
+DataBinder can now validate objects as well as bind to them. Third, Spring MVC now has
+support for declaratively validating `@Controller` inputs.
+
+
+
+[[validation-beanvalidation-overview]]
+==== Overview of the JSR-303 Bean Validation API
+JSR-303 standardizes validation constraint declaration and metadata for the Java
+platform. Using this API, you annotate domain model properties with declarative
+validation constraints and the runtime enforces them. There are a number of built-in
+constraints you can take advantage of. You may also define your own custom constraints.
+
+To illustrate, consider a simple PersonForm model with two properties:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class PersonForm {
+		private String name;
+		private int age;
+	}
+----
+
+JSR-303 allows you to define declarative validation constraints against such properties:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class PersonForm {
+
+		@NotNull
+		@Size(max=64)
+		private String name;
+
+		@Min(0)
+		private int age;
+
+	}
+----
+
+When an instance of this class is validated by a JSR-303 Validator, these constraints
+will be enforced.
+
+For general information on JSR-303/JSR-349, see the http://beanvalidation.org/[Bean
+Validation website]. For information on the specific capabilities of the default
+reference implementation, see the https://www.hibernate.org/412.html[Hibernate
+Validator] documentation. To learn how to setup a Bean Validation provider as a Spring
+bean, keep reading.
+
+
+
+[[validation-beanvalidation-spring]]
+==== Configuring a Bean Validation Provider
+Spring provides full support for the Bean Validation API. This includes convenient
+support for bootstrapping a JSR-303/JSR-349 Bean Validation provider as a Spring bean.
+This allows for a `javax.validation.ValidatorFactory` or `javax.validation.Validator` to
+be injected wherever validation is needed in your application.
+
+Use the `LocalValidatorFactoryBean` to configure a default Validator as a Spring bean:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="validator"
+		class="org.springframework.validation.beanvalidation.LocalValidatorFactoryBean"/>
+----
+
+The basic configuration above will trigger Bean Validation to initialize using its
+default bootstrap mechanism. A JSR-303/JSR-349 provider, such as Hibernate Validator,
+is expected to be present in the classpath and will be detected automatically.
+
+
+[[validation-beanvalidation-spring-inject]]
+===== Injecting a Validator
+`LocalValidatorFactoryBean` implements both `javax.validation.ValidatorFactory` and
+`javax.validation.Validator`, as well as Spring's
+`org.springframework.validation.Validator`. You may inject a reference to either of
+these interfaces into beans that need to invoke validation logic.
+
+Inject a reference to `javax.validation.Validator` if you prefer to work with the Bean
+Validation API directly:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	import javax.validation.Validator;
+
+	@Service
+	public class MyService {
+
+		@Autowired
+		private Validator validator;
+----
+
+Inject a reference to `org.springframework.validation.Validator` if your bean requires
+the Spring Validation API:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	import org.springframework.validation.Validator;
+
+	@Service
+	public class MyService {
+
+		@Autowired
+		private Validator validator;
+
+	}
+----
+
+

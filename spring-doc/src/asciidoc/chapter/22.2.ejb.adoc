@@ -1,0 +1,95 @@
+[[ejb-access-remote]]
+==== Accessing remote SLSBs
+Accessing remote EJBs is essentially identical to accessing local EJBs, except that the
+`SimpleRemoteStatelessSessionProxyFactoryBean` or `<jee:remote-slsb>` configuration
+element is used. Of course, with or without Spring, remote invocation semantics apply; a
+call to a method on an object in another VM in another computer does sometimes have to
+be treated differently in terms of usage scenarios and failure handling.
+
+Spring's EJB client support adds one more advantage over the non-Spring approach.
+Normally it is problematic for EJB client code to be easily switched back and forth
+between calling EJBs locally or remotely. This is because the remote interface methods
+must declare that they throw `RemoteException`, and client code must deal with this,
+while the local interface methods don't. Client code written for local EJBs which needs
+to be moved to remote EJBs typically has to be modified to add handling for the remote
+exceptions, and client code written for remote EJBs which needs to be moved to local
+EJBs, can either stay the same but do a lot of unnecessary handling of remote
+exceptions, or needs to be modified to remove that code. With the Spring remote EJB
+proxy, you can instead not declare any thrown `RemoteException` in your Business Method
+Interface and implementing EJB code, have a remote interface which is identical except
+that it does throw `RemoteException`, and rely on the proxy to dynamically treat the two
+interfaces as if they were the same. That is, client code does not have to deal with the
+checked `RemoteException` class. Any actual `RemoteException` that is thrown during the
+EJB invocation will be re-thrown as the non-checked `RemoteAccessException` class, which
+is a subclass of `RuntimeException`. The target service can then be switched at will
+between a local EJB or remote EJB (or even plain Java object) implementation, without
+the client code knowing or caring. Of course, this is optional; there is nothing
+stopping you from declaring `RemoteExceptions` in your business interface.
+
+
+
+[[ejb-access-ejb2-ejb3]]
+==== Accessing EJB 2.x SLSBs versus EJB 3 SLSBs
+Accessing EJB 2.x Session Beans and EJB 3 Session Beans via Spring is largely
+transparent. Spring's EJB accessors, including the `<jee:local-slsb>` and
+`<jee:remote-slsb>` facilities, transparently adapt to the actual component at runtime.
+They handle a home interface if found (EJB 2.x style), or perform straight component
+invocations if no home interface is available (EJB 3 style).
+
+Note: For EJB 3 Session Beans, you could effectively use a `JndiObjectFactoryBean` /
+`<jee:jndi-lookup>` as well, since fully usable component references are exposed for
+plain JNDI lookups there. Defining explicit `<jee:local-slsb>` / `<jee:remote-slsb>`
+lookups simply provides consistent and more explicit EJB access configuration.
+
+
+
+
+[[ejb-implementation]]
+=== Using Spring's EJB implementation support classes
+
+
+
+[[ejb-implementation-ejb3]]
+==== EJB 3 injection interceptor
+For EJB 3 Session Beans and Message-Driven Beans, Spring provides a convenient
+interceptor that resolves Spring's `@Autowired` annotation in the EJB component
+class: `org.springframework.ejb.interceptor.SpringBeanAutowiringInterceptor`. This
+interceptor can be applied through an `@Interceptors` annotation in the EJB component
+class, or through an `interceptor-binding` XML element in the EJB deployment descriptor.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Stateless
+	@Interceptors(SpringBeanAutowiringInterceptor.class)
+	public class MyFacadeEJB implements MyFacadeLocal {
+
+		// automatically injected with a matching Spring bean
+		@Autowired
+		private MyComponent myComp;
+
+		// for business method, delegate to POJO service impl.
+		public String myFacadeMethod(...) {
+			return myComp.myMethod(...);
+		}
+
+		...
+
+	}
+----
+
+`SpringBeanAutowiringInterceptor` by default obtains target beans from a
+`ContextSingletonBeanFactoryLocator`, with the context defined in a bean definition file
+named `beanRefContext.xml`. By default, a single context definition is expected, which
+is obtained by type rather than by name. However, if you need to choose between multiple
+context definitions, a specific locator key is required. The locator key (i.e. the name
+of the context definition in `beanRefContext.xml`) can be explicitly specified either
+through overriding the `getBeanFactoryLocatorKey` method in a custom
+`SpringBeanAutowiringInterceptor` subclass.
+
+Alternatively, consider overriding `SpringBeanAutowiringInterceptor`'s `getBeanFactory`
+method, e.g. obtaining a shared `ApplicationContext` from a custom holder class.
+
+
+
+

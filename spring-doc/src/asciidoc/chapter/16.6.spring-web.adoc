@@ -1,0 +1,51 @@
+[[mvc-coc-modelmap]]
+==== The Model ModelMap (ModelAndView)
+
+`ModelMap` 类本质上是一个好听一点的 `Map`，它坚持一个通用的命名约定，把用于显示在 `View` 上面的对象添加到其中。考虑下面的 `Controller` 实现；注意添加到 `ModelAndView` 中的对象没有指定任意关联的名称。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+    public class DisplayShoppingCartController implements Controller {
+
+    public ModelAndView handleRequest(HttpServletRequest request, HttpServletResponse response) {
+
+        List cartItems = // get a List of CartItem objects
+        User user = // get the User doing the shopping
+
+        ModelAndView mav = new ModelAndView("displayShoppingCart"); <-- the logical view name
+
+        mav.addObject(cartItems); <-- look ma, no name, just the object
+        mav.addObject(user); <-- and again ma!
+
+        return mav;
+    }
+}
+----
+
+`ModelAndView` 类使用了一个 `ModelMap` 类，`ModelMap` 是一个自定义的 `Map` 实现，它会为添加到其中的对象自动生成一个 key。决定被添加对象名称的策略是，如果是一个 scalar 对象，会使用对象类的简短类名。对于将 scalar 对象添加到 `ModelMap` 实例的情况，下面的例子展示了生成的名称：
+
+* 添加的 `x.y.User` 实例会生成名称 `user`。
+* 添加的 `x.y.Registration` 会生成名称 `registration`。
+* 添加的 `x.y.Foo` 实例会生成名称 `foo`。
+* 添加的 `java.util.HashMap` 实例会生成名称 `hashMap`。在这种情况下，你可能想要显式指定名称，因为 `hashMap` 不够直观。
+* 添加 `null` 会导致抛出一个 `IllegalArgumentException`。如果你要添加的一个对象（或多个对象）为 `null`，那么你也想要显式指定名称。
+
+.什么，不支持自动多元化？
+****
+Spring Web MVC 的约定优于配置支持不支持自动多元化。That is, you cannot add a `List` of `Person` objects to a `ModelAndView`
+and have the generated name be `people`.
+
+该决定是在辩论后作出的，"Principle of Least Surprise" 胜出了。
+****
+
+在添加一个 `Set` 或 `List` 之后，生成名称的策略是，使用集合中第一个对象的简短类名，并在名称后追加 `List`。对数组使用的也是该策略。下面的例子会让你对集合的名称生成的语义更加清楚：
+
+* 添加一个具有零个或多个 `x.y.User` 元素的 `x.y.User[]` 数组，会生成名称 `userList`。
+* 添加一个具有零个或多个 `x.y.User` 元素的 `x.y.Foo[]` 数组，会生成名称 `fooList`。
+* 添加一个具有零个或多个 `x.y.User` 元素的 `java.util.ArrayList`，会生成名称 `userList`。
+* 添加一个具有零个或多个 `x.y.Foo` 元素的 `java.util.HashSet`，会生成名称 `fooList`。
+* 根本不能添加一个__空__的 `java.util.ArrayList`（实际上，`addObject(..)` 调用基本上会是一个无效操作）。
+
+
+

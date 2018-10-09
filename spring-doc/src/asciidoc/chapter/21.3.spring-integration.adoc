@@ -1,0 +1,83 @@
+[[remoting-caucho-protocols-hessian-client]]
+==== Linking in the service on the client
+Using the `HessianProxyFactoryBean` we can link in the service at the client. The same
+principles apply as with the RMI example. We'll create a separate bean factory or
+application context and mention the following beans where the `SimpleObject` is using
+the `AccountService` to manage accounts:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean class="example.SimpleObject">
+		<property name="accountService" ref="accountService"/>
+	</bean>
+
+	<bean id="accountService" class="org.springframework.remoting.caucho.HessianProxyFactoryBean">
+		<property name="serviceUrl" value="http://remotehost:8080/remoting/AccountService"/>
+		<property name="serviceInterface" value="example.AccountService"/>
+	</bean>
+----
+
+
+
+[[remoting-caucho-protocols-burlap]]
+==== Using Burlap
+We won't discuss Burlap, the XML-based equivalent of Hessian, in detail here, since it
+is configured and set up in exactly the same way as the Hessian variant explained above.
+Just replace the word `Hessian` with `Burlap` and you're all set to go.
+
+
+
+[[remoting-caucho-protocols-security]]
+==== Applying HTTP basic authentication to a service exposed through Hessian or Burlap
+One of the advantages of Hessian and Burlap is that we can easily apply HTTP basic
+authentication, because both protocols are HTTP-based. Your normal HTTP server security
+mechanism can easily be applied through using the `web.xml` security features, for
+example. Usually, you don't use per-user security credentials here, but rather shared
+credentials defined at the `Hessian/BurlapProxyFactoryBean` level (similar to a JDBC
+`DataSource`).
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean class="org.springframework.web.servlet.handler.BeanNameUrlHandlerMapping">
+		<property name="interceptors" ref="authorizationInterceptor"/>
+	</bean>
+
+	<bean id="authorizationInterceptor"
+			class="org.springframework.web.servlet.handler.UserRoleAuthorizationInterceptor">
+		<property name="authorizedRoles" value="administrator,operator"/>
+	</bean>
+----
+
+This is an example where we explicitly mention the `BeanNameUrlHandlerMapping` and set
+an interceptor allowing only administrators and operators to call the beans mentioned in
+this application context.
+
+[NOTE]
+====
+Of course, this example doesn't show a flexible kind of security infrastructure. For
+more options as far as security is concerned, have a look at the Spring Security project
+at http://projects.spring.io/spring-security/[].
+====
+
+
+
+
+[[remoting-httpinvoker]]
+=== Exposing services using HTTP invokers
+As opposed to Burlap and Hessian, which are both lightweight protocols using their own
+slim serialization mechanisms, Spring HTTP invokers use the standard Java serialization
+mechanism to expose services through HTTP. This has a huge advantage if your arguments
+and return types are complex types that cannot be serialized using the serialization
+mechanisms Hessian and Burlap use (refer to the next section for more considerations
+when choosing a remoting technology).
+
+Under the hood, Spring uses either the standard facilities provided by the JDK or
+Apache `HttpComponents` to perform HTTP calls. Use the latter if you need more
+advanced and easier-to-use functionality. Refer to
+http://hc.apache.org/httpcomponents-client-ga/[hc.apache.org/httpcomponents-client-ga/]
+for more information.
+
+
+

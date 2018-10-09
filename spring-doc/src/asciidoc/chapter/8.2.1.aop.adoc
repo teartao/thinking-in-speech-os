@@ -1,0 +1,123 @@
+[[aop-pointcuts-combining]]
+===== Combining pointcut expressions
+Pointcut expressions can be combined using '&&', '||' and '!'. It is also possible to
+refer to pointcut expressions by name. The following example shows three pointcut
+expressions: `anyPublicOperation` (which matches if a method execution join point
+represents the execution of any public method); `inTrading` (which matches if a method
+execution is in the trading module), and `tradingOperation` (which matches if a method
+execution represents any public method in the trading module).
+
+[source,java,indent=0]
+[subs="verbatim"]
+----
+	@Pointcut("execution(public * *(..))")
+	private void anyPublicOperation() {}
+
+	@Pointcut("within(com.xyz.someapp.trading..*)")
+	private void inTrading() {}
+
+	@Pointcut("anyPublicOperation() && inTrading()")
+	private void tradingOperation() {}
+----
+
+It is a best practice to build more complex pointcut expressions out of smaller named
+components as shown above. When referring to pointcuts by name, normal Java visibility
+rules apply (you can see private pointcuts in the same type, protected pointcuts in the
+hierarchy, public pointcuts anywhere and so on). Visibility does not affect pointcut
+__matching__.
+
+
+[[aop-common-pointcuts]]
+===== Sharing common pointcut definitions
+When working with enterprise applications, you often want to refer to modules of the
+application and particular sets of operations from within several aspects. We recommend
+defining a "SystemArchitecture" aspect that captures common pointcut expressions for
+this purpose. A typical such aspect would look as follows:
+
+[source,java,indent=0]
+[subs="verbatim"]
+----
+	package com.xyz.someapp;
+
+	import org.aspectj.lang.annotation.Aspect;
+	import org.aspectj.lang.annotation.Pointcut;
+
+	@Aspect
+	public class SystemArchitecture {
+
+		/**
+		 * A join point is in the web layer if the method is defined
+		 * in a type in the com.xyz.someapp.web package or any sub-package
+		 * under that.
+		 */
+		@Pointcut("within(com.xyz.someapp.web..*)")
+		public void inWebLayer() {}
+
+		/**
+		 * A join point is in the service layer if the method is defined
+		 * in a type in the com.xyz.someapp.service package or any sub-package
+		 * under that.
+		 */
+		@Pointcut("within(com.xyz.someapp.service..*)")
+		public void inServiceLayer() {}
+
+		/**
+		 * A join point is in the data access layer if the method is defined
+		 * in a type in the com.xyz.someapp.dao package or any sub-package
+		 * under that.
+		 */
+		@Pointcut("within(com.xyz.someapp.dao..*)")
+		public void inDataAccessLayer() {}
+
+		/**
+		 * A business service is the execution of any method defined on a service
+		 * interface. This definition assumes that interfaces are placed in the
+		 * "service" package, and that implementation types are in sub-packages.
+		 *
+		 * If you group service interfaces by functional area (for example,
+		 * in packages com.xyz.someapp.abc.service and com.xyz.someapp.def.service) then
+		 * the pointcut expression "execution(* com.xyz.someapp..service.*.*(..))"
+		 * could be used instead.
+		 *
+		 * Alternatively, you can write the expression using the 'bean'
+		 * PCD, like so "bean(*Service)". (This assumes that you have
+		 * named your Spring service beans in a consistent fashion.)
+		 */
+		@Pointcut("execution(* com.xyz.someapp..service.*.*(..))")
+		public void businessService() {}
+
+		/**
+		 * A data access operation is the execution of any method defined on a
+		 * dao interface. This definition assumes that interfaces are placed in the
+		 * "dao" package, and that implementation types are in sub-packages.
+		 */
+		@Pointcut("execution(* com.xyz.someapp.dao.*.*(..))")
+		public void dataAccessOperation() {}
+
+	}
+----
+
+The pointcuts defined in such an aspect can be referred to anywhere that you need a
+pointcut expression. For example, to make the service layer transactional, you could
+write:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<aop:config>
+		<aop:advisor
+			pointcut="com.xyz.someapp.SystemArchitecture.businessService()"
+			advice-ref="tx-advice"/>
+	</aop:config>
+
+	<tx:advice id="tx-advice">
+		<tx:attributes>
+			<tx:method name="*" propagation="REQUIRED"/>
+		</tx:attributes>
+	</tx:advice>
+----
+
+The `<aop:config>` and `<aop:advisor>` elements are discussed in <<aop-schema>>. The
+transaction elements are discussed in <<transaction>>.
+
+

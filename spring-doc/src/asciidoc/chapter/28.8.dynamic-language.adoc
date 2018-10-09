@@ -1,0 +1,80 @@
+[[dynamic-language-beans-bsh]]
+==== BeanShell beans
+
+.The BeanShell library dependencies
+****
+
+The BeanShell scripting support in Spring requires the following libraries to be on the
+classpath of your application.
+
+* `bsh-2.0b4.jar`
+****
+
+From the BeanShell homepage...
+
+"__BeanShell is a small, free, embeddable Java source interpreter with dynamic language
+features, written in Java. BeanShell dynamically executes standard Java syntax and
+extends it with common scripting conveniences such as loose types, commands, and method
+closures like those in Perl and JavaScript.__"
+
+In contrast to Groovy, BeanShell-backed bean definitions require some (small) additional
+configuration. The implementation of the BeanShell dynamic language support in Spring is
+interesting in that what happens is this: Spring creates a JDK dynamic proxy
+implementing all of the interfaces that are specified in the `'script-interfaces'`
+attribute value of the `<lang:bsh>` element (this is why you __must__ supply at least
+one interface in the value of the attribute, and (accordingly) program to interfaces
+when using BeanShell-backed beans). This means that every method call on a
+BeanShell-backed object is going through the JDK dynamic proxy invocation mechanism.
+
+Let's look at a fully working example of using a BeanShell-based bean that implements
+the `Messenger` interface that was defined earlier in this chapter (repeated below for
+your convenience).
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package org.springframework.scripting;
+
+	public interface Messenger {
+
+		String getMessage();
+
+	}
+----
+
+Here is the BeanShell 'implementation' (the term is used loosely here) of the
+`Messenger` interface.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	String message;
+
+	String getMessage() {
+		return message;
+	}
+
+	void setMessage(String aMessage) {
+		message = aMessage;
+	}
+----
+
+And here is the Spring XML that defines an 'instance' of the above 'class' (again, the
+term is used very loosely here).
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<lang:bsh id="messageService" script-source="classpath:BshMessenger.bsh"
+		script-interfaces="org.springframework.scripting.Messenger">
+
+		<lang:property name="message" value="Hello World!" />
+	</lang:bsh>
+----
+
+See <<dynamic-language-scenarios>> for some scenarios where you might want to use
+BeanShell-based beans.
+
+
+
+

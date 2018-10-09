@@ -1,0 +1,87 @@
+[[classic-aop-ts-pool]]
+==== Pooling target sources
+Using a pooling target source provides a similar programming model to stateless session
+EJBs, in which a pool of identical instances is maintained, with method invocations
+going to free objects in the pool.
+
+A crucial difference between Spring pooling and SLSB pooling is that Spring pooling can
+be applied to any POJO. As with Spring in general, this service can be applied in a
+non-invasive way.
+
+Spring provides out-of-the-box support for Jakarta Commons Pool 1.3, which provides a
+fairly efficient pooling implementation. You'll need the commons-pool Jar on your
+application's classpath to use this feature. It's also possible to subclass
+`org.springframework.aop.target.AbstractPoolingTargetSource` to support any other
+pooling API.
+
+Sample configuration is shown below:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="businessObjectTarget" class="com.mycompany.MyBusinessObject" scope="prototype">
+		... properties omitted
+	</bean>
+
+	<bean id="poolTargetSource" class="org.springframework.aop.target.CommonsPoolTargetSource">
+		<property name="targetBeanName" value="businessObjectTarget"/>
+		<property name="maxSize" value="25"/>
+	</bean>
+
+	<bean id="businessObject" class="org.springframework.aop.framework.ProxyFactoryBean">
+		<property name="targetSource" ref="poolTargetSource"/>
+		<property name="interceptorNames" value="myInterceptor"/>
+	</bean>
+----
+
+Note that the target object - "businessObjectTarget" in the example - __must__ be a
+prototype. This allows the `PoolingTargetSource` implementation to create new instances
+of the target to grow the pool as necessary. See the Javadoc for
+`AbstractPoolingTargetSource` and the concrete subclass you wish to use for information
+about its properties: "maxSize" is the most basic, and always guaranteed to be present.
+
+In this case, "myInterceptor" is the name of an interceptor that would need to be
+defined in the same IoC context. However, it isn't necessary to specify interceptors to
+use pooling. If you want only pooling, and no other advice, don't set the
+interceptorNames property at all.
+
+It's possible to configure Spring so as to be able to cast any pooled object to the
+`org.springframework.aop.target.PoolingConfig` interface, which exposes information
+about the configuration and current size of the pool through an introduction. You'll
+need to define an advisor like this:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="poolConfigAdvisor" class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+		<property name="targetObject" ref="poolTargetSource"/>
+		<property name="targetMethod" value="getPoolingConfigMixin"/>
+	</bean>
+----
+
+This advisor is obtained by calling a convenience method on the
+`AbstractPoolingTargetSource` class, hence the use of MethodInvokingFactoryBean. This
+advisor's name ("poolConfigAdvisor" here) must be in the list of interceptors names in
+the ProxyFactoryBean exposing the pooled object.
+
+The cast will look as follows:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	PoolingConfig conf = (PoolingConfig) beanFactory.getBean("businessObject");
+	System.out.println("Max pool size is " + conf.getMaxSize());
+----
+
+[NOTE]
+====
+Pooling stateless service objects is not usually necessary. We don't believe it should
+be the default choice, as most stateless objects are naturally thread safe, and instance
+pooling is problematic if resources are cached.
+====
+
+Simpler pooling is available using autoproxying. It's possible to set the TargetSources
+used by any autoproxy creator.
+
+
+

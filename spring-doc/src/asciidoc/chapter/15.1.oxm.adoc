@@ -1,0 +1,92 @@
+[[oxm-marshaller]]
+==== Marshaller
+Spring abstracts all marshalling operations behind the
+`org.springframework.oxm.Marshaller` interface, the main methods of which is listed
+below.
+
+[source,java,indent=0]
+[subs="verbatim"]
+----
+	public interface Marshaller {
+
+		/**
+		 * Marshals the object graph with the given root into the provided Result.
+		 */
+		void marshal(Object graph, Result result) throws XmlMappingException, IOException;
+
+	}
+----
+
+The `Marshaller` interface has one main method, which marshals the given object to a
+given `javax.xml.transform.Result`. Result is a tagging interface that basically
+represents an XML output abstraction: concrete implementations wrap various XML
+representations, as indicated in the table below.
+
+[[oxm-marshller-tbl]]
+|===
+| Result implementation| Wraps XML representation
+
+| `DOMResult`
+| `org.w3c.dom.Node`
+
+| `SAXResult`
+| `org.xml.sax.ContentHandler`
+
+| `StreamResult`
+| `java.io.File`, `java.io.OutputStream`, or `java.io.Writer`
+|===
+
+[NOTE]
+====
+Although the `marshal()` method accepts a plain object as its first parameter, most
+`Marshaller` implementations cannot handle arbitrary objects. Instead, an object class
+must be mapped in a mapping file, marked with an annotation, registered with the
+marshaller, or have a common base class. Refer to the further sections in this chapter
+to determine how your O/X technology of choice manages this.
+====
+
+
+
+[[oxm-unmarshaller]]
+==== Unmarshaller
+Similar to the `Marshaller`, there is the `org.springframework.oxm.Unmarshaller`
+interface.
+
+[source,java,indent=0]
+[subs="verbatim"]
+----
+	public interface Unmarshaller {
+
+		/**
+		 * Unmarshals the given provided Source into an object graph.
+		 */
+		Object unmarshal(Source source) throws XmlMappingException, IOException;
+	}
+----
+
+This interface also has one method, which reads from the given
+`javax.xml.transform.Source` (an XML input abstraction), and returns the object read. As
+with Result, Source is a tagging interface that has three concrete implementations. Each
+wraps a different XML representation, as indicated in the table below.
+
+[[oxm-unmarshller-tbl]]
+|===
+| Source implementation| Wraps XML representation
+
+| `DOMSource`
+| `org.w3c.dom.Node`
+
+| `SAXSource`
+| `org.xml.sax.InputSource`, and `org.xml.sax.XMLReader`
+
+| `StreamSource`
+| `java.io.File`, `java.io.InputStream`, or `java.io.Reader`
+|===
+
+Even though there are two separate marshalling interfaces ( `Marshaller` and
+`Unmarshaller`), all implementations found in Spring-WS implement both in one class.
+This means that you can wire up one marshaller class and refer to it both as a
+marshaller and an unmarshaller in your `applicationContext.xml`.
+
+
+

@@ -1,0 +1,737 @@
+= Spring Framework Reference Documentation
+Rod Johnson; Juergen Hoeller; Keith Donald; Colin Sampaleanu; Rob Harrop; Thomas Risberg; Alef Arendsen; Darren Davison; Dmitriy Kopylenko; Mark Pollack; Thierry Templier; Erwin Vervaet; Portia Tung; Ben Hale; Adrian Colyer; John Lewis; Costin Leau; Mark Fisher; Sam Brannen; Ramnivas Laddad; Arjen Poutsma; Chris Beams; Tareq Abedrabbo; Andy Clement; Dave Syer; Oliver Gierke; Rossen Stoyanchev; Phillip Webb; Rob Winch; Brian Clozel; Stephane Nicoll; Sebastien Deleuze
+
+
+:javadoc-baseurl: http://docs.spring.io/spring/docs/current/javadoc-api
+
+[[spring-introduction]]
+= Spring 框架概述
+
+[partintro]
+--
+Spring框架是一个轻量级解决方案,也是潜在的开发企业级应用的一站式解决方案.而且Spring也是模块化的,它允许你只用需要的部分,不需要的部分可以舍弃.你可以使用IoC容器,上层使用其他web框架,但你依然可以仅使用
+<<orm-hibernate,Hibernate integration code>>或者 <<jdbc-introduction,JDBC abstraction
+layer>>. Spring框架支持声明式事务管理,通过RMI或者web服务远程访问你的逻辑代码,及多选的持久化数据方式.它提供一个完整特性的 <<mvc-introduction,MVC framework>>, 且使你能在不影响其它代码的前提下把
+<<aop-introduction,AOP>> 整合进你的应用.
+
+Spring被设计为非侵入式的,意思是你的域逻辑代码通常和框架本身是没依赖的,在你的整合层（比如数据访问层）,会存在一些对数据访问技术和Spring库文件的依赖,但它可以轻易地从你的其它代码中独立出来.
+
+这篇文档是作为Spring框架特性的参考向导.如果对该文档有任何要求,意见或者问题,请发邮件到到
+https://groups.google.com/forum/#!forum/spring-framework-contrib[user mailing
+list]. 如果对框架本身有疑问请前往StackOverflow提问
+(见 https://spring.io/questions[]).
+--
+
+
+
+
+
+[[overview-getting-started-with-spring]]
+== 开始使用Spring
+这篇参考向导提供了关于Spring框架的详细信息。它提供了对各种特性的完整介绍,以及一些Spring包含的基础概念的背景 (例如 __"Dependency Injection"__).
+
+如果你想立刻开始使用Spring, 可以从更为简洁的
+https://spring.io/guides["Getting Started"] 参考开始入手， 文档可以从
+https://spring.io 处获得。 此文档不仅更容易理解，而且更加
+__集中于任务__. 文档也包含了来自于Spring的其他工程，在解决一个特定
+问题是你可能会考虑使用这些工程。
+
+https://spring.io/guides/gs/rest-service/[开始构建一个 RESTful Web Service]
+会是一个很好的开始教程.
+
+
+
+
+
+[[overview]]
+== Spring框架概述
+Spring框架是一个基于Java的框架平台，并且为实现Java应用程序提供了全面的基础架构支持。
+你可以专注于你的应用，让Spring来帮助你处理基础架构的问题。
+
+Spring使你能够用"plain old Java objects" (POJOs，简单普通的Java对象)来构建应用，并且将企业服务
+用POJO来实现。你可以在Java SE编程模型、全部或者部分的Java EE编程模型中应用它。
+
+作为一个应用开发者，以下例子告诉你如何使用Spring平台的功能：
+
+* 创建一个Java方法，无需关注事务API就可以执行数据库事务。
+* 创建一个本地Java方法，无需关注remote API从而进行远程操作。
+* 创建一个本地Java方法，无需关注JMX API就能实现管理操作。
+* 创建一个本地Java方法，无需关注JMS API就能实现消息处理。
+
+
+
+
+[[overview-dependency-injection]]
+=== 依赖注入和控制反转
+
+[[background-ioc]]
+.背景
+****
+"__问题是，对哪个层面的控制进行反转__" Martin Fowler于2004年在他的站点上提出了这个有关控制反转(IoC)的问题。
+Fowler建议对这一原则进行重新命名以便让它变得更加“不言自明”，所以最后选择了__依赖注入__。
+
+如果想要了解IoC和DI，可以在
+http://martinfowler.com/articles/injection.html[http://martinfowler.com/articles/injection.html] 参考Fowler的文章。
+****
+
+“Java应用”是一个极为宽泛的定义，小到受限制的嵌入程序，大到n层结构的服务器端企业级应用，它包含着相互协作的对象，从而共同构成一个应用。
+因此，程序里的对象彼此之间都有各自的依赖。
+
+尽管Java平台提供的很多应用开发的功能，但是它缺少将这些基础组件组织成一个相互协作的整体的方法，最终把这些整合工作交给了架构师或是开发者。
+尽管你可以使用设计模式，例如__工厂模式__，__抽象工厂模式__，__建造者模式__，__装饰__和__服务定位__来将这些不同的类和对象组合起来，从而构建一个应用。
+但是，这些模式仅仅只是：把必要的步骤封装起来，给这些步骤取名字，说明模式的功能，在何处应用，解决了哪些问题等等。
+模式是公式化的实现步骤，你必须在你的应用中手动继承它。
+
+Spring框架中的__控制反转__ (IoC)组件部分解决了这个问题，通过提供一种规范化的方式将各个分开的组件组合成一个完全可供使用的应用。
+Spring框架将规范化的设计模型编写为优秀的类，这样你就可以在你的应用中继承它们。
+很多组织和机构都使用Spring框架来设计健壮的，__便于维护__的应用。
+
+
+
+
+[[overview-modules]]
+=== 模块
+Spring框架的所有特性被组织成20个模块。这些模块被分组成Core Container（核心容器）, Data Access/Integration（数据访问/集成）, Web（网络端）, AOP (Aspect Oriented
+Programming，切面编程), Instrumentation, Messaging（消息）,和Test（测试），
+以下图片显示的就是Spring的各个模块：
+
+.Spring框架总览
+image::images/spring-overview.png[width=400]
+
+接下来的部分列出了每个特性的可用模块，同时也说明了组件名称和涵盖的主题。
+组件名称和在 <<dependency-management,Dependency Management tools>> 中使用的 _artifact IDs_ 相互关联。
+
+
+[[overview-core-container]]
+==== 核心容器
+<<beans-introduction,__核心容器__>> 包含了 `spring-core` ,
+`spring-beans` ,  `spring-context` , and  `spring-expression`  (Spring表达式语言)
+四个模块。
+
+`spring-core` 和 `spring-beans` 模块<<beans-introduction,提供了整个框架最基础的部分>>, 
+包括了IoC（控制反转）和Dependency Injection（依赖注入）特性。
+`BeanFactory` 是一个复杂的工厂模式实现类。
+ 它让你不必再去自己编写实现类，并且能让你将依赖的配置和声明从你的实际的程序逻辑中分离开来。
+
+<<context-introduction,__Context__>> ( `spring-context` )模块建立在<<beans-introduction,__Core and Beans__>>模块
+提供的基础之上: 它提供了框架式访问对象的方式，类似于JNDI注册。
+Context模块从Beans模块中继承了其所有特性并且为如下功能提供支持：国际化(例如使用资源包), 事件传播, 资源加载和创建上下文，例如Servlet容器。
+Context模块也支持Java EE特性，例如EJB, JMX,和基本的远程处理功能.
+`ApplicationContext` 接口是Context模块的核心所在.
+
+`spring-expression` 模块提供了一种强大的用于在运行时查询操作对象的<<expressions,__表达式语言__>>。它是对于在JSP2.1规范中所声明的unified expression语言(统一表达式语言)的扩展。
+这种语言支持设置和修改属性值, 属性分配, 方法调用, 获得数组内容, 集合以及索引,
+算术和逻辑运算符, 命名的变量和从Spring IoC容器中根据名称获得对象。它也支持列表投影、列表选择以及列表聚合。
+
+
+[[overview-aop-instrumentation]]
+==== AOP和Instrumentation
+`spring-aop` 模块提供了<<aop-introduction,__AOP__>>(联盟编程)
+面向切面的编程实现，例如允许你定义
+拦截器方法和切入点从而将相应的功能代码分离开来。 利用源码中的元数据, 你可以将行为信息加入到你的代码中, 一定程度上类似于.NET属性。 
+
+独立的 `spring-aspects` 模块集成了AspectJ。
+
+`spring-instrument` 模块提供了对类进行仪表化的功能，也提供了类加载器的实现，特定的服务器可能会需要类加载器。
+
+
+[[overview-messaging]]
+==== Messaging
+Spring 4框架包含了 `spring-messaging` 模块，包含了
+_Spring Integration_项目的高度抽象，比如 `Message` ,  `MessageChannel` , `MessageHandler` 等，
+它们共同构成了一个基于信息的应用的基础。
+这个模块同时包含了一系列用来将messages映射到方法的注解，类似于Spring MVC中基于编程的注解。
+
+
+[[overview-data-access]]
+==== 数据获取/整合
+数据__整合/获取__层包括JDBC、ORM、OXM、JMS以及
+事务等模块。
+
+`spring-jdbc` 提供了一个<<jdbc-introduction,JDBC>>抽象层从而不再需要编写繁琐的JDBC代码，也无需再手动解析基于特定数据库供应商的错误
+代码。
+
+`spring-tx` 模块为那些实现特殊接口的类以及所有的 __POJO（普通Java类）__的<<transaction,编程式和声明式事务>>管理提供支持。
+
+`spring-orm` 模块为流行的<<orm-introduction,对象关系映射>>的API们提供整合层，包括<<orm-jpa,JPA>>、
+<<orm-jdo,JDO>>以及<<orm-hibernate,Hibernate>>。通过 `spring-orm` 模块你可以同时使用这些O/R-mapping以及
+Spring提供的其他功能,例如上面提到的声明式事务管理。
+
+`spring-oxm` 模块提供了一种抽象层为<<oxm,Object/XML映射>>的各种实现提供支持，例如JAXB、 Castor、 XMLBeans JiBX 和 XStream。
+
+`spring-jms` 模块 (<<jms,Java信息服务>>)包含生成以及接收信息的特征。在Spring框架4.1以后的版本中，它提供了与 `spring-messaging` 整合的模块。
+
+
+
+[[overview-web]]
+==== Web
+__Web__层包括 `spring-web` 、`spring-webmvc` 、`spring-websocket` 以及
+`spring-webmvc-portlet` 等模块。
+
+`spring-web` 模块提供了很多基础的面向web层的整合，例如文件上传功能以及使用Servlet listener和一个面向web层的
+application context来进行IOC容器的初始化的功能。同时它也包含涉及Spring远程支持的与网络相关的部分。
+
+`spring-webmvc` 模块（也被称作__Web-Servlet__模块）提供了Spring在网络应用中对模型-视图-控制器
+(<<mvc-introduction,__MVC__>>)的实现。Spring的MVC框架实现了域模型代码和web表单的完美分离，
+同时也实现了与Spring的其他框架的功能的整合。
+
+
+`spring-webmvc` 模块（也被称作__Web-Servlet__模块）提供了在Portlet环境下的MVC实现并拥有
+`spring-webmvc` 模块的所有功能。
+
+
+
+[[overview-testing]]
+==== Test
+`spring-test` 模块支持利用JUnit或者TestNGO对Spring组件进行<<unit-testing,unit testing>>以及<<integration-testing,
+integration testing>>。它能够加载Spring++ApplicationContext++并同时对其进行缓存。它也提供了<<mock-objects,虚拟类>>用
+来单独对某段代码进行测试。
+
+[[overview-usagescenarios]]
+=== Usage scenarios
+上面描述的构建模块使得Spring成为在很多应用场景下的合理选择，从applet程序到完备的企业级应用都可以使用Spring的
+事务管理功能以及网络框架整合。
+
+.典型的完整Spring web application
+image::images/overview-full.png[width=400]
+
+Spring的<<transaction-declarative,声明式事务管理的特性>> 
+使得网络应用是完全基于事务的，能够达到与使用由EJB
+容器管理的事务同样的效果。你所有的自定义业务逻辑都可以由
+简单的普通Java类来实现，由Spring的IoC容器来管理。其他的服务包括支持
+发送email，支持独立于web层的数据验证，它能允许你
+在任何地方执行验证规则。Spring的ORM支持包括与JPA、
+Hibernate和JDO的整合；例如，当使用Hibernate时，你可以使用
+现有的映射文件和标准的Hibernate `SessionFactory` 配置。表单控制器
+无缝整合了web层和域模型，使得我们无需
+使用 `ActionForms` 或其他的类来吧HTTP参数转换成域模型
+所需要的值。
+
+.使用第三方web框架的中间层
+image::images/overview-thirdparty-web.png[width=400]
+
+有时候条件不允许你完全切换到一个不同的框架。
+Spring框架__不会__强制你使用其所有的功能；它不是一个
+__要么全用，要么不用__的框架。现有的利用Struts, Tapestry, JSF
+或其他UI框架构建的前端页面可以被整合到一个基于Spring的中间层，这将允许你
+使用Spring的事务特性。你只需使用
+`ApplicationContext` 来执行你的业务逻辑并使用 `WebApplicationContext` 来
+整合web层。
+
+
+.远程使用的应用场景
+image::images/overview-remoting.png[width=400]
+
+当你需要使用网络服务来获取现有的代码时，你可以使用Spring的
+`Hessian-` , `Burlap-`, `Rmi-` 或者 `JaxRpcProxyFactory` 类。允许远程访问网络应用
+并不是一件困难的事。
+
+
+.EJB-包装现有的POJOs
+image::images/overview-ejb.png[width=400]
+
+Spring框架同样会提供为企业级JavaBeans提供<<ejb,获取和抽象层>>，
+这允许你重复使用现有的POJO并在
+无状态会话组件中对它们进行包装，用于构件可扩展的、高容错性的网络应用，
+这些网络应用可能要求具有声明性安全。
+
+
+
+
+[[dependency-management]]
+==== 依赖管理和命名规范
+依赖管理和依赖注入是两个不同的概念。为了在你的应用中使用Spring的功能
+（例如依赖注入）
+你需要装配好所有必须的函数库（jar文件），并在程序运行时，或者编译时
+将文件添加到类路径中。这些依赖并不是被注入的虚拟组件，
+而是通常位于文件系统中的实体资源。依赖管理的过程涉及到
+对相应的资源进行定位并将
+它们添加到类路径中。依赖可以是直接的（例如应用在运行时依赖Spring），也可以
+是间接的（例如应用依赖 `commons-dbcp` 而
+`commons-dbcp` 依赖 `commons-pool` )。间接的验证也被称为“传递”，而
+间接的验证是最难被鉴别和管理的。
+
+
+如果要使用Spring，你需要导入包含
+你所需功能的jar包。为了更好地实现这一点，Spring被尽量分离打包成了
+不同的模块。例如如果你不想
+编写一个web应用你就无需使用spring-web模块。为了方便在此指导文件中查阅Spring的库模块，
+我们将采用一种便于记忆的命名规范 `spring-*`
+或者 `spring-*.jar` ，此处 `*` 代表模块的简写名称（例如 `spring-core`,
+`spring-webmvc` , `spring-jms` 等）。实际的jar文件名通常是
+模块名称加上版本号(例如 __spring-core-{spring-version}.jar__)。
+
+
+每次Spring框架的发行都会将资源公布到下面几个地方：
+
+* Maven Central，这是Maven进行查询的默认仓库，无需进行
+  任何特殊的配置就可以使用。许多Spring所依赖的通用函数库
+  都可以在Maven Central中获取，而且Spring社区很多都使用
+  Maven进行依赖管理，这对他们来说使用非常方便。此处
+  jar包的文件名是 `spring-*-<version>.jar` 的形式，并且Maven的groupid是
+   `org.springframework` 。
+
+* 在一个特地为Spring创建的Maven公共仓库中除了最终的GA releases,这个仓库还会管理开发的日常记录以及里程碑事件。
+  仓库中jar包的文件名格式和在Maven Central中是一样的，你可以在其中
+  获取开发版本的Spring并与部署在Maven Central中的
+  其他函数库共同使用。
+  仓库中同样包含一个压缩文件，将Spring所需的所有jar文件捆在一起
+  从而便于下载。
+
+
+所以首先你需要决定如何管理你的依赖：我们通常
+建议使用像Maven、Gradle或Ivy那样的自动化系统，但你也可以
+自己手动下载所有的jar包。稍后我们会在本章中
+进行详尽的说明。
+
+
+
+[[overview-spring-dependencies]]
+===== Spring的依赖和依赖于Spring
+尽管Spring对大范围的企业级工具或其他外部工具提供整合与支持，
+Spring却刻意将强制需要的依赖数量尽可能降到
+最低：在使用Spring实现一些简单的功能的情况下，你无需寻找并下载（即使是自动下载）很多的
+jar包。对于基础的
+依赖注入功能来说只需一个必要的外部依赖，该依赖用于日志记录
+（后面会有详细的关于日志选项的介绍）。
+
+
+下面我们将列出构件一个依赖于Spring的应用的基本步骤，
+先用Maven，然后用Gradle最后用Ivy。任何情况下如果有不清楚的地方，就去
+查阅你所用的依赖管理系统的文档或者
+去参照样本代码-Spring自身在构建时使用Gradle来管理依赖，
+样本代码大多使用Gradle或者Maven。
+
+
+
+[[overview-maven-dependency-management]]
+===== Maven的依赖管理
+如果你使用 http://maven.apache.org/[Maven] 来进行依赖管理你甚至
+不用明确地去支持日志（logging）依赖。例如，当创建一个应用上下文并使用依赖注入来配置应用时，
+你的Maven依赖会
+如下图所示：
+
+
+[source,xml,indent=0]
+[subs="verbatim,quotes,attributes"]
+----
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-context</artifactId>
+			<version>{spring-version}</version>
+			<scope>runtime</scope>
+		</dependency>
+	</dependencies>
+----
+
+以上就是具体的配置。如果编译时没有涉及到Spring的API就可以将上述的scope设置为
+runtime，这通常是使用基础的依赖注入时
+发生的情况。
+
+
+上面的例子可以使用Maven Central仓库来实现。如果要使用Spring Maven仓库（例如为了查看里程碑事件或开发快照），
+你需要在你的Maven配置中确定
+仓库的位置。对于完整发布版：
+
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<repositories>
+		<repository>
+			<id>io.spring.repo.maven.release</id>
+			<url>http://repo.spring.io/release/</url>
+			<snapshots><enabled>false</enabled></snapshots>
+		</repository>
+	</repositories>
+----
+
+对于里程碑事件：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<repositories>
+		<repository>
+			<id>io.spring.repo.maven.milestone</id>
+			<url>http://repo.spring.io/milestone/</url>
+			<snapshots><enabled>false</enabled></snapshots>
+		</repository>
+	</repositories>
+----
+
+对于开发快照：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<repositories>
+		<repository>
+			<id>io.spring.repo.maven.snapshot</id>
+			<url>http://repo.spring.io/snapshot/</url>
+			<snapshots><enabled>true</enabled></snapshots>
+		</repository>
+	</repositories>
+----
+
+
+[[overview-maven-bom]]
+===== Maven的“材料账单依赖” =====
+使用Maven时可能会无意间把不同版本的Spring Jar包混在一起。
+例如，你可能会发现一个第三方的函数库或者另一个Spring工程
+引入了一个老旧版本的传递性依赖（transitive dependency）。如果你忘记了明确地声明一个
+直接的依赖，就可能会出现各种出乎意料的问题。
+
+
+为了克服此类问题，Maven引入了“材料账单”（BOM）依赖的
+概念。你可以把 `spring-framework-bom` 导入到你的 `dependencyManagement` 部分
+来确保所有的spring依赖（无论直接的或间接的）都是
+同一个版本。
+
+
+[source,xml,indent=0]
+[subs="verbatim,quotes,attributes"]
+----
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework</groupId>
+				<artifactId>spring-framework-bom</artifactId>
+				<version>{spring-version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+----
+
+使用BOM的另一个好处就是在使用Spring框架构件时
+不再需要指定 `<version>` 属性。
+
+
+[source,xml,indent=0]
+[subs="verbatim,quotes,attributes"]
+----
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-context</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-web</artifactId>
+		</dependency>
+	<dependencies>
+----
+
+
+[[overview-gradle-dependency-management]]
+===== Gradle的依赖管理
+如果要通过 http://www.gradle.org/[Gradle] 构建系统来使用Spring仓库，
+`repositories` 中要包含相应的URL：
+
+
+[source,groovy,indent=0]
+[subs="verbatim,quotes"]
+----
+	repositories {
+		mavenCentral()
+		// 可选配置......
+		maven { url "http://repo.spring.io/release" }
+	}
+----
+
+你可以根据需要把 `repositories` URL从 `/release` 改为
+`/milestone` 或者 `/snapshot` 。当配置好一个仓库后，就可以用平常的Gradle
+方法声明依赖。
+
+
+[source,groovy,indent=0]
+[subs="verbatim,quotes,attributes"]
+----
+	dependencies {
+		compile("org.springframework:spring-context:{spring-version}")
+		testCompile("org.springframework:spring-test:{spring-version}")
+	}
+----
+
+
+[[overview-ivy-dependency-management]]
+===== Ivy的依赖管理
+如果你想使用 http://ant.apache.org/ivy[Ivy] 管理依赖那么
+各种配置选项跟上面的是一样的。
+
+
+为了配置Ivy指向Spring仓库，将下面的解析器
+配置到 `ivysettings.xml` 中：
+
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<resolvers>
+		<ibiblio name="io.spring.repo.maven.release"
+				m2compatible="true"
+				root="http://repo.spring.io/release/"/>
+	</resolvers>
+----
+
+你可以根据需要把 `root` URL从 `/release` 改为
+`/milestone` 或者 `/snapshot` 。
+
+
+配置完成后，你就可以用一般的方式添加依赖。例如（在 `ivy.xml` 中）：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes,attributes"]
+----
+	<dependency org="org.springframework"
+		name="spring-core" rev="{spring-version}" conf="compile->runtime"/>
+----
+
+
+[[overview-distribution-zip]]
+===== Distribution Zip 文件
+尽管我们推荐使用支持依赖管理的构建系统来使用Spring框架，你仍然
+可以直接下载distribution zip文件。
+
+
+各种distribution zip文件发布在Spring的Maven仓库中（这只是为了方便，你无须
+Maven或者其他的构建系统来下载这些文件）。
+
+
+打开浏览器访问
+http://repo.spring.io/release/org/springframework/spring
+根据你所需要的版本号访问相应的子文件夹。distribution文件以 `-dist.zip` 结尾，例如
++spring-framework-{spring-version}-RELEASE-dist.zip+.distribution文件同样发布在
+http://repo.spring.io/milestone/org/springframework/spring[milestones]
+http://repo.spring.io/snapshot/org/springframework/spring[snapshots].
+
+
+
+
+[[overview-logging]]
+==== Logging
+Logging（日志）是Spring的一个非常重要的依赖，因为__a)__它是唯一一个
+强制要求的外部依赖， __b)__人们都会喜欢让他们使用的工具输出一些信息，
+__c)__Spring整合了很多其他的工具，这些工具也具有
+logging依赖。开发人员的经常有的一个目标
+就是整个应用，包括所有的外部组件中，
+都配置统一的logging。这比看起来要困难因为存在很多
+可供选择的logging框架。
+
+
+Spring中强制要求的logging依赖是Jakarta Commons Logging API (JCL)。JCL代码会被编译，而且
+那些继承了Spring框架的类
+可以访问到JCL `Log` 对象。对于用户来说很重要的一点就是各种版本的Spring使用同样的
+logging函数库：我们可以很容易实现迁移，因为即使是那些扩展Spring的
+应用也会保留着向后兼容性。实现这一点的方法就是让Spring中的一个模块
+明确地去依赖 `commons-logging` （JCL的典型继承），
+并在编译时让其他模块去依赖那个模块。例如你正在使用
+Maven，你想知道 `commons-logging` 依赖在什么地方，
+它就在Spring的核心模块
+`spring-core` 中。
+
+
+关于 `commons-logging` 很好的一点就是你不需要任何
+其他的依赖来运行你的应用。它在运行时会执行一种探索算法，该算法会在
+类路径下的几个典型位置寻找其他的logging框架，或者
+你也可以自己指定寻找路径。如果没有发现其他框架你会
+得到由JDK(java.util.logging或简写成JUL)生成的日志。
+你会发现在大多数情况下Spring应用会运行
+并且立即生成日志到控制台，这是很重要的。
+
+
+
+[[overview-not-using-commons-logging]]
+===== 不使用Commons Logging
+不幸的是，`commons-logging` 在运行时的探索算法，尽管对于客户端用户
+来说非常方便，是有一定的问题的。当启动Spring工程时它可能会使用
+不同的logging依赖。第一个可能被采用的依赖是
+Simple Logging Facade for Java ( http://www.slf4j.org[SLF4J]),
+很多与Spring一起工作的其他工具都使用这一依赖。
+
+
+大致上有两种关闭 `commons-logging` 的方法：
+
+.在 `spring-core` 模块中排除依赖（因为这是唯一
+  一个依靠 `commons-logging` 的模块）
+
+.依靠一个特殊的`commons-logging`依赖，此依赖中的函数库会被
+  替换为一个空的jar文件
+  （可以在 http://slf4j.org/faq.html#excludingJCL[SLF4J FAQ] 中了解更多的细节)
+
+
+为了排除commons-logging,将下列信息添加到 `dependencyManagement` 部分：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes,attributes"]
+----
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-core</artifactId>
+			<version>{spring-version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>commons-logging</groupId>
+					<artifactId>commons-logging</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+	</dependencies>
+----
+
+现在这一应用很可能是不完整的因为在类路径中
+没有了JCL API的继承类，为了修正这一问题需要提供一个新的。下节会说明如何提供替代的JCL继承类，
+例如使用SLF4J。
+
+
+
+[[overview-logging-slf4j]]
+===== 使用 SLF4J
+SLF4J是一个更为干净的依赖，并且运行时的效率比`commons-logging`更高
+因为它采用编译时绑定机制而不是在运行时才去寻找
+其他与之整合的logging框架。这意味着你必须更为明确地指出你想在运行时要做哪些事情，
+并相应地对其声明或配置。SLF4J
+提供了与很多常用logging框架的绑定，所以你可以选择一个你经常使用的框架，
+将SLF4J与之绑定，从而对其进行配置和管理。
+
+
+SLF4J提供了与很多常用logging框架的绑定，包括JCL，并且它也能做
+与之相反的是：为其他logging框架和它自己提供桥接。所以为了在Spring中使用SLF4J你需要
+把 `commons-logging` 依赖替换为SLF4J-JCL
+桥接。当你做完这些后来自于Spring的logging calls会被翻译为
+对SLF4J API的logging calls，所以如果应用中其它的函数库使用那个API，
+就只需在一处配置和管理logging。
+
+
+一个通常的选择是将Spring桥接到SLF4J，然后提供从SLF4J到Log4J的明确
+的绑定。你需要提供4个依赖（不包括现有的
+`commons-logging` ）：桥接器，SLF4J API，到Log4J的绑定以及Log4J实现
+本身。在Maven中你需要这样去做：
+
+
+[source,xml,indent=0]
+[subs="verbatim,quotes,attributes"]
+----
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-core</artifactId>
+			<version>{spring-version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>commons-logging</groupId>
+					<artifactId>commons-logging</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>jcl-over-slf4j</artifactId>
+			<version>1.5.8</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>1.5.8</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-log4j12</artifactId>
+			<version>1.5.8</version>
+		</dependency>
+		<dependency>
+			<groupId>log4j</groupId>
+			<artifactId>log4j</artifactId>
+			<version>1.2.14</version>
+		</dependency>
+	</dependencies>
+----
+
+看起来只是为了获得一些日志就需要如此多的依赖，事情也的确是这样，但
+这__是__可选的，而且涉及到类加载器方面，这样配置会比单纯配置平常的 `commons-logging` 表现的更好，
+尤其是当你使用要求十分严格的容器例如
+OSGIF平台。根据假设，这样配置也会带来性能上的提升，因为
+绑定实在编译时而不是运行时完成的。
+
+
+在SLF4J用户中一个更为平常的选择是直接绑定到 http://logback.qos.ch[Logback] ，
+这会采用更少的步骤，产生更少的依赖，同时也免除了额外的绑定步骤，因为
+Logback直接继承了SLF4J。你只需要依赖两个函数库
+而不是四个（ `jcl-over-slf4j`和`logback` ）。如果要采用此种方案，
+你需要将slf4j的api依赖从其他的外部依赖中排除（不是Spring），
+因为在类路径中你只需要一种版本的此种API。
+
+
+
+[[overview-logging-log4j]]
+===== 使用 Log4J
+很多人因为方便管理和配置的原因
+使用 http://logging.apache.org/log4j[Log4j] 作为logging框架。此框架效率高，构建完备。
+当我们建立和使用Spring时，在运行时就是使用的这个框架。Spring也同时提供了用来配置和
+初始化Log4J的工具，所以Spring的一些模块中
+具有可选的，依靠Log4J的编译时依赖。
+
+
+如果要把Log4J和默认的JCL依赖（ `commons-logging` ）一起使用，你只需要
+将Log4J放在类路径下并提供一个配置文件（
+`log4j.properties` 或者 `log4j.xml` 放在类路径的根目录下）。对于Maven用户来说以下就是所需的
+依赖声明：
+
+
+[source,xml,indent=0]
+[subs="verbatim,quotes,attributes"]
+----
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-core</artifactId>
+			<version>{spring-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>log4j</groupId>
+			<artifactId>log4j</artifactId>
+			<version>1.2.14</version>
+		</dependency>
+	</dependencies>
+----
+
+这是一个log4j.properties样板，用于配置输出到控制台的日志。
+
+[literal]
+[subs="verbatim,quotes"]
+----
+log4j.rootCategory=INFO, stdout
+
+log4j.appender.stdout=org.apache.log4j.ConsoleAppender
+log4j.appender.stdout.layout=org.apache.log4j.PatternLayout
+log4j.appender.stdout.layout.ConversionPattern=%d{ABSOLUTE} %5p %t %c{2}:%L - %m%n
+
+log4j.category.org.springframework.beans.factory=DEBUG
+----
+
+[[overview-native-jcl]]
+====== 使用本地JCL的运行时容器
+很多为Spring应用选择的容器本身就包含
+JCL的继承。这些容器的原始类型是IBM Websphere Application Server (WAS)。这通常会导致
+很多问题，遗憾的是对此没有完美的解决方案；
+仅仅是吧 `commons-logging` 从应用中排除掉在大部分情况下并不能解决问题。
+
+
+说得更清楚一点：报告的问题通常不是关于JCL本身，甚至不是关于
+`commons-logging` ：这些问题和 `commons-logging` 与其他框架的绑定
+有关（通常是Log4J）。有些容器使用的是老版本的 `commons-logging` （1.0），而人们现在大多使用
+1.1版本，而老版和新版
+有着不同的运行时搜索算法。Spring并不使用
+任何常用的JCL API，所以程序不会崩溃，可是一旦Spring尝试获取日志时，
+与Log4J的绑定就会失效。
+
+
+若使用WAS，在失效的情况下最容易的解决方案就是将class loader体系进行反转
+（IBM称之为"parent last"），从而使应用控制JCL依赖，而不是由容器来控制
+。上面的解决办法并不总是有效的，
+但在公共领域有很多替代的解决方案，
+采用哪种方案取决于具体的版本以及容器的特性。

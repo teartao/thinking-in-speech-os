@@ -1,0 +1,61 @@
+[[aop-ataspectj-around-advice]]
+===== Around advice
+The final kind of advice is around advice. Around advice runs "around" a matched method
+execution. It has the opportunity to do work both before and after the method executes,
+and to determine when, how, and even if, the method actually gets to execute at all.
+Around advice is often used if you need to share state before and after a method
+execution in a thread-safe manner (starting and stopping a timer for example). Always
+use the least powerful form of advice that meets your requirements (i.e. don't use
+around advice if simple before advice would do).
+
+Around advice is declared using the `@Around` annotation. The first parameter of the
+advice method must be of type `ProceedingJoinPoint`. Within the body of the advice,
+calling `proceed()` on the `ProceedingJoinPoint` causes the underlying method to
+execute. The `proceed` method may also be called passing in an `Object[]` - the values
+in the array will be used as the arguments to the method execution when it proceeds.
+
+[NOTE]
+====
+The behavior of proceed when called with an Object[] is a little different than the
+behavior of proceed for around advice compiled by the AspectJ compiler. For around
+advice written using the traditional AspectJ language, the number of arguments passed to
+proceed must match the number of arguments passed to the around advice (not the number
+of arguments taken by the underlying join point), and the value passed to proceed in a
+given argument position supplants the original value at the join point for the entity
+the value was bound to (Don't worry if this doesn't make sense right now!). The approach
+taken by Spring is simpler and a better match to its proxy-based, execution only
+semantics. You only need to be aware of this difference if you are compiling @AspectJ
+aspects written for Spring and using proceed with arguments with the AspectJ compiler
+and weaver. There is a way to write such aspects that is 100% compatible across both
+Spring AOP and AspectJ, and this is discussed in the following section on advice
+parameters.
+====
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	import org.aspectj.lang.annotation.Aspect;
+	import org.aspectj.lang.annotation.Around;
+	import org.aspectj.lang.ProceedingJoinPoint;
+
+	@Aspect
+	public class AroundExample {
+
+		@Around("com.xyz.myapp.SystemArchitecture.businessService()")
+		public Object doBasicProfiling(ProceedingJoinPoint pjp) throws Throwable {
+			// start stopwatch
+			Object retVal = pjp.proceed();
+			// stop stopwatch
+			return retVal;
+		}
+
+	}
+----
+
+The value returned by the around advice will be the return value seen by the caller of
+the method. A simple caching aspect for example could return a value from a cache if it
+has one, and invoke proceed() if it does not. Note that proceed may be invoked once,
+many times, or not at all within the body of the around advice, all of these are quite
+legal.
+
+

@@ -1,0 +1,67 @@
+[[beans-factory-scopes-request]]
+===== 请求作用域
+考虑如下的bean定义：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="loginAction" class="com.foo.LoginAction" scope="request"/>
+----
+
+对于每个http请求，Spring容器会创建一个 `LoginAction` bean 的新实例。也就是说，`loginAction` bean 的作用域限于 HTTP 请求范围。
+你可以在请求内随意修改这个bean实例的状态，因为其他 `loginAction` bean实例看不到这些变化，bean实例是与特定的请求相关的。
+当请求处理完毕，对应的bean实例也就销毁（被回收）了。
+
+
+[[beans-factory-scopes-session]]
+===== 会话作用域
+考虑如下的bean定义:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="userPreferences" class="com.foo.UserPreferences" scope="session"/>
+----
+
+在每个HTTP `Session`的生命周期内，Spring容器会根据id为 `userPreferences` 的bean定义创建一个 `UserPreferences` bean 的新实例。
+也就是说，`userPreferences` bean 的作用域限于 HTTP `Session`范围。和请求作用域 `request-scoped` bean 类似，
+因为每个会话域 `session-scoped` bean的范围限于特定的 HTTP `Session` 内部，所以一个 `Session` 内的 `userPreferences` bean也是可以被随意修改，
+而不会影响到其他 `Session` 中的 `userPreferences` bean。当一个HTTP `Session` 最终用完被JVM回收时，相关的会话域 `session-scoped` bean也被一起回收。
+
+
+[[beans-factory-scopes-global-session]]
+===== 全局会话作用域
+考虑如下的bean定义:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="userPreferences" class="com.foo.UserPreferences" scope="globalSession"/>
+----
+
+全局会话作用域 `global session` 与 <<beans-factory-scopes-session,上文>> 提到的标准HTTP `Session` 作用域类似，但是仅适用于基于门户（portlet）的web应用程序上下文。
+Portlet规范定义了如何在组成一个门户的多个portlet组件之间共享全局 `Session` 。
+因此，全局会话作用域 `global session` bean的生命周期也就与全局门户 `Session` 紧密关联。
+
+
+假如你开发了一个标准的、基于Servlet的web应用，并且定义了一个或多个全局会话作用域 `global session` bean，
+Spring容器会使用 HTTP  `Session` 作用域（来代替），不会发生错误。
+
+
+
+
+[[beans-factory-scopes-application]]
+===== 应用程序作用域
+考虑如下的bean定义:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="appPreferences" class="com.foo.AppPreferences" scope="application"/>
+----
+
+Spring容器依据 `appPreferences` 的bean 定义，在整个web应用启动时创建了一个 `AppPreferences` bean 的实例。
+也就是说， `appPreferences` bean 的作用域限于 `ServletContext` 范围，作为一个普通的 `ServletContext` 属性进行存储。
+这跟Spring的单例作用域有些相似，但有两个重大差异：1. 这是某个 `ServletContext` 的单例，
+不是某个Spring 'ApplicationContext' 的单例（任何给定的web应用都可能有多个 'ApplicationContext' ）。
+2. 这是作为一个 `ServletContext` 属性被暴露和访问的。

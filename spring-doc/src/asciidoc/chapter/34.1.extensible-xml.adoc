@@ -1,0 +1,134 @@
+[[extensible-xml-schema]]
+=== Authoring the schema
+Creating an XML configuration extension for use with Spring's IoC container starts with
+authoring an XML Schema to describe the extension. What follows is the schema we'll use
+to configure `SimpleDateFormat` objects.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<!-- myns.xsd (inside package org/springframework/samples/xml) -->
+
+	<?xml version="1.0" encoding="UTF-8"?>
+	<xsd:schema xmlns="http://www.mycompany.com/schema/myns"
+			xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+			xmlns:beans="http://www.springframework.org/schema/beans"
+			targetNamespace="http://www.mycompany.com/schema/myns"
+			elementFormDefault="qualified"
+			attributeFormDefault="unqualified">
+
+		<xsd:import namespace="http://www.springframework.org/schema/beans"/>
+
+		<xsd:element name="dateformat">
+			<xsd:complexType>
+				<xsd:complexContent>
+					<xsd:extension base="beans:identifiedType">
+						<xsd:attribute name="lenient" type="xsd:boolean"/>
+						<xsd:attribute name="pattern" type="xsd:string" use="required"/>
+					</xsd:extension>
+				</xsd:complexContent>
+			</xsd:complexType>
+		</xsd:element>
+	</xsd:schema>
+----
+
+(The emphasized line contains an extension base for all tags that will be identifiable
+(meaning they have an `id` attribute that will be used as the bean identifier in the
+container). We are able to use this attribute because we imported the Spring-provided
+`'beans'` namespace.)
+
+The above schema will be used to configure `SimpleDateFormat` objects, directly in an
+XML application context file using the `<myns:dateformat/>` element.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<myns:dateformat id="dateFormat"
+		pattern="yyyy-MM-dd HH:mm"
+		lenient="true"/>
+----
+
+Note that after we've created the infrastructure classes, the above snippet of XML will
+essentially be exactly the same as the following XML snippet. In other words, we're just
+creating a bean in the container, identified by the name `'dateFormat'` of type
+`SimpleDateFormat`, with a couple of properties set.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="dateFormat" class="java.text.SimpleDateFormat">
+		<constructor-arg value="yyyy-HH-dd HH:mm"/>
+		<property name="lenient" value="true"/>
+	</bean>
+----
+
+[NOTE]
+====
+The schema-based approach to creating configuration format allows for tight integration
+with an IDE that has a schema-aware XML editor. Using a properly authored schema, you
+can use autocompletion to have a user choose between several configuration options
+defined in the enumeration.
+====
+
+
+
+
+[[extensible-xml-namespacehandler]]
+=== Coding a NamespaceHandler
+
+In addition to the schema, we need a `NamespaceHandler` that will parse all elements of
+this specific namespace Spring encounters while parsing configuration files. The
+`NamespaceHandler` should in our case take care of the parsing of the `myns:dateformat`
+element.
+
+The `NamespaceHandler` interface is pretty simple in that it features just three methods:
+
+* `init()` - allows for initialization of the `NamespaceHandler` and will be called by
+  Spring before the handler is used
+* `BeanDefinition parse(Element, ParserContext)` - called when Spring encounters a
+  top-level element (not nested inside a bean definition or a different namespace). This
+  method can register bean definitions itself and/or return a bean definition.
+* `BeanDefinitionHolder decorate(Node, BeanDefinitionHolder, ParserContext)` - called
+  when Spring encounters an attribute or nested element of a different namespace. The
+  decoration of one or more bean definitions is used for example with
+  the<<beans-factory-scopes,out-of-the-box	scopes Spring 2.0 supports>>. We'll start by
+  highlighting a simple example, without using decoration, after which we will	show
+  decoration in a somewhat more advanced example.
+
+Although it is perfectly possible to code your own `NamespaceHandler` for the entire
+namespace (and hence provide code that parses each and every element in the namespace),
+it is often the case that each top-level XML element in a Spring XML configuration file
+results in a single bean definition (as in our case, where a single `<myns:dateformat/>`
+element results in a single `SimpleDateFormat` bean definition). Spring features a
+number of convenience classes that support this scenario. In this example, we'll make
+use the `NamespaceHandlerSupport` class:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package org.springframework.samples.xml;
+
+	import org.springframework.beans.factory.xml.NamespaceHandlerSupport;
+
+	public class MyNamespaceHandler extends NamespaceHandlerSupport {
+
+		public void init() {
+			**registerBeanDefinitionParser("dateformat", new SimpleDateFormatBeanDefinitionParser());**
+		}
+
+	}
+----
+
+The observant reader will notice that there isn't actually a whole lot of parsing logic
+in this class. Indeed... the `NamespaceHandlerSupport` class has a built in notion of
+delegation. It supports the registration of any number of `BeanDefinitionParser`
+instances, to which it will delegate to when it needs to parse an element in its
+namespace. This clean separation of concerns allows a `NamespaceHandler` to handle the
+orchestration of the parsing of __all__ of the custom elements in its namespace, while
+delegating to `BeanDefinitionParsers` to do the grunt work of the XML parsing; this
+means that each `BeanDefinitionParser` will contain just the logic for parsing a single
+custom element, as we can see in the next step
+
+
+
+

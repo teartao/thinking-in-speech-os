@@ -1,0 +1,75 @@
+[[cci-record-creator]]
+==== Record conversion
+One of the aims of the JCA CCI support is to provide convenient facilities for
+manipulating CCI records. The developer can specify the strategy to create records and
+extract datas from records, for use with Spring's `CciTemplate`. The following
+interfaces will configure the strategy to use input and output records if you don't want
+to work with records directly in your application.
+
+In order to create an input `Record`, the developer can use a dedicated implementation
+of the `RecordCreator` interface.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface RecordCreator {
+
+		Record createRecord(RecordFactory recordFactory) throws ResourceException, DataAccessException;
+
+	}
+----
+
+As you can see, the `createRecord(..)` method receives a `RecordFactory` instance as
+parameter, which corresponds to the `RecordFactory` of the `ConnectionFactory` used.
+This reference can be used to create `IndexedRecord` or `MappedRecord` instances. The
+following sample shows how to use the `RecordCreator` interface and indexed/mapped
+records.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class MyRecordCreator implements RecordCreator {
+
+		public Record createRecord(RecordFactory recordFactory) throws ResourceException {
+			IndexedRecord input = recordFactory.createIndexedRecord("input");
+			input.add(new Integer(id));
+			return input;
+		}
+
+	}
+----
+
+An output `Record` can be used to receive data back from the EIS. Hence, a specific
+implementation of the `RecordExtractor` interface can be passed to Spring's
+`CciTemplate` for extracting data from the output `Record`.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface RecordExtractor {
+
+		Object extractData(Record record) throws ResourceException, SQLException, DataAccessException;
+
+	}
+----
+
+The following sample shows how to use the `RecordExtractor` interface.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class MyRecordExtractor implements RecordExtractor {
+
+		public Object extractData(Record record) throws ResourceException {
+			CommAreaRecord commAreaRecord = (CommAreaRecord) record;
+			String str = new String(commAreaRecord.toByteArray());
+			String field1 = string.substring(0,6);
+			String field2 = string.substring(6,1);
+			return new OutputObject(Long.parseLong(field1), field2);
+		}
+
+	}
+----
+
+
+

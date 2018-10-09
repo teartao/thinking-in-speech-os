@@ -1,0 +1,87 @@
+[[beans-generics-as-qualifiers]]
+==== Using generics as autowiring qualifiers
+In addition to the `@Qualifier` annotation, it is also possible to use Java generic types
+as an implicit form of qualification. For example, suppose you have the following
+configuration:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Configuration
+	public class MyConfiguration {
+
+		@Bean
+		public StringStore stringStore() {
+			return new StringStore();
+		}
+
+		@Bean
+		public IntegerStore integerStore() {
+			return new IntegerStore();
+		}
+
+	}
+----
+
+Assuming that beans above implement a generic interface, i.e. `Store<String>` and
+`Store<Integer>`, you can `@Autowire` the `Store` interface and the __generic__ will
+be used as a qualifier:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Autowired
+	private Store<String> s1; // <String> qualifier, injects the stringStore bean
+
+	@Autowired
+	private Store<Integer> s2; // <Integer> qualifier, injects the integerStore bean
+----
+
+Generic qualifiers also apply when autowiring Lists, Maps and Arrays:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	// Inject all Store beans as long as they have an <Integer> generic
+	// Store<String> beans will not appear in this list
+	@Autowired
+	private List<Store<Integer>> s;
+----
+
+
+
+
+[[beans-custom-autowire-configurer]]
+==== CustomAutowireConfigurer
+
+The
+{javadoc-baseurl}/org/springframework/beans/factory/annotation/CustomAutowireConfigurer.html[`CustomAutowireConfigurer`]
+is a `BeanFactoryPostProcessor` that enables you to register your own custom qualifier
+annotation types even if they are not annotated with Spring's `@Qualifier` annotation.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="customAutowireConfigurer"
+			class="org.springframework.beans.factory.annotation.CustomAutowireConfigurer">
+		<property name="customQualifierTypes">
+			<set>
+				<value>example.CustomQualifier</value>
+			</set>
+		</property>
+	</bean>
+----
+
+The `AutowireCandidateResolver` determines autowire candidates by:
+
+* the `autowire-candidate` value of each bean definition
+* any `default-autowire-candidates` pattern(s) available on the `<beans/>` element
+* the presence of `@Qualifier` annotations and any custom annotations registered
+with the `CustomAutowireConfigurer`
+
+When multiple beans qualify as autowire candidates, the determination of a "primary" is
+the following: if exactly one bean definition among the candidates has a `primary`
+attribute set to `true`, it will be selected.
+
+
+

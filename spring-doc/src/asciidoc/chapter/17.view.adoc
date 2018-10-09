@@ -1,0 +1,195 @@
+[[view]]
+== 视图技术
+
+[[view-introduction]]
+=== 简介
+Spring的一个擅长领域在于，把视图层技术和MVC框架的其余部分分离开来。
+例如，选择使用Velocity或者XSLT来代替已有的JSP方式只需要在配置上做改动就可以了。
+ 本章涵盖了和Spring协同工作的主流view层技术并简要介绍了如何增加新的方式。
+ 这里假设你已经熟悉<<mvc-viewresolver>>章节的知识，那里讲述了view层与MVC框架协作的基础。
+
+
+
+
+[[view-jsp]]
+=== JSP & JSTL
+Spring为JSP和JSTL这些view层技术提供了几个开箱即用的解决方案。 
+使用JSP和JSTL的，采用WebApplicationContext中定义的普通视图解析器即可；
+此外，你当然还得自己写一些实际做渲染的JSP页面。
+
+[NOTE]
+====
+设置应用程序使用JSTL是一种常见的错误，主要在不同的Servlet规范，JSP和JSTL版本上会引起混乱，
+这意味着如何正确的声明这些标签库。这篇文章http://www.mularien.com/blog/2008/04/24/how-to-reference-and-use-jstl-in-your-web-application/[How
+to Reference and Use JSTL in your Web Application]会提供给我们一些有用的指导来避免一些常见的陷阱。
+需要注意的是，Spring 3.0支持的Servlet最低版本是2.4（JSP 2.0,JSTL 1.1），这样会在一定范围内减少一些混乱。
+====
+
+
+
+[[view-jsp-resolver]]
+==== 视图解析器
+与在Spring中采用的任何其他视图技术一样，使用JSP需要一个视图解析器来解析你的视图，
+常用的是`InternalResourceViewResolver`和 `ResourceBundleViewResolver`。
+它们都声明在`WebApplicationContext`中：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<!-- the ResourceBundleViewResolver -->
+	<bean id="viewResolver" class="org.springframework.web.servlet.view.ResourceBundleViewResolver">
+		<property name="basename" value="views"/>
+	</bean>
+
+	# And a sample properties file is uses (views.properties in WEB-INF/classes):
+	welcome.(class)=org.springframework.web.servlet.view.JstlView
+	welcome.url=/WEB-INF/jsp/welcome.jsp
+
+	productList.(class)=org.springframework.web.servlet.view.JstlView
+	productList.url=/WEB-INF/jsp/productlist.jsp
+----
+
+正如你所看到的， `ResourceBundleViewResolver`需要一个属性文件来定义view名称对应映射到到一个class和一个URL，
+使用 `ResourceBundleViewResolver`，可以只使用一个解析器来混用不同类型的视图技术。.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="viewResolver" class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+		<property name="viewClass" value="org.springframework.web.servlet.view.JstlView"/>
+		<property name="prefix" value="/WEB-INF/jsp/"/>
+		<property name="suffix" value=".jsp"/>
+	</bean>
+----
+
+如上例所示， 用JSP时可以配置一个`InternalResourceBundleViewResolver`。作为一个最佳实践，我们强烈推荐你用 WEB-INF下的一个目录来存放JSP文件，从而避免被客户端直接访问。
+
+
+[[view-jsp-jstl]]
+==== 'Plain-old' JSPs versus JSTL
+使用JSTL时，必须使用一个特别的view类`JstlView`，因为JSTL需要一些准备工作，然后像I18N这样的特性才能工作。
+
+
+[[view-jsp-tags]]
+==== 帮助简化开发的额外的标签
+前面的章节中提到过，Spring提供了从请求参数到命令对象的数据绑定。为了简化与数据绑定特性配合使用的JSP页面的开发，Spring提供了一些标签让事情变得更简单。
+这些标签都提供了 __HTML escaping__的特性，能够打开或关闭字符转码的功能。
+标签库描述符(TLD)包含在`spring-webmvc.jar`中。关于每个tag的更多详细信息请参阅附录<<spring.tld>>。
+
+
+[[view-jsp-formtaglib]]
+==== 使用Spring提供的表单标签库
+在2.0的版本中，当使用JSP和Spring Web MVS的时候，Srping提供了一组全面的用于处理表单元素进行数据绑定的标签。
+每个标签都提供了支持设置对应HTML标签的属性，使得标签熟悉且直观的使用。标签生成的HTML兼容HTML 4.01/XHTML 1.0文档标准。
+
+
+不像其他的form/input标签库，Spring的表单表单标签库集成在Spring Web MVC中，能够让标签访问命令对象以及引用数据在你的处理控制器中。
+正如接下来看到的例子，这些form标签使得使用JSPs开发更容易、更易于阅读和维护。
+
+让我们通过一个例子了解每个标签是如何使用的。我们已经包含了生成好的html片段，某些标签需要更进一步的探讨。
+
+
+[[view-jsp-formtaglib-configuration]]
+===== 配置
+这些表单标签库捆绑在`spring-webmvc.jar`中。这些标签库的描述符被称为`spring-form.tld`。
+
+使用这个标签库，需要把下面这段代码加到你的JSP页面的最顶端：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<%@ taglib prefix="form" uri="http://www.springframework.org/tags/form" %>
+----
+
+这里的`form`就是你要使用的这些标签名称的前缀。
+
+
+[[view-jsp-formtaglib-formtag]]
+===== 表单标签
+
+这些标签渲染了一个HTML 'form'标签并且公开了一个绑定路径内标签用于绑定。
+它把命令对象放置到`PageContext`中，这样命令对象对能被这些内部标签访问。
+__库中所有其他标签都是这个`form`标签的嵌套标签__。
+
+
+假设我们有一个领域对象`User`。是一个包含属性的JavaBean，例如`firstName`和`lastName`。
+我们把它作为表单控制器的表单回传对象返回到`form.jsp`。下面这个例子就是`form.jsp`的形式：
+
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<form:form>
+		<table>
+			<tr>
+				<td>First Name:</td>
+				<td><form:input path="firstName" /></td>
+			</tr>
+			<tr>
+				<td>Last Name:</td>
+				<td><form:input path="lastName" /></td>
+			</tr>
+			<tr>
+				<td colspan="2">
+					<input type="submit" value="Save Changes" />
+				</td>
+			</tr>
+		</table>
+	</form:form>
+----
+
+通过页面控制器，`firstName`和`lastName`的值从放置在`PageContext`中的命令对象中检索出来。
+继续阅读更复杂的例子，了解如何使用`form`标签的内部标签。
+
+生成的HTML就是一个标准的表单：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<form method="POST">
+		<table>
+			<tr>
+				<td>First Name:</td>
+				<td><input name="firstName" type="text" value="Harry"/></td>
+			</tr>
+			<tr>
+				<td>Last Name:</td>
+				<td><input name="lastName" type="text" value="Potter"/></td>
+			</tr>
+			<tr>
+				<td colspan="2">
+					<input type="submit" value="Save Changes" />
+				</td>
+			</tr>
+		</table>
+	</form>
+----
+
+
+前面的JSP中假定回传对象的命名变量就是`'command'`。如果你以另外一个名称把表单回传对象放到model里
+（绝对是一个最佳的例子），那么你可以将表单绑定到命名变量，就像下面这样：
+
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<form:form commandName="user">
+		<table>
+			<tr>
+				<td>First Name:</td>
+				<td><form:input path="firstName" /></td>
+			</tr>
+			<tr>
+				<td>Last Name:</td>
+				<td><form:input path="lastName" /></td>
+			</tr>
+			<tr>
+				<td colspan="2">
+					<input type="submit" value="Save Changes" />
+				</td>
+			</tr>
+		</table>
+	</form:form>
+----
+
+

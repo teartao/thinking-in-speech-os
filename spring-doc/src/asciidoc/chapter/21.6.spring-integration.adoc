@@ -1,0 +1,90 @@
+[[remoting-web-services-jaxws-export-ri]]
+==== Exporting web services using the JAX-WS RI's Spring support
+Oracle's JAX-WS RI, developed as part of the GlassFish project, ships Spring support as
+part of its JAX-WS Commons project. This allows for defining JAX-WS endpoints as
+Spring-managed beans, similar to the standalone mode discussed in the previous section -
+but this time in a Servlet environment. __Note that this is not portable in a Java EE 5
+environment; it is mainly intended for non-EE environments such as Tomcat, embedding the
+JAX-WS RI as part of the web application.__
+
+The difference to the standard style of exporting servlet-based endpoints is that the
+lifecycle of the endpoint instances themselves will be managed by Spring here, and that
+there will be only one JAX-WS servlet defined in `web.xml`. With the standard Java EE 5
+style (as illustrated above), you'll have one servlet definition per service endpoint,
+with each endpoint typically delegating to Spring beans (through the use of
+`@Autowired`, as shown above).
+
+Check out https://jax-ws-commons.java.net/spring/[https://jax-ws-commons.java.net/spring/]
+for details on setup and usage style.
+
+
+
+[[remoting-web-services-jaxws-access]]
+==== Accessing web services using JAX-WS
+Spring provides two factory beans to create JAX-WS web service proxies, namely
+`LocalJaxWsServiceFactoryBean` and `JaxWsPortProxyFactoryBean`. The former can only
+return a JAX-WS service class for us to work with. The latter is the full-fledged
+version that can return a proxy that implements our business service interface. In this
+example we use the latter to create a proxy for the `AccountService` endpoint (again):
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="accountWebService" class="org.springframework.remoting.jaxws.JaxWsPortProxyFactoryBean">
+		<property name="serviceInterface" value="example.AccountService"/>
+		<property name="wsdlDocumentUrl" value="http://localhost:8888/AccountServiceEndpoint?WSDL"/>
+		<property name="namespaceUri" value="http://example/"/>
+		<property name="serviceName" value="AccountService"/>
+		<property name="portName" value="AccountServiceEndpointPort"/>
+	</bean>
+----
+
+Where `serviceInterface` is our business interface the clients will use.
+`wsdlDocumentUrl` is the URL for the WSDL file. Spring needs this a startup time to
+create the JAX-WS Service. `namespaceUri` corresponds to the targetNamespace in the
+.wsdl file. `serviceName` corresponds to the service name in the .wsdl file. `portName`
+corresponds to the port name in the .wsdl file.
+
+Accessing the web service is now very easy as we have a bean factory for it that will
+expose it as `AccountService` interface. We can wire this up in Spring:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="client" class="example.AccountClientImpl">
+		...
+		<property name="service" ref="accountWebService"/>
+	</bean>
+----
+
+From the client code we can access the web service just as if it was a normal class:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class AccountClientImpl {
+
+		private AccountService service;
+
+		public void setService(AccountService service) {
+			this.service = service;
+		}
+
+		public void foo() {
+			service.insertAccount(...);
+		}
+	}
+----
+
+[NOTE]
+====
+The above is slightly simplified in that JAX-WS requires endpoint interfaces
+and implementation classes to be annotated with `@WebService`, `@SOAPBinding` etc
+annotations. This means that you cannot (easily) use plain Java interfaces and
+implementation classes as JAX-WS endpoint artifacts; you need to annotate them
+accordingly first. Check the JAX-WS documentation for details on those requirements.
+====
+
+
+
+

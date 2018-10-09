@@ -1,0 +1,164 @@
+[[xsd-config-body-schemas-jee-jndi-lookup-evironment-multiple]]
+===== <jee:jndi-lookup/> (with multiple JNDI environment settings)
+
+Before...
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="simple" class="org.springframework.jndi.JndiObjectFactoryBean">
+		<property name="jndiName" value="jdbc/MyDataSource"/>
+		<property name="jndiEnvironment">
+			<props>
+				<prop key="foo">bar</prop>
+				<prop key="ping">pong</prop>
+			</props>
+		</property>
+	</bean>
+----
+
+After...
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<jee:jndi-lookup id="simple" jndi-name="jdbc/MyDataSource">
+		<!-- newline-separated, key-value pairs for the environment (standard Properties format) -->
+		<jee:environment>
+			foo=bar
+			ping=pong
+		</jee:environment>
+	</jee:jndi-lookup>
+----
+
+
+[[xsd-config-body-schemas-jee-jndi-lookup-complex]]
+===== <jee:jndi-lookup/> (complex)
+
+Before...
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="simple" class="org.springframework.jndi.JndiObjectFactoryBean">
+		<property name="jndiName" value="jdbc/MyDataSource"/>
+		<property name="cache" value="true"/>
+		<property name="resourceRef" value="true"/>
+		<property name="lookupOnStartup" value="false"/>
+		<property name="expectedType" value="com.myapp.DefaultFoo"/>
+		<property name="proxyInterface" value="com.myapp.Foo"/>
+	</bean>
+----
+
+After...
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<jee:jndi-lookup id="simple"
+			jndi-name="jdbc/MyDataSource"
+			cache="true"
+			resource-ref="true"
+			lookup-on-startup="false"
+			expected-type="com.myapp.DefaultFoo"
+			proxy-interface="com.myapp.Foo"/>
+----
+
+
+[[xsd-config-body-schemas-jee-local-slsb]]
+===== <jee:local-slsb/> (simple)
+
+The `<jee:local-slsb/>` tag configures a reference to an EJB Stateless SessionBean.
+
+Before...
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="simple"
+			class="org.springframework.ejb.access.LocalStatelessSessionProxyFactoryBean">
+		<property name="jndiName" value="ejb/RentalServiceBean"/>
+		<property name="businessInterface" value="com.foo.service.RentalService"/>
+	</bean>
+----
+
+After...
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<jee:local-slsb id="simpleSlsb" jndi-name="ejb/RentalServiceBean"
+			business-interface="com.foo.service.RentalService"/>
+----
+
+
+[[xsd-config-body-schemas-jee-local-slsb-complex]]
+===== <jee:local-slsb/> (complex)
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="complexLocalEjb"
+			class="org.springframework.ejb.access.LocalStatelessSessionProxyFactoryBean">
+		<property name="jndiName" value="ejb/RentalServiceBean"/>
+		<property name="businessInterface" value="com.foo.service.RentalService"/>
+		<property name="cacheHome" value="true"/>
+		<property name="lookupHomeOnStartup" value="true"/>
+		<property name="resourceRef" value="true"/>
+	</bean>
+----
+
+After...
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<jee:local-slsb id="complexLocalEjb"
+			jndi-name="ejb/RentalServiceBean"
+			business-interface="com.foo.service.RentalService"
+			cache-home="true"
+			lookup-home-on-startup="true"
+			resource-ref="true">
+----
+
+
+[[xsd-config-body-schemas-jee-remote-slsb]]
+===== <jee:remote-slsb/>
+
+The `<jee:remote-slsb/>` tag configures a reference to a `remote` EJB Stateless
+SessionBean.
+
+Before...
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="complexRemoteEjb"
+			class="org.springframework.ejb.access.SimpleRemoteStatelessSessionProxyFactoryBean">
+		<property name="jndiName" value="ejb/MyRemoteBean"/>
+		<property name="businessInterface" value="com.foo.service.RentalService"/>
+		<property name="cacheHome" value="true"/>
+		<property name="lookupHomeOnStartup" value="true"/>
+		<property name="resourceRef" value="true"/>
+		<property name="homeInterface" value="com.foo.service.RentalService"/>
+		<property name="refreshHomeOnConnectFailure" value="true"/>
+	</bean>
+----
+
+After...
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<jee:remote-slsb id="complexRemoteEjb"
+			jndi-name="ejb/MyRemoteBean"
+			business-interface="com.foo.service.RentalService"
+			cache-home="true"
+			lookup-home-on-startup="true"
+			resource-ref="true"
+			home-interface="com.foo.service.RentalService"
+			refresh-home-on-connect-failure="true">
+----
+
+
+

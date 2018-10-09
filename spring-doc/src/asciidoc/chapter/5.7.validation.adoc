@@ -1,0 +1,105 @@
+[[format-CustomFormatAnnotations]]
+==== Annotation-driven Formatting
+As you will see, field formatting can be configured by field type or annotation. To bind
+an Annotation to a formatter, implement AnnotationFormatterFactory:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package org.springframework.format;
+
+	public interface AnnotationFormatterFactory<A extends Annotation> {
+
+		Set<Class<?>> getFieldTypes();
+
+		Printer<?> getPrinter(A annotation, Class<?> fieldType);
+
+		Parser<?> getParser(A annotation, Class<?> fieldType);
+
+	}
+----
+
+Parameterize A to be the field annotationType you wish to associate formatting logic
+with, for example `org.springframework.format.annotation.DateTimeFormat`. Have
+`getFieldTypes()` return the types of fields the annotation may be used on. Have
+`getPrinter()` return a Printer to print the value of an annotated field. Have
+`getParser()` return a Parser to parse a clientValue for an annotated field.
+
+The example AnnotationFormatterFactory implementation below binds the @NumberFormat
+Annotation to a formatter. This annotation allows either a number style or pattern to be
+specified:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public final class NumberFormatAnnotationFormatterFactory
+			implements AnnotationFormatterFactory<NumberFormat> {
+
+		public Set<Class<?>> getFieldTypes() {
+			return new HashSet<Class<?>>(asList(new Class<?>[] {
+				Short.class, Integer.class, Long.class, Float.class,
+				Double.class, BigDecimal.class, BigInteger.class }));
+		}
+
+		public Printer<Number> getPrinter(NumberFormat annotation, Class<?> fieldType) {
+			return configureFormatterFrom(annotation, fieldType);
+		}
+
+		public Parser<Number> getParser(NumberFormat annotation, Class<?> fieldType) {
+			return configureFormatterFrom(annotation, fieldType);
+		}
+
+		private Formatter<Number> configureFormatterFrom(NumberFormat annotation,
+				Class<?> fieldType) {
+			if (!annotation.pattern().isEmpty()) {
+				return new NumberFormatter(annotation.pattern());
+			} else {
+				Style style = annotation.style();
+				if (style == Style.PERCENT) {
+					return new PercentFormatter();
+				} else if (style == Style.CURRENCY) {
+					return new CurrencyFormatter();
+				} else {
+					return new NumberFormatter();
+				}
+			}
+		}
+	}
+----
+
+To trigger formatting, simply annotate fields with @NumberFormat:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class MyModel {
+
+		@NumberFormat(style=Style.CURRENCY)
+		private BigDecimal decimal;
+
+	}
+----
+
+
+[[format-annotations-api]]
+===== Format Annotation API
+A portable format annotation API exists in the `org.springframework.format.annotation`
+package. Use @NumberFormat to format java.lang.Number fields. Use @DateTimeFormat to
+format java.util.Date, java.util.Calendar, java.util.Long, or Joda Time fields.
+
+The example below uses @DateTimeFormat to format a java.util.Date as a ISO Date
+(yyyy-MM-dd):
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class MyModel {
+
+		@DateTimeFormat(iso=ISO.DATE)
+		private Date date;
+
+	}
+----
+
+
+

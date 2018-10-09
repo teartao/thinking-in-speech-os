@@ -1,0 +1,138 @@
+[[jms-receiving-async-message-listener-adapter]]
+==== the MessageListenerAdapter
+
+The `MessageListenerAdapter` class is the final component in Spring's asynchronous
+messaging support: in a nutshell, it allows you to expose almost __any__ class as a MDP
+(there are of course some constraints).
+
+Consider the following interface definition. Notice that although the interface extends
+neither the `MessageListener` nor `SessionAwareMessageListener` interfaces, it can still
+be used as a MDP via the use of the `MessageListenerAdapter` class. Notice also how the
+various message handling methods are strongly typed according to the __contents__ of the
+various `Message` types that they can receive and handle.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface MessageDelegate {
+
+		void handleMessage(String message);
+
+		void handleMessage(Map message);
+
+		void handleMessage(byte[] message);
+
+		void handleMessage(Serializable message);
+
+	}
+----
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class DefaultMessageDelegate implements MessageDelegate {
+		// implementation elided for clarity...
+	}
+----
+
+In particular, note how the above implementation of the `MessageDelegate` interface (the
+above `DefaultMessageDelegate` class) has __no__ JMS dependencies at all. It truly is a
+POJO that we will make into an MDP via the following configuration.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<!-- this is the Message Driven POJO (MDP) -->
+	**<bean id="messageListener" class="org.springframework.jms.listener.adapter.MessageListenerAdapter">
+		<constructor-arg>
+			<bean class="jmsexample.DefaultMessageDelegate"/>
+		</constructor-arg>
+	</bean>**
+
+	<!-- and this is the message listener container... -->
+	<bean id="jmsContainer" class="org.springframework.jms.listener.DefaultMessageListenerContainer">
+		<property name="connectionFactory" ref="connectionFactory"/>
+		<property name="destination" ref="destination"/>
+		**<property name="messageListener" ref="messageListener" />**
+	</bean>
+----
+
+Below is an example of another MDP that can only handle the receiving of JMS
+`TextMessage` messages. Notice how the message handling method is actually called
+`'receive'` (the name of the message handling method in a `MessageListenerAdapter`
+defaults to `'handleMessage'`), but it is configurable (as you will see below). Notice
+also how the `'receive(..)'` method is strongly typed to receive and respond only to JMS
+`TextMessage` messages.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface TextMessageDelegate {
+
+		void receive(TextMessage message);
+
+	}
+----
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class DefaultTextMessageDelegate implements TextMessageDelegate {
+		// implementation elided for clarity...
+	}
+----
+
+The configuration of the attendant `MessageListenerAdapter` would look like this:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="messageListener" class="org.springframework.jms.listener.adapter.MessageListenerAdapter">
+		<constructor-arg>
+			<bean class="jmsexample.DefaultTextMessageDelegate"/>
+		</constructor-arg>
+		<property name="defaultListenerMethod" value="receive"/>
+		<!-- we don't want automatic message context extraction -->
+		<property name="messageConverter">
+			<null/>
+		</property>
+	</bean>
+----
+
+Please note that if the above `'messageListener'` receives a JMS `Message` of a type
+other than `TextMessage`, an `IllegalStateException` will be thrown (and subsequently
+swallowed). Another of the capabilities of the `MessageListenerAdapter` class is the
+ability to automatically send back a response `Message` if a handler method returns a
+non-void value. Consider the interface and class:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface ResponsiveTextMessageDelegate {
+
+		// notice the return type...
+		String receive(TextMessage message);
+
+	}
+----
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class DefaultResponsiveTextMessageDelegate implements ResponsiveTextMessageDelegate {
+		// implementation elided for clarity...
+	}
+----
+
+If the above `DefaultResponsiveTextMessageDelegate` is used in conjunction with a
+`MessageListenerAdapter` then any non-null value that is returned from the execution of
+the `'receive(..)'` method will (in the default configuration) be converted into a
+`TextMessage`. The resulting `TextMessage` will then be sent to the `Destination` (if
+one exists) defined in the JMS Reply-To property of the original `Message`, or the
+default `Destination` set on the `MessageListenerAdapter` (if one has been configured);
+if no `Destination` is found then an `InvalidDestinationException` will be thrown (and
+please note that this exception __will not__ be swallowed and __will__ propagate up the
+call stack).
+
+
+

@@ -1,0 +1,93 @@
+[[beans-beans-conversion-customeditor-registration-per]]
+====== Using PropertyEditorRegistrars
+
+Another mechanism for registering property editors with the Spring container is to
+create and use a `PropertyEditorRegistrar`. This interface is particularly useful when
+you need to use the same set of property editors in several different situations: write
+a corresponding registrar and reuse that in each case. `PropertyEditorRegistrars` work
+in conjunction with an interface called `PropertyEditorRegistry`, an interface that is
+implemented by the Spring `BeanWrapper` (and `DataBinder`). `PropertyEditorRegistrars`
+are particularly convenient when used in conjunction with the `CustomEditorConfigurer`
+(introduced <<beans-beans-conversion-customeditor-registration,here>>), which exposes a
+property called `setPropertyEditorRegistrars(..)`: `PropertyEditorRegistrars` added to a
+`CustomEditorConfigurer` in this fashion can easily be shared with `DataBinder` and
+Spring MVC `Controllers`. Furthermore, it avoids the need for synchronization on custom
+editors: a `PropertyEditorRegistrar` is expected to create fresh `PropertyEditor`
+instances for each bean creation attempt.
+
+Using a `PropertyEditorRegistrar` is perhaps best illustrated with an example. First
+off, you need to create your own `PropertyEditorRegistrar` implementation:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package com.foo.editors.spring;
+
+	public final class CustomPropertyEditorRegistrar implements PropertyEditorRegistrar {
+
+		public void registerCustomEditors(PropertyEditorRegistry registry) {
+
+			// it is expected that new PropertyEditor instances are created
+			registry.registerCustomEditor(ExoticType.class, new ExoticTypeEditor());
+
+			// you could register as many custom property editors as are required here...
+		}
+	}
+----
+
+See also the `org.springframework.beans.support.ResourceEditorRegistrar` for an example
+`PropertyEditorRegistrar` implementation. Notice how in its implementation of the
+`registerCustomEditors(..)` method it creates new instances of each property editor.
+
+Next we configure a `CustomEditorConfigurer` and inject an instance of our
+`CustomPropertyEditorRegistrar` into it:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean class="org.springframework.beans.factory.config.CustomEditorConfigurer">
+		<property name="propertyEditorRegistrars">
+			<list>
+				<ref bean="customPropertyEditorRegistrar"/>
+			</list>
+		</property>
+	</bean>
+
+	<bean id="customPropertyEditorRegistrar"
+		class="com.foo.editors.spring.CustomPropertyEditorRegistrar"/>
+----
+
+Finally, and in a bit of a departure from the focus of this chapter, for those of you
+using <<mvc,Spring's MVC web framework>>, using `PropertyEditorRegistrars` in
+conjunction with data-binding `Controllers` (such as `SimpleFormController`) can be very
+convenient. Find below an example of using a `PropertyEditorRegistrar` in the
+implementation of an `initBinder(..)` method:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public final class RegisterUserController extends SimpleFormController {
+
+		private final PropertyEditorRegistrar customPropertyEditorRegistrar;
+
+		public RegisterUserController(PropertyEditorRegistrar propertyEditorRegistrar) {
+			this.customPropertyEditorRegistrar = propertyEditorRegistrar;
+		}
+
+		protected void initBinder(HttpServletRequest request,
+				ServletRequestDataBinder binder) throws Exception {
+			**this.customPropertyEditorRegistrar.registerCustomEditors(binder);**
+		}
+
+		// other methods to do with registering a User
+	}
+----
+
+This style of `PropertyEditor` registration can lead to concise code (the implementation
+of `initBinder(..)` is just one line long!), and allows common `PropertyEditor`
+registration code to be encapsulated in a class and then shared amongst as many
+`Controllers` as needed.
+
+
+
+

@@ -1,0 +1,84 @@
+[[portlet-viewservlet]]
+=== The ViewRendererServlet
+
+The rendering process in Portlet MVC is a bit more complex than in Web MVC. In order to
+reuse all the <<view,view technologies>> from Spring Web MVC, we must convert the
+`PortletRequest` / `PortletResponse` to `HttpServletRequest` / `HttpServletResponse` and
+then call the `render` method of the `View`. To do this, `DispatcherPortlet` uses a
+special servlet that exists for just this purpose: the `ViewRendererServlet`.
+
+In order for `DispatcherPortlet` rendering to work, you must declare an instance of the
+`ViewRendererServlet` in the `web.xml` file for your web application as follows:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<servlet>
+		<servlet-name>ViewRendererServlet</servlet-name>
+		<servlet-class>org.springframework.web.servlet.ViewRendererServlet</servlet-class>
+	</servlet>
+
+	<servlet-mapping>
+		<servlet-name>ViewRendererServlet</servlet-name>
+		<url-pattern>/WEB-INF/servlet/view</url-pattern>
+	</servlet-mapping>
+----
+
+To perform the actual rendering, `DispatcherPortlet` does the following:
+
+. Binds the `WebApplicationContext` to the request as an attribute under the same
+`WEB_APPLICATION_CONTEXT_ATTRIBUTE` key that `DispatcherServlet` uses.
+. Binds the `Model` and `View` objects to the request to make them available to the
+`ViewRendererServlet`.
+. Constructs a `PortletRequestDispatcher` and performs an `include` using the `/WEB-
+INF/servlet/view` URL that is mapped to the `ViewRendererServlet`.
+
+The `ViewRendererServlet` is then able to call the `render` method on the `View` with
+the appropriate arguments.
+
+The actual URL for the `ViewRendererServlet` can be changed using `DispatcherPortlet`'s
+`viewRendererUrl` configuration parameter.
+
+
+
+
+[[portlet-controller]]
+=== Controllers
+The controllers in Portlet MVC are very similar to the Web MVC Controllers, and porting
+code from one to the other should be simple.
+
+The basis for the Portlet MVC controller architecture is the
+`org.springframework.web.portlet.mvc.Controller` interface, which is listed below.
+
+[source,java,indent=0]
+----
+	public interface Controller {
+
+		/**
+		 * Process the render request and return a ModelAndView object which the
+		 * DispatcherPortlet will render.
+		 */
+		ModelAndView handleRenderRequest(RenderRequest request,
+				RenderResponse response) throws Exception;
+
+		/**
+		 * Process the action request. There is nothing to return.
+		 */
+		void handleActionRequest(ActionRequest request,
+				ActionResponse response) throws Exception;
+
+	}
+----
+
+As you can see, the Portlet `Controller` interface requires two methods that handle the
+two phases of a portlet request: the action request and the render request. The action
+phase should be capable of handling an action request, and the render phase should be
+capable of handling a render request and returning an appropriate model and view. While
+the `Controller` interface is quite abstract, Spring Portlet MVC offers several
+controllers that already contain a lot of the functionality you might need; most of
+these are very similar to controllers from Spring Web MVC. The `Controller` interface
+just defines the most common functionality required of every controller: handling an
+action request, handling a render request, and returning a model and a view.
+
+
+

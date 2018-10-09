@@ -1,0 +1,26 @@
+[[scheduling]]
+== 任务执行与调度
+
+
+
+
+[[scheduling-introduction]]
+=== 介绍
+The Spring Framework provides abstractions for asynchronous execution and scheduling of
+tasks with the `TaskExecutor` and `TaskScheduler` interfaces, respectively. Spring also
+features implementations of those interfaces that support thread pools or delegation to
+CommonJ within an application server environment. Ultimately the use of these
+implementations behind the common interfaces abstracts away the differences between Java
+SE 5, Java SE 6 and Java EE environments.
+
+Spring also features integration classes for supporting scheduling with the `Timer`,
+part of the JDK since 1.3, and the Quartz Scheduler ( http://quartz-scheduler.org[]).
+Both of those schedulers are set up using a `FactoryBean` with optional references to
+`Timer` or `Trigger` instances, respectively. Furthermore, a convenience class for both
+the Quartz Scheduler and the `Timer` is available that allows you to invoke a method of
+an existing target object (analogous to the normal `MethodInvokingFactoryBean`
+operation).
+
+
+
+

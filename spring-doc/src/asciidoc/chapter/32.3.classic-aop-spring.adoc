@@ -1,0 +1,120 @@
+[[classic-aop-api-advice-types]]
+==== Advice types in Spring
+Spring provides several advice types out of the box, and is extensible to support
+arbitrary advice types. Let us look at the basic concepts and standard advice types.
+
+
+[[classic-aop-api-advice-around]]
+===== Interception around advice
+The most fundamental advice type in Spring is __interception around advice__.
+
+Spring is compliant with the AOP Alliance interface for around advice using method
+interception. MethodInterceptors implementing around advice should implement the
+following interface:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface MethodInterceptor extends Interceptor {
+
+		Object invoke(MethodInvocation invocation) throws Throwable;
+
+	}
+----
+
+The `MethodInvocation` argument to the `invoke()` method exposes the method being
+invoked; the target join point; the AOP proxy; and the arguments to the method. The
+`invoke()` method should return the invocation's result: the return value of the join
+point.
+
+A simple `MethodInterceptor` implementation looks as follows:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class DebugInterceptor implements MethodInterceptor {
+
+		public Object invoke(MethodInvocation invocation) throws Throwable {
+			System.out.println("Before: invocation=[" + invocation + "]");
+			Object rval = invocation.proceed();
+			System.out.println("Invocation returned");
+			return rval;
+		}
+
+	}
+----
+
+Note the call to the MethodInvocation's `proceed()` method. This proceeds down the
+interceptor chain towards the join point. Most interceptors will invoke this method, and
+return its return value. However, a MethodInterceptor, like any around advice, can
+return a different value or throw an exception rather than invoke the proceed method.
+However, you don't want to do this without good reason!
+
+[NOTE]
+====
+MethodInterceptors offer interoperability with other AOP Alliance-compliant AOP
+implementations. The other advice types discussed in the remainder of this section
+implement common AOP concepts, but in a Spring-specific way. While there is an advantage
+in using the most specific advice type, stick with MethodInterceptor around advice if
+you are likely to want to run the aspect in another AOP framework. Note that pointcuts
+are not currently interoperable between frameworks, and the AOP Alliance does not
+currently define pointcut interfaces.
+====
+
+
+[[classic-aop-api-advice-before]]
+===== Before advice
+A simpler advice type is a __before advice__. This does not need a `MethodInvocation`
+object, since it will only be called before entering the method.
+
+The main advantage of a before advice is that there is no need to invoke the `proceed()`
+method, and therefore no possibility of inadvertently failing to proceed down the
+interceptor chain.
+
+The `MethodBeforeAdvice` interface is shown below. (Spring's API design would allow for
+field before advice, although the usual objects apply to field interception and it's
+unlikely that Spring will ever implement it).
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface MethodBeforeAdvice extends BeforeAdvice {
+
+		void before(Method m, Object[] args, Object target) throws Throwable;
+
+	}
+----
+
+Note the return type is `void`. Before advice can insert custom behavior before the join
+point executes, but cannot change the return value. If a before advice throws an
+exception, this will abort further execution of the interceptor chain. The exception
+will propagate back up the interceptor chain. If it is unchecked, or on the signature of
+the invoked method, it will be passed directly to the client; otherwise it will be
+wrapped in an unchecked exception by the AOP proxy.
+
+An example of a before advice in Spring, which counts all method invocations:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class CountingBeforeAdvice implements MethodBeforeAdvice {
+
+		private int count;
+
+		public void before(Method m, Object[] args, Object target) throws Throwable {
+			++count;
+		}
+
+		public int getCount() {
+			return count;
+		}
+	}
+----
+
+[TIP]
+====
+
+Before advice can be used with any pointcut.
+====
+
+

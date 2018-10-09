@@ -1,0 +1,93 @@
+[[mvc-ann-customer-servlet-container-error-page]]
+==== Customizing the Default Servlet Container Error Page
+When the status of the response is set to an error status code and the body of the
+response is empty, Servlet containers commonly render an HTML formatted error page. To
+customize the default error page of the container, you can declare an `<error-page>`
+element in `web.xml`. Up until Servlet 3, that element had to be mapped to a specific
+status code or exception type. Starting with Servlet 3 an error page does not need to be
+mapped, which effectively means the specified location customizes the default Servlet
+container error page.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<error-page>
+		<location>/error</location>
+	</error-page>
+----
+
+Note that the actual location for the error page can be a JSP page or some other URL
+within the container including one handled through an `@Controller` method:
+
+When writing error information, the status code and the error message set on the
+`HttpServletResponse` can be accessed through request attributes in a controller:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Controller
+	public class ErrorController {
+
+		@RequestMapping(value="/error", produces="application/json")
+		@ResponseBody
+		public Map<String, Object> handle(HttpServletRequest request) {
+
+			Map<String, Object> map = new HashMap<String, Object>();
+			map.put("status", request.getAttribute("javax.servlet.error.status_code"));
+			map.put("reason", request.getAttribute("javax.servlet.error.message"));
+
+			return map;
+		}
+
+	}
+----
+
+or in a JSP:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<%@ page contentType="application/json" pageEncoding="UTF-8"%>
+	{
+		status:<%=request.getAttribute("javax.servlet.error.status_code") %>,
+		reason:<%=request.getAttribute("javax.servlet.error.message") %>
+	}
+----
+
+
+[[mvc-web-security]]
+=== Web Security
+
+The http://projects.spring.io/spring-security/[Spring Security] project provides features
+to protect web applications from malicious exploits. Check out the reference documentation in the sections on
+http://docs.spring.io/spring-security/site/docs/current/reference/htmlsingle/#csrf["CSRF protection"],
+http://docs.spring.io/spring-security/site/docs/current/reference/htmlsingle/#headers["Security Response Headers"], and also
+http://docs.spring.io/spring-security/site/docs/current/reference/htmlsingle/#mvc["Spring MVC Integration"].
+Note that using Spring Security to secure the application is not necessarily required for all features.
+For example CSRF protection can be added simply by adding the `CsrfFilter` and
+`CsrfRequestDataValueProcessor` to your configuration. See the
+https://github.com/spring-projects/spring-mvc-showcase/commit/361adc124c05a8187b84f25e8a57550bb7d9f8e4[Spring MVC Showcase]
+for an example.
+
+Another option is to use a framework dedicated to Web Security.
+http://hdiv.org/[HDIV] is one such framework and integrates with Spring MVC.
+
+
+
+
+[[mvc-coc]]
+=== Convention over configuration support
+For a lot of projects, sticking to established conventions and having reasonable
+defaults is just what they (the projects) need, and Spring Web MVC now has explicit
+support for __convention over configuration__. What this means is that if you establish
+a set of naming conventions and suchlike, you can __substantially__ cut down on the
+amount of configuration that is required to set up handler mappings, view resolvers,
+`ModelAndView` instances, etc. This is a great boon with regards to rapid prototyping,
+and can also lend a degree of (always good-to-have) consistency across a codebase should
+you choose to move forward with it into production.
+
+Convention-over-configuration support addresses the three core areas of MVC: models,
+views, and controllers.
+
+
+

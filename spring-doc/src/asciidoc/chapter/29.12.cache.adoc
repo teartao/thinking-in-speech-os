@@ -1,0 +1,95 @@
+[[cache-store-configuration]]
+=== Configuring the cache storage
+Out of the box, the cache abstraction provides several storages integration. To use
+them, one needs to simply declare an appropriate `CacheManager` - an entity that
+controls and manages ++Cache++s and can be used to retrieve these for storage.
+
+
+[[cache-store-configuration-jdk]]
+==== JDK ConcurrentMap-based Cache
+
+The JDK-based `Cache` implementation resides under
+`org.springframework.cache.concurrent` package. It allows one to use `ConcurrentHashMap`
+as a backing `Cache` store.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<!-- simple cache manager -->
+	<bean id="cacheManager" class="org.springframework.cache.support.SimpleCacheManager">
+		<property name="caches">
+			<set>
+				<bean class="org.springframework.cache.concurrent.ConcurrentMapCacheFactoryBean" p:name="default"/>
+				<bean class="org.springframework.cache.concurrent.ConcurrentMapCacheFactoryBean" p:name="books"/>
+			</set>
+		</property>
+	</bean>
+----
+
+The snippet above uses the `SimpleCacheManager` to create a `CacheManager` for the two
+nested `ConcurrentMapCache` instances named __default__ and __books__. Note that the
+names are configured directly for each cache.
+
+As the cache is created by the application, it is bound to its lifecycle, making it
+suitable for basic use cases, tests or simple applications. The cache scales well and is
+very fast but it does not provide any management or persistence capabilities nor
+eviction contracts.
+
+
+
+[[cache-store-configuration-ehcache]]
+==== EhCache-based Cache
+
+The EhCache implementation is located under `org.springframework.cache.ehcache` package.
+Again, to use it, one simply needs to declare the appropriate `CacheManager`:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="cacheManager"
+	      class="org.springframework.cache.ehcache.EhCacheCacheManager" p:cache-manager-ref="ehcache"/>
+
+	<!-- EhCache library setup -->
+	<bean id="ehcache"
+	      class="org.springframework.cache.ehcache.EhCacheManagerFactoryBean" p:config-location="ehcache.xml"/>
+----
+
+This setup bootstraps the ehcache library inside Spring IoC (through the `ehcache` bean) which
+is then wired into the dedicated `CacheManager` implementation. Note the entire
+ehcache-specific configuration is read from `ehcache.xml`.
+
+[[cache-store-configuration-guava]]
+==== Guava Cache
+
+The Guava implementation is located under `org.springframework.cache.guava` package and
+provides access to several features of Guava.
+
+Configuring a `CacheManager` that creates the cache on demand is straightforward:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="cacheManager"
+	      class="org.springframework.cache.guava.GuavaCacheManager"/>
+----
+
+It is also possible to provide the caches to use explicitly. In that case, only those
+will be made available by the manager:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="cacheManager" class="org.springframework.cache.guava.GuavaCacheManager">
+		<property name="caches">
+			<set>
+				<value>default</value>
+				<value>books</value>
+			</set>
+		</property>
+	</bean>
+----
+
+The Guava `CacheManager` also supports customs `CacheBuilder` and `CacheLoader`. See
+the https://code.google.com/p/guava-libraries/wiki/CachesExplained[Guava documentation]
+for more information about those.
+

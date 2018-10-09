@@ -1,0 +1,125 @@
+[[dynamic-language-scenarios]]
+=== Scenarios
+The possible scenarios where defining Spring managed beans in a scripting language would
+be beneficial are, of course, many and varied. This section describes two possible use
+cases for the dynamic language support in Spring.
+
+
+
+[[dynamic-language-scenarios-controllers]]
+==== Scripted Spring MVC Controllers
+One group of classes that may benefit from using dynamic-language-backed beans is that
+of Spring MVC controllers. In pure Spring MVC applications, the navigational flow
+through a web application is to a large extent determined by code encapsulated within
+your Spring MVC controllers. As the navigational flow and other presentation layer logic
+of a web application needs to be updated to respond to support issues or changing
+business requirements, it may well be easier to effect any such required changes by
+editing one or more dynamic language source files and seeing those changes being
+immediately reflected in the state of a running application.
+
+Remember that in the lightweight architectural model espoused by projects such as
+Spring, you are typically aiming to have a really __thin__ presentation layer, with all
+the meaty business logic of an application being contained in the domain and service
+layer classes. Developing Spring MVC controllers as dynamic-language-backed beans allows
+you to change presentation layer logic by simply editing and saving text files; any
+changes to such dynamic language source files will (depending on the configuration)
+automatically be reflected in the beans that are backed by dynamic language source files.
+
+[NOTE]
+====
+In order to effect this automatic 'pickup' of any changes to dynamic-language-backed
+beans, you will have had to enable the 'refreshable beans' functionality. See
+<<dynamic-language-refreshable-beans>> for a full treatment of this feature.
+====
+
+Find below an example of an `org.springframework.web.servlet.mvc.Controller` implemented
+using the Groovy dynamic language.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	// from the file '/WEB-INF/groovy/FortuneController.groovy'
+	package org.springframework.showcase.fortune.web
+
+	import org.springframework.showcase.fortune.service.FortuneService
+	import org.springframework.showcase.fortune.domain.Fortune
+	import org.springframework.web.servlet.ModelAndView
+	import org.springframework.web.servlet.mvc.Controller
+
+	import javax.servlet.http.HttpServletRequest
+	import javax.servlet.http.HttpServletResponse
+
+	class FortuneController implements Controller {
+
+		@Property FortuneService fortuneService
+
+		ModelAndView handleRequest(HttpServletRequest request,
+				HttpServletResponse httpServletResponse) {
+			return new ModelAndView("tell", "fortune", this.fortuneService.tellFortune())
+		}
+
+	}
+----
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<lang:groovy id="fortune"
+			refresh-check-delay="3000"
+			script-source="/WEB-INF/groovy/FortuneController.groovy">
+		<lang:property name="fortuneService" ref="fortuneService"/>
+	</lang:groovy>
+----
+
+
+
+[[dynamic-language-scenarios-validators]]
+==== Scripted Validators
+Another area of application development with Spring that may benefit from the
+flexibility afforded by dynamic-language-backed beans is that of validation. It __may__
+be easier to express complex validation logic using a loosely typed dynamic language
+(that may also have support for inline regular expressions) as opposed to regular Java.
+
+Again, developing validators as dynamic-language-backed beans allows you to change
+validation logic by simply editing and saving a simple text file; any such changes will
+(depending on the configuration) automatically be reflected in the execution of a
+running application and would not require the restart of an application.
+
+[NOTE]
+====
+Please note that in order to effect the automatic 'pickup' of any changes to
+dynamic-language-backed beans, you will have had to enable the 'refreshable beans'
+feature. See <<dynamic-language-refreshable-beans>> for a full and detailed treatment of
+this feature.
+====
+
+Find below an example of a Spring `org.springframework.validation.Validator` implemented
+using the Groovy dynamic language. (See <<validator>> for a discussion of the
+`Validator` interface.)
+
+[source,groovy,indent=0]
+[subs="verbatim,quotes"]
+----
+	import org.springframework.validation.Validator
+	import org.springframework.validation.Errors
+	import org.springframework.beans.TestBean
+
+	class TestBeanValidator implements Validator {
+
+		boolean supports(Class clazz) {
+			return TestBean.class.isAssignableFrom(clazz)
+		}
+
+		void validate(Object bean, Errors errors) {
+			if(bean.name?.trim()?.size() > 0) {
+				return
+			}
+			errors.reject("whitespace", "Cannot be composed wholly of whitespace.")
+		}
+
+	}
+----
+
+
+
+

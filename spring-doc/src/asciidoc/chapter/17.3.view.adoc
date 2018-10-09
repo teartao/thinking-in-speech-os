@@ -1,0 +1,169 @@
+[[view-jsp-formtaglib-selecttag]]
+===== The select tag
+
+This tag renders an HTML 'select' element. It supports data binding to the selected
+option as well as the use of nested `option` and `options` tags.
+
+Let's assume a `User` has a list of skills.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<tr>
+		<td>Skills:</td>
+		<td><form:select path="skills" items="${skills}"/></td>
+	</tr>
+----
+
+If the `User's` skill were in Herbology, the HTML source of the 'Skills' row would look
+like:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<tr>
+		<td>Skills:</td>
+		<td>
+			<select name="skills" multiple="true">
+				<option value="Potions">Potions</option>
+				<option value="Herbology" selected="selected">Herbology</option>
+				<option value="Quidditch">Quidditch</option>
+			</select>
+		</td>
+	</tr>
+----
+
+
+[[view-jsp-formtaglib-optiontag]]
+===== The option tag
+
+This tag renders an HTML 'option'. It sets 'selected' as appropriate based on the bound
+value.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<tr>
+		<td>House:</td>
+		<td>
+			<form:select path="house">
+				<form:option value="Gryffindor"/>
+				<form:option value="Hufflepuff"/>
+				<form:option value="Ravenclaw"/>
+				<form:option value="Slytherin"/>
+			</form:select>
+		</td>
+	</tr>
+----
+
+If the `User's` house was in Gryffindor, the HTML source of the 'House' row would look
+like:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<tr>
+		<td>House:</td>
+		<td>
+			<select name="house">
+				<option value="Gryffindor" selected="selected">Gryffindor</option>
+				<option value="Hufflepuff">Hufflepuff</option>
+				<option value="Ravenclaw">Ravenclaw</option>
+				<option value="Slytherin">Slytherin</option>
+			</select>
+		</td>
+	</tr>
+----
+
+
+[[view-jsp-formtaglib-optionstag]]
+===== The options tag
+
+This tag renders a list of HTML 'option' tags. It sets the 'selected' attribute as
+appropriate based on the bound value.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<tr>
+		<td>Country:</td>
+		<td>
+			<form:select path="country">
+				<form:option value="-" label="--Please Select"/>
+				<form:options items="${countryList}" itemValue="code" itemLabel="name"/>
+			</form:select>
+		</td>
+	</tr>
+----
+
+If the `User` lived in the UK, the HTML source of the 'Country' row would look like:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<tr>
+		<td>Country:</td>
+		<td>
+			<select name="country">
+				<option value="-">--Please Select</option>
+				<option value="AT">Austria</option>
+				<option value="UK" selected="selected">United Kingdom</option>
+				<option value="US">United States</option>
+			</select>
+		</td>
+	</tr>
+----
+
+As the example shows, the combined usage of an `option` tag with the `options` tag
+generates the same standard HTML, but allows you to explicitly specify a value in the
+JSP that is for display only (where it belongs) such as the default string in the
+example: "-- Please Select".
+
+The `items` attribute is typically populated with a collection or array of item objects.
+`itemValue` and `itemLabel` simply refer to bean properties of those item objects, if
+specified; otherwise, the item objects themselves will be stringified. Alternatively,
+you may specify a `Map` of items, in which case the map keys are interpreted as option
+values and the map values correspond to option labels. If `itemValue` and/or `itemLabel`
+happen to be specified as well, the item value property will apply to the map key and
+the item label property will apply to the map value.
+
+
+[[view-jsp-formtaglib-textAreatag]]
+===== The textarea tag
+
+This tag renders an HTML 'textarea'.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<tr>
+		<td>Notes:</td>
+		<td><form:textarea path="notes" rows="3" cols="20" /></td>
+		<td><form:errors path="notes" /></td>
+	</tr>
+----
+
+
+[[view-jsp-formtaglib-hiddeninputtag]]
+===== The hidden tag
+
+This tag renders an HTML 'input' tag with type 'hidden' using the bound value. To submit
+an unbound hidden value, use the HTML `input` tag with type 'hidden'.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<form:hidden path="house" />
+
+----
+
+If we choose to submit the 'house' value as a hidden one, the HTML would look like:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<input name="house" type="hidden" value="Gryffindor"/>
+
+----
+
+

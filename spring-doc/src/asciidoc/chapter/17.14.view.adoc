@@ -1,0 +1,97 @@
+[[view-xslt-summary]]
+==== Summary
+A summary of the files discussed and their location in the WAR file is shown in the
+simplified WAR structure below.
+
+[literal]
+[subs="verbatim,quotes"]
+----
+ProjectRoot
+  |
+  +- WebContent
+      |
+      +- WEB-INF
+          |
+          +- classes
+          |    |
+          |    +- xslt
+          |    |   |
+          |    |   +- HomePageController.class
+          |    |   +- HomePage.class
+          |    |
+          |    +- views.properties
+          |
+          +- lib
+          |   |
+          |   +- spring-*.jar
+          |
+          +- xsl
+          |   |
+          |   +- home.xslt
+          |
+          +- frontcontroller-servlet.xml
+----
+
+You will also need to ensure that an XML parser and an XSLT engine are available on the
+classpath. JDK 1.4 provides them by default, and most Java EE containers will also make
+them available by default, but it's a possible source of errors to be aware of.
+
+
+
+
+[[view-document]]
+=== Document views (PDF/Excel)
+
+
+
+[[view-document-intro]]
+==== Introduction
+Returning an HTML page isn't always the best way for the user to view the model output,
+and Spring makes it simple to generate a PDF document or an Excel spreadsheet
+dynamically from the model data. The document is the view and will be streamed from the
+server with the correct content type to (hopefully) enable the client PC to run their
+spreadsheet or PDF viewer application in response.
+
+In order to use Excel views, you need to add the 'poi' library to your classpath, and
+for PDF generation, the iText library.
+
+
+
+[[view-document-config]]
+==== Configuration and setup
+Document based views are handled in an almost identical fashion to XSLT views, and the
+following sections build upon the previous one by demonstrating how the same controller
+used in the XSLT example is invoked to render the same model as both a PDF document and
+an Excel spreadsheet (which can also be viewed or manipulated in Open Office).
+
+
+[[view-document-configviews]]
+===== Document view definitions
+First, let's amend the views.properties file (or xml equivalent) and add a simple view
+definition for both document types. The entire file now looks like this with the XSLT
+view shown from earlier:
+
+[literal]
+[subs="verbatim,quotes"]
+----
+home.(class)=xslt.HomePage
+home.stylesheetLocation=/WEB-INF/xsl/home.xslt
+home.root=words
+
+xl.(class)=excel.HomePage
+
+pdf.(class)=pdf.HomePage
+----
+
+__If you want to start with a template spreadsheet or a fillable PDF form to add your
+model data to, specify the location as the 'url' property in the view definition__
+
+
+[[view-document-configcontroller]]
+===== Controller code
+The controller code we'll use remains exactly the same from the XSLT example earlier
+other than to change the name of the view to use. Of course, you could be clever and
+have this selected based on a URL parameter or some other logic - proof that Spring
+really is very good at decoupling the views from the controllers!
+
+

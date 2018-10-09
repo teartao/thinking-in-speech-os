@@ -1,0 +1,90 @@
+[[spring-mvc-test-server-defining-expectations]]
+====== 定义期望的结果
+
+在发起请求后，可以连续调用多次  `.andExpect(..)` 方法来定义期望的结果
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	mockMvc.perform(get("/accounts/1")).andExpect(status().isOk());
+----
+
+`MockMvcResultMatchers.*` 类定义了很多静态成员，其中有些方法会返回特定类型的值，用于断言请求的结果。这些断言可分为两种类型：
+
+第一类断言用于验证响应报文的属性，例如响应状态码、头部和内容。这些一般是测试中要重点关注的。
+
+第二类断言则不仅仅针对于响应报文，它们可以针对Spring MVC的特定内容进行验证。例如，请求是由哪个Controller的方法处理的、某个异常是否被抛出并且被处理了、model 的内容、选择了哪个view、增加了哪些 flash 属性，等等。这类断言还可以用于验证与 Servlet 相关的特定内容，例如Request 和 Session 域的属性。下列代码断言某个绑定/验证动作失败了：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	mockMvc.perform(post("/persons"))
+		.andExpect(status().isOk())
+		.andExpect(model().attributeHasErrors("person"));
+----
+
+测试的时候经常需要把结果 dump ，可以通过下列代码去实现，其中的 `print()` 是  `MockMvcResultHandlers` 的静态导入（static import）。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	mockMvc.perform(post("/persons"))
+		.andDo(print())
+		.andExpect(status().isOk())
+		.andExpect(model().attributeHasErrors("person"));
+----
+
+只要请求处理过程中抛出了未捕获的异常，`print()` 方法就会通过 `System.out` 打印出所有信息。
+
+有些时候，你可能想直接获取结果数据，进而做一些别的地方无法做的验证。你可以在所有的期望末尾增加一个  `.andReturn()` 方法调用。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	MvcResult mvcResult = mockMvc.perform(post("/persons")).andExpect(status().isOk()).andReturn();
+	// ...
+----
+
+如果所有的测试都期望某个结果，你可以在构建 `MockMvc` 时定义公共的期望结果。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	standaloneSetup(new SimpleController())
+		.alwaysExpect(status().isOk())
+		.alwaysExpect(content().contentType("application/json;charset=UTF-8"))
+		.build()
+----
+
+注意，这里添加的期望结果会 __一直__ 有效、无法被覆盖，除非你定义一个新的 `MockMvc`
+
+如果返回的JSON 响应报文包含了使用  https://github.com/spring-projects/spring-hateoas[Spring HATEOAS] 创建的超媒体链接，可以这样去验证链接：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	mockMvc.perform(get("/people").accept(MediaType.APPLICATION_JSON))
+		.andExpect(jsonPath("$.links[?(@.rel == ''self'')].href").value("http://localhost:8080/people"));
+----
+
+如果返回的 XML 响应报文包含了使用  https://github.com/spring-projects/spring-hateoas[Spring HATEOAS]  创建的超媒体链接，可以这样去验证链接：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	Map<String, String> ns = Collections.singletonMap("ns", "http://www.w3.org/2005/Atom");
+	mockMvc.perform(get("/handle").accept(MediaType.APPLICATION_XML))
+		.andExpect(xpath("/person/ns:link[@rel=''self'']/@href", ns).string("http://localhost:8080/people"));
+----
+
+[[spring-mvc-test-server-filters]]
+====== 注册过滤器
+当你装配 MockMvc 时，可以注册一个或多个 `过滤器Filter` 实例：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	mockMvc = standaloneSetup(new PersonController()).addFilters(new CharacterEncodingFilter()).build();
+----
+
+注册的过滤器会由 `spring-test` 通过 `MockFilterChain` 进行调用，最后一个过滤器会把请求委派给 `DispatcherServlet`。

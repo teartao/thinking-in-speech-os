@@ -1,0 +1,62 @@
+[[classic-aop-api-autoproxy-default]]
+===== DefaultAdvisorAutoProxyCreator
+A more general and extremely powerful auto proxy creator is
+`DefaultAdvisorAutoProxyCreator`. This will automagically apply eligible advisors in the
+current context, without the need to include specific bean names in the autoproxy
+advisor's bean definition. It offers the same merit of consistent configuration and
+avoidance of duplication as `BeanNameAutoProxyCreator`.
+
+Using this mechanism involves:
+
+* Specifying a `DefaultAdvisorAutoProxyCreator` bean definition.
+* Specifying any number of Advisors in the same or related contexts. Note that these
+  __must__ be Advisors, not just interceptors or other advices. This is necessary
+  because there must be a pointcut to evaluate, to check the eligibility of each advice
+  to candidate bean definitions.
+
+The `DefaultAdvisorAutoProxyCreator` will automatically evaluate the pointcut contained
+in each advisor, to see what (if any) advice it should apply to each business object
+(such as "businessObject1" and "businessObject2" in the example).
+
+This means that any number of advisors can be applied automatically to each business
+object. If no pointcut in any of the advisors matches any method in a business object,
+the object will not be proxied. As bean definitions are added for new business objects,
+they will automatically be proxied if necessary.
+
+Autoproxying in general has the advantage of making it impossible for callers or
+dependencies to obtain an un-advised object. Calling getBean("businessObject1") on this
+ApplicationContext will return an AOP proxy, not the target business object. (The "inner
+bean" idiom shown earlier also offers this benefit.)
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator"/>
+
+	<bean class="org.springframework.transaction.interceptor.TransactionAttributeSourceAdvisor">
+		<property name="transactionInterceptor" ref="transactionInterceptor"/>
+	</bean>
+
+	<bean id="customAdvisor" class="com.mycompany.MyAdvisor"/>
+
+	<bean id="businessObject1" class="com.mycompany.BusinessObject1">
+		<!-- Properties omitted -->
+	</bean>
+
+	<bean id="businessObject2" class="com.mycompany.BusinessObject2"/>
+----
+
+The `DefaultAdvisorAutoProxyCreator` is very useful if you want to apply the same advice
+consistently to many business objects. Once the infrastructure definitions are in place,
+you can simply add new business objects without including specific proxy configuration.
+You can also drop in additional aspects very easily - for example, tracing or
+performance monitoring aspects - with minimal change to configuration.
+
+The DefaultAdvisorAutoProxyCreator offers support for filtering (using a naming
+convention so that only certain advisors are evaluated, allowing use of multiple,
+differently configured, AdvisorAutoProxyCreators in the same factory) and ordering.
+Advisors can implement the `org.springframework.core.Ordered` interface to ensure
+correct ordering if this is an issue. The TransactionAttributeSourceAdvisor used in the
+above example has a configurable order value; the default setting is unordered.
+
+

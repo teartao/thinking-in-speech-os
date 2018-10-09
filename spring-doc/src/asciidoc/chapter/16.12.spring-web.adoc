@@ -1,0 +1,113 @@
+[[mvc-config-view-controller]]
+==== 视图控制器
+
+这是定义一个 `ParameterizableViewController` 的快捷方式。当调用该控制器时，它会立即转发给一个视图。应该对静态视图使用它：即在视图生成响应之前，Java 控制器没有要执行的逻辑。
+
+下面的例子展示了在 Java 配置方式下，如何将映射到 `"/"` 的请求转发给名为 `"home"` 的视图：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+@Configuration
+@EnableWebMvc
+public class WebConfig extends WebMvcConfigurerAdapter {
+
+    @Override
+    public void addViewControllers(ViewControllerRegistry registry) {
+        registry.addViewController("/").setViewName("home");
+    }
+
+}
+----
+
+在 XML 配置方式下则使用 `<mvc:view-controller>` 元素：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<mvc:view-controller path="/" view-name="home"/>
+----
+
+[[mvc-config-view-resolvers]]
+==== 视图解析器
+
+MVC 配置简化了视图解析器的注册。
+
+下面的代码是一个 Java 配置的示例。它配置了内容协商的视图解决方案，其中使用 FreeMarker HTML 模板和 Jackson 作为默认的 `View` 来渲染 JSON。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+@Configuration
+@EnableWebMvc
+public class WebConfig extends WebMvcConfigurerAdapter {
+
+    @Override
+    public void configureViewResolvers(ViewResolverRegistry registry) {
+        registry.enableContentNegotiation(new MappingJackson2JsonView());
+        registry.jsp();
+    }
+
+}
+----
+
+在 XML 配置中实现相同配置：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+<mvc:view-resolvers>
+    <mvc:content-negotiation>
+        <mvc:default-views>
+            <bean class="org.springframework.web.servlet.view.json.MappingJackson2JsonView"/>
+        </mvc:default-views>
+    </mvc:content-negotiation>
+    <mvc:jsp/>
+</mvc:view-resolvers>
+----
+
+注意，无论是 FreeMarker、Velocity、Tiles、Groovy Markup 和脚本模板还需要配置底层的视图技术。
+
+MVC 命名空间提供了相应的元素。比如，使用 FreeMarker：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+<mvc:view-resolvers>
+    <mvc:content-negotiation>
+        <mvc:default-views>
+            <bean class="org.springframework.web.servlet.view.json.MappingJackson2JsonView"/>
+        </mvc:default-views>
+    </mvc:content-negotiation>
+    <mvc:freemarker cache="false"/>
+</mvc:view-resolvers>
+
+<mvc:freemarker-configurer>
+    <mvc:template-loader-path location="/freemarker"/>
+</mvc:freemarker-configurer>
+----
+
+在 Java 配置方式下，添加一个对应的 "Configurer" bean即可：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+@Configuration
+@EnableWebMvc
+public class WebConfig extends WebMvcConfigurerAdapter {
+
+    @Override
+    public void configureViewResolvers(ViewResolverRegistry registry) {
+        registry.enableContentNegotiation(new MappingJackson2JsonView());
+        registry.freeMarker().cache(false);
+    }
+
+    @Bean
+    public FreeMarkerConfigurer freeMarkerConfigurer() {
+        FreeMarkerConfigurer configurer = new FreeMarkerConfigurer();
+        configurer.setTemplateLoaderPath("/WEB-INF/");
+        return configurer;
+    }
+
+}
+----

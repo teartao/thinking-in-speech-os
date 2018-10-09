@@ -1,0 +1,68 @@
+[[testcontext-executing-sql]]
+===== Executing SQL scripts
+
+When writing integration tests against a relational database, it is often beneficial
+to execute SQL scripts to modify the database schema or insert test data into tables.
+The `spring-jdbc` module provides support for _initializing_ an embedded or existing
+database by executing SQL scripts when the Spring `ApplicationContext` is loaded. See
+<<jdbc-embedded-database-support>> and <<jdbc-embedded-database-dao-testing>> for
+details.
+
+Although it is very useful to initialize a database for testing _once_ when the
+`ApplicationContext` is loaded, sometimes it is essential to be able to modify the
+database _during_ integration tests. The following sections explain how to execute SQL
+scripts programmatically and declaratively during integration tests.
+
+[[testcontext-executing-sql-programmatically]]
+====== Executing SQL scripts programmatically
+
+Spring provides the following options for executing SQL scripts programmatically within
+integration test methods.
+
+* `org.springframework.jdbc.datasource.init.ScriptUtils`
+* `org.springframework.jdbc.datasource.init.ResourceDatabasePopulator`
+* `org.springframework.test.context.junit4.AbstractTransactionalJUnit4SpringContextTests`
+* `org.springframework.test.context.testng.AbstractTransactionalTestNGSpringContextTests`
+
+`ScriptUtils` provides a collection of static utility methods for working with SQL scripts
+and is mainly intended for internal use within the framework. However, if you require
+full control over how SQL scripts are parsed and executed, `ScriptUtils` may suit your
+needs better than some of the other alternatives described below. Consult the javadocs for
+individual methods in `ScriptUtils` for further details.
+
+`ResourceDatabasePopulator` provides a simple object-based API for programmatically
+populating, initializing, or cleaning up a database using SQL scripts defined in
+external resources. `ResourceDatabasePopulator` provides options for configuring the
+character encoding, statement separator, comment delimiters, and error handling flags
+used when parsing and executing the scripts, and each of the configuration options has
+a reasonable default value. Consult the javadocs for details on default values. To
+execute the scripts configured in a `ResourceDatabasePopulator`, you can invoke either
+the `populate(Connection)` method to execute the populator against a
+`java.sql.Connection` or the `execute(DataSource)` method to execute the populator
+against a `javax.sql.DataSource`. The following example specifies SQL scripts for a test
+schema and test data, sets the statement separator to `"@@"`, and then executes the
+scripts against a `DataSource`.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Test
+	public void databaseTest {
+		ResourceDatabasePopulator populator = new ResourceDatabasePopulator();
+		populator.addScripts(
+			new ClassPathResource("test-schema.sql"),
+			new ClassPathResource("test-data.sql"));
+		populator.setSeparator("@@");
+		populator.execute(this.dataSource);
+		// execute code that uses the test schema and data
+	}
+----
+
+Note that `ResourceDatabasePopulator` internally delegates to `ScriptUtils` for parsing
+and executing SQL scripts. Similarly, the `executeSqlScript(..)` methods in
+<<testcontext-support-classes-junit4, `AbstractTransactionalJUnit4SpringContextTests`>> and
+<<testcontext-support-classes-testng, `AbstractTransactionalTestNGSpringContextTests`>>
+internally use a `ResourceDatabasePopulator` for executing SQL scripts. Consult the javadocs
+for the various `executeSqlScript(..)` methods for further details.
+
+

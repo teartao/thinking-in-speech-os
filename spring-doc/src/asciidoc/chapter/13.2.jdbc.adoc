@@ -1,0 +1,42 @@
+[[jdbc-packages]]
+==== Package hierarchy
+The Spring Framework's JDBC abstraction framework consists of four different packages,
+namely `core`, `datasource`, `object`, and `support`.
+
+The `org.springframework.jdbc.core` package contains the `JdbcTemplate` class and its
+various callback interfaces, plus a variety of related classes. A subpackage named
+`org.springframework.jdbc.core.simple` contains the `SimpleJdbcInsert` and
+`SimpleJdbcCall` classes. Another subpackage named
+`org.springframework.jdbc.core.namedparam` contains the `NamedParameterJdbcTemplate`
+class and the related support classes. See <<jdbc-core>>, <<jdbc-advanced-jdbc>>, and
+<<jdbc-simple-jdbc>>
+
+The `org.springframework.jdbc.datasource` package contains a utility class for easy
+`DataSource` access, and various simple `DataSource` implementations that can be used
+for testing and running unmodified JDBC code outside of a Java EE container. A
+subpackage named `org.springfamework.jdbc.datasource.embedded` provides support for
+creating in-memory database instances using Java database engines such as HSQL and H2.
+See <<jdbc-connections>> and <<jdbc-embedded-database-support>>
+
+The `org.springframework.jdbc.object` package contains classes that represent RDBMS
+queries, updates, and stored procedures as thread safe, reusable objects. See
+<<jdbc-object>>.This approach is modeled by JDO, although of course objects returned by
+queries are "disconnected" from the database. This higher level of JDBC abstraction
+depends on the lower-level abstraction in the `org.springframework.jdbc.core` package.
+
+The `org.springframework.jdbc.support` package provides `SQLException` translation
+functionality and some utility classes. Exceptions thrown during JDBC processing are
+translated to exceptions defined in the `org.springframework.dao` package. This means
+that code using the Spring JDBC abstraction layer does not need to implement JDBC or
+RDBMS-specific error handling. All translated exceptions are unchecked, which gives you
+the option of catching the exceptions from which you can recover while allowing other
+exceptions to be propagated to the caller. See <<jdbc-SQLExceptionTranslator>>.
+
+
+
+
+[[jdbc-core]]
+=== Using the JDBC core classes to control basic JDBC processing and error handling
+
+
+

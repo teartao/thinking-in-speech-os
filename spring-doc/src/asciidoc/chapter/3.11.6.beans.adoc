@@ -1,0 +1,64 @@
+[[beans-java-further-information-java-config]]
+===== Further information about how Java-based configuration works internally
+The following example shows a `@Bean` annotated method being called twice:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Configuration
+	public class AppConfig {
+
+		@Bean
+		public ClientService clientService1() {
+			ClientServiceImpl clientService = new ClientServiceImpl();
+			clientService.setClientDao(clientDao());
+			return clientService;
+		}
+
+		@Bean
+		public ClientService clientService2() {
+			ClientServiceImpl clientService = new ClientServiceImpl();
+			clientService.setClientDao(clientDao());
+			return clientService;
+		}
+
+		@Bean
+		public ClientDao clientDao() {
+			return new ClientDaoImpl();
+		}
+
+	}
+----
+
+`clientDao()` has been called once in `clientService1()` and once in `clientService2()`.
+Since this method creates a new instance of `ClientDaoImpl` and returns it, you would
+normally expect having 2 instances (one for each service). That definitely would be
+problematic: in Spring, instantiated beans have a `singleton` scope by default. This is
+where the magic comes in: All `@Configuration` classes are subclassed at startup-time
+with `CGLIB`. In the subclass, the child method checks the container first for any
+cached (scoped) beans before it calls the parent method and creates a new instance. Note
+that as of Spring 3.2, it is no longer necessary to add CGLIB to your classpath because
+CGLIB classes have been repackaged under org.springframework and included directly
+within the spring-core JAR.
+
+[NOTE]
+====
+The behavior could be different according to the scope of your bean. We are talking
+about singletons here.
+====
+
+[NOTE]
+====
+There are a few restrictions due to the fact that CGLIB dynamically adds features at
+startup-time:
+
+* Configuration classes should not be final
+* They should have a constructor with no arguments
+====
+
+
+
+[[beans-java-composing-configuration-classes]]
+==== Composing Java-based configurations
+
+

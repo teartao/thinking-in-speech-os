@@ -1,0 +1,64 @@
+[[jmx-context-mbeanexport]]
+==== Configuring annotation based MBean export
+If you prefer using <<jmx-interface-metadata,the annotation based approach>> to define
+your management interfaces, then a convenience subclass of `MBeanExporter` is available:
+`AnnotationMBeanExporter`. When defining an instance of this subclass, the
+`namingStrategy`, `assembler`, and `attributeSource` configuration is no longer needed,
+since it will always use standard Java annotation-based metadata (autodetection is
+always enabled as well). In fact, rather than defining an `MBeanExporter` bean, an even
+simpler syntax is supported by the `@EnableMBeanExport` `@Configuration` annotation.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Configuration
+	@EnableMBeanExport
+	public class AppConfig {
+
+	}
+----
+
+If you prefer XML based configuration the `'context:mbean-export'` element serves the
+same purpose.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<context:mbean-export/>
+----
+
+You can provide a reference to a particular MBean `server` if necessary, and the
+`defaultDomain` attribute (a property of `AnnotationMBeanExporter`) accepts an alternate
+value for the generated MBean `ObjectNames`' domains. This would be used in place of the
+fully qualified package name as described in the previous section on
+<<jmx-naming-metadata, `MetadataNamingStrategy`>>.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@EnableMBeanExport(server="myMBeanServer", defaultDomain="myDomain")
+	@Configuration
+	ContextConfiguration {
+
+	}
+----
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<context:mbean-export server="myMBeanServer" default-domain="myDomain"/>
+----
+
+[NOTE]
+====
+Do not use interface-based AOP proxies in combination with autodetection of JMX
+annotations in your bean classes. Interface-based proxies 'hide' the target class, which
+also hides the JMX managed resource annotations. Hence, use target-class proxies in that
+case: through setting the 'proxy-target-class' flag on `<aop:config/>`,
+`<tx:annotation-driven/>`, etc. Otherwise, your JMX beans might be silently ignored at
+startup...
+====
+
+
+
+

@@ -1,0 +1,74 @@
+[[testcontext-tx-rollback-and-commit-behavior]]
+====== Transaction rollback and commit behavior
+
+By default, test transactions will be automatically rolled back after completion of the
+test; however, transactional commit and rollback behavior can be configured declaratively
+via the class-level `@TransactionConfiguration` and method-level `@Rollback` annotations.
+See the corresponding entries in the <<integration-testing-annotations,annotation
+support>> section for further details.
+
+[[testcontext-tx-programmatic-tx-mgt]]
+====== Programmatic transaction management
+As of Spring Framework 4.1, it is possible to interact with test-managed transactions
+_programmatically_ via the static methods in `TestTransaction`. For example,
+`TestTransaction` may be used within _test_ methods, _before_ methods, and _after_
+methods to start or end the current test-managed transaction or to configure the current
+test-managed transaction for rollback or commit. Support for `TestTransaction` is
+automatically available whenever the `TransactionalTestExecutionListener` is enabled.
+
+The following example demonstrates some of the features of `TestTransaction`. Consult the
+javadocs for `TestTransaction` for further details.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@ContextConfiguration(classes = TestConfig.class)
+	public class ProgrammaticTransactionManagementTests extends
+			AbstractTransactionalJUnit4SpringContextTests {
+
+		@Test
+		public void transactionalTest() {
+			// assert initial state in test database:
+			assertNumUsers(2);
+
+			deleteFromTables("user");
+
+			// changes to the database will be committed!
+			TestTransaction.flagForCommit();
+			TestTransaction.end();
+			assertFalse(TestTransaction.isActive());
+			assertNumUsers(0);
+
+			TestTransaction.start();
+			// perform other actions against the database that will
+			// be automatically rolled back after the test completes...
+		}
+
+		protected void assertNumUsers(int expected) {
+			assertEquals("Number of rows in the ''user'' table.", expected, countRowsInTable("user"));
+		}
+	}
+----
+
+[[testcontext-tx-before-and-after-tx]]
+====== Executing code outside of a transaction
+
+Occasionally you need to execute certain code before or after a transactional test method
+but outside the transactional context -- for example, to verify the initial database state
+prior to execution of your test or to verify expected transactional commit behavior after
+test execution (if the test was configured not to roll back the transaction).
+`TransactionalTestExecutionListener` supports the `@BeforeTransaction` and
+`@AfterTransaction` annotations exactly for such scenarios. Simply annotate any `public
+void` method in your test class with one of these annotations, and the
+`TransactionalTestExecutionListener` ensures that your __before transaction method__ or
+__after transaction method__ is executed at the appropriate time.
+
+[TIP]
+====
+Any __before methods__ (such as methods annotated with JUnit's `@Before`) and any __after
+methods__ (such as methods annotated with JUnit's `@After`) are executed __within__ a
+transaction. In addition, methods annotated with `@BeforeTransaction` or
+`@AfterTransaction` are naturally not executed for test methods that are not configured
+to run within a transaction.
+====
+

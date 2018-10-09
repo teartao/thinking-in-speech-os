@@ -1,0 +1,53 @@
+[[xsd-config]]
+== XML Schema-based configuration
+
+
+[[xsd-config-introduction]]
+=== Introduction
+This appendix details the XML Schema-based configuration introduced in Spring 2.0 and
+enhanced and extended in Spring 2.5 and 3.0.
+
+.DTD support?
+****
+Authoring Spring configuration files using the older DTD style is still fully supported.
+
+Nothing will break if you forego the use of the new XML Schema-based approach to
+authoring Spring XML configuration files. All that you lose out on is the opportunity to
+have more succinct and clearer configuration. Regardless of whether the XML
+configuration is DTD- or Schema-based, in the end it all boils down to the same object
+model in the container (namely one or more `BeanDefinition` instances).
+****
+
+The central motivation for moving to XML Schema based configuration files was to make
+Spring XML configuration easier. The __'classic'__ `<bean/>`-based approach is good, but
+its generic-nature comes with a price in terms of configuration overhead.
+
+From the Spring IoC containers point-of-view, __everything__ is a bean. That's great
+news for the Spring IoC container, because if everything is a bean then everything can
+be treated in the exact same fashion. The same, however, is not true from a developer's
+point-of-view. The objects defined in a Spring XML configuration file are not all
+generic, vanilla beans. Usually, each bean requires some degree of specific
+configuration.
+
+Spring 2.0's new XML Schema-based configuration addresses this issue. The `<bean/>`
+element is still present, and if you wanted to, you could continue to write the __exact
+same__ style of Spring XML configuration using only `<bean/>` elements. The new XML
+Schema-based configuration does, however, make Spring XML configuration files
+substantially clearer to read. In addition, it allows you to express the intent of a
+bean definition.
+
+The key thing to remember is that the new custom tags work best for infrastructure or
+integration beans: for example, AOP, collections, transactions, integration with
+3rd-party frameworks such as Mule, etc., while the existing bean tags are best suited to
+application-specific beans, such as DAOs, service layer objects, validators, etc.
+
+The examples included below will hopefully convince you that the inclusion of XML Schema
+support in Spring 2.0 was a good idea. The reception in the community has been
+encouraging; also, please note the fact that this new configuration mechanism is totally
+customisable and extensible. This means you can write your own domain-specific
+configuration tags that would better represent your application's domain; the process
+involved in doing so is covered in the appendix entitled <<extensible-xml>>.
+
+
+
+

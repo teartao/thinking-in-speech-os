@@ -1,0 +1,113 @@
+[[aop-aj-ltw-environments]]
+===== Environment-specific configuration
+This last section contains any additional settings and configuration that you will need
+when using Spring's LTW support in environments such as application servers and web
+containers.
+
+[[aop-aj-ltw-environment-tomcat]]
+====== Tomcat
+http://tomcat.apache.org/[Apache Tomcat]'s default class loader does not support class
+transformation which is why Spring provides an enhanced implementation that addresses
+this need. Named `TomcatInstrumentableClassLoader`, the loader works on Tomcat 5.0 and
+above and can be registered individually for __each__ web application as follows:
+
+* Tomcat 6.0.x or higher
+* Copy `org.springframework.instrument.tomcat.jar` into __$CATALINA_HOME__/lib, where
+  __$CATALINA_HOME__ represents the root of the Tomcat installation)
+* Instruct Tomcat to use the custom class loader (instead of the default) by editing the
+  web application context file:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<Context path="/myWebApp" docBase="/my/webApp/location">
+		<Loader
+			loaderClass="org.springframework.instrument.classloading.tomcat.TomcatInstrumentableClassLoader"/>
+	</Context>
+----
+
+Apache Tomcat (6.0+) supports several context locations:
+
+* server configuration file - __$CATALINA_HOME/conf/server.xml__
+* default context configuration - __$CATALINA_HOME/conf/context.xml__ - that affects all
+  deployed web applications
+* per-web application configuration which can be deployed either on the server-side at
+  __$CATALINA_HOME/conf/[enginename]/[hostname]/[webapp]-context.xml__ or embedded
+  inside the web-app archive at __META-INF/context.xml__
+
+For efficiency, the embedded per-web-app configuration style is recommended because it
+will impact only applications that use the custom class loader and does not require any
+changes to the server configuration. See the Tomcat 6.0.x
+http://tomcat.apache.org/tomcat-6.0-doc/config/context.html[documentation] for more
+details about available context locations.
+
+Alternatively, consider the use of the Spring-provided generic VM agent, to be specified
+in Tomcat's launch script (see above). This will make instrumentation available to all
+deployed web applications, no matter what ClassLoader they happen to run on.
+
+[[aop-aj-ltw-environments-weblogic-oc4j-resin-glassfish-jboss]]
+====== WebLogic, WebSphere, Resin, GlassFish, JBoss
+Recent versions of WebLogic Server (version 10 and above), IBM WebSphere Application
+Server (version 7 and above), Resin (3.1 and above) and JBoss (6.x or above) provide a
+ClassLoader that is capable of local instrumentation. Spring's native LTW leverages such
+ClassLoaders to enable AspectJ weaving. You can enable LTW by simply activating
+load-time weaving as described earlier. Specifically, you do __not__ need to modify the
+launch script to add `-javaagent:path/to/spring-instrument.jar`.
+
+Note that GlassFish instrumentation-capable ClassLoader is available only in its EAR
+environment. For GlassFish web applications, follow the Tomcat setup instructions as
+outlined above.
+
+Note that on JBoss 6.x, the app server scanning needs to be disabled to prevent it from
+loading the classes before the application actually starts. A quick workaround is to add
+to your artifact a file named `WEB-INF/jboss-scanning.xml` with the following content:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<scanning xmlns="urn:jboss:scanning:1.0"/>
+----
+
+[[aop-aj-ltw-environment-generic]]
+====== Generic Java applications
+When class instrumentation is required in environments that do not support or are not
+supported by the existing `LoadTimeWeaver` implementations, a JDK agent can be the only
+solution. For such cases, Spring provides `InstrumentationLoadTimeWeaver`, which
+requires a Spring-specific (but very general) VM agent,
+`org.springframework.instrument-{version}.jar` (previously named `spring-agent.jar`).
+
+To use it, you must start the virtual machine with the Spring agent, by supplying the
+following JVM options:
+
+[literal]
+[subs="verbatim,quotes"]
+----
+-javaagent:/path/to/org.springframework.instrument-{version}.jar
+----
+
+Note that this requires modification of the VM launch script which may prevent you from
+using this in application server environments (depending on your operation policies).
+Additionally, the JDK agent will instrument the __entire__ VM which can prove expensive.
+
+For performance reasons, it is recommended to use this configuration only if your target
+environment (such as http://www.eclipse.org/jetty/[Jetty]) does not have (or does not
+support) a dedicated LTW.
+
+
+
+
+[[aop-resources]]
+=== Further Resources
+More information on AspectJ can be found on the http://www.eclipse.org/aspectj[AspectJ
+website].
+
+The book __Eclipse AspectJ__ by Adrian Colyer et. al. (Addison-Wesley, 2005) provides a
+comprehensive introduction and reference for the AspectJ language.
+
+The book __AspectJ in Action__ by Ramnivas Laddad (Manning, 2003) comes highly
+recommended; the focus of the book is on AspectJ, but a lot of general AOP themes are
+explored (in some depth).
+
+
+
+

@@ -1,0 +1,100 @@
+[[beans-factorybeans-annotations]]
+==== Defining bean metadata within components
+Spring components can also contribute bean definition metadata to the container. You do
+this with the same `@Bean` annotation used to define bean metadata within
+`@Configuration` annotated classes. Here is a simple example:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Component
+	public class FactoryMethodComponent {
+
+		@Bean
+		@Qualifier("public")
+		public TestBean publicInstance() {
+			return new TestBean("publicInstance");
+		}
+
+		public void doWork() {
+			// Component method implementation omitted
+		}
+
+	}
+----
+
+This class is a Spring component that has application-specific code contained in its
+`doWork()` method. However, it also contributes a bean definition that has a factory
+method referring to the method `publicInstance()`. The `@Bean` annotation identifies the
+factory method and other bean definition properties, such as a qualifier value through
+the `@Qualifier` annotation. Other method level annotations that can be specified are
+`@Scope`, `@Lazy`, and custom qualifier annotations.
+
+[TIP]
+====
+In addition to its role for component initialization, the `@Lazy` annotation may also be
+placed on injection points marked with `@Autowired` or `@Inject`. In this context, it
+leads to the injection of a lazy-resolution proxy.
+====
+
+Autowired fields and methods are supported as previously discussed, with additional
+support for autowiring of `@Bean` methods:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Component
+	public class FactoryMethodComponent {
+
+		private static int i;
+
+		@Bean
+		@Qualifier("public")
+		public TestBean publicInstance() {
+			return new TestBean("publicInstance");
+		}
+
+		// use of a custom qualifier and autowiring of method parameters
+
+		@Bean
+		protected TestBean protectedInstance(
+				@Qualifier("public") TestBean spouse,
+				@Value("#{privateInstance.age}") String country) {
+			TestBean tb = new TestBean("protectedInstance", 1);
+			tb.setSpouse(spouse);
+			tb.setCountry(country);
+			return tb;
+		}
+
+		@Bean
+		@Scope(BeanDefinition.SCOPE_SINGLETON)
+		private TestBean privateInstance() {
+			return new TestBean("privateInstance", i++);
+		}
+
+		@Bean
+		@Scope(value = WebApplicationContext.SCOPE_SESSION, proxyMode = ScopedProxyMode.TARGET_CLASS)
+		public TestBean requestScopedInstance() {
+			return new TestBean("requestScopedInstance", 3);
+		}
+
+	}
+----
+
+The example autowires the `String` method parameter `country` to the value of the `Age`
+property on another bean named `privateInstance`. A Spring Expression Language element
+defines the value of the property through the notation `#{ <expression> }`. For `@Value`
+annotations, an expression resolver is preconfigured to look for bean names when
+resolving expression text.
+
+The `@Bean` methods in a Spring component are processed differently than their
+counterparts inside a Spring `@Configuration` class. The difference is that `@Component`
+classes are not enhanced with CGLIB to intercept the invocation of methods and fields.
+CGLIB proxying is the means by which invoking methods or fields within `@Bean` methods
+in `@Configuration` classes creates bean metadata references to collaborating objects;
+such methods are __not__ invoked with normal Java semantics. In contrast, invoking a
+method or field in an `@Bean` method within a `@Component` class __has__ standard Java
+semantics.
+
+
+

@@ -1,0 +1,61 @@
+[[classic-aop-autoproxy]]
+=== Using the "autoproxy" facility
+So far we've considered explicit creation of AOP proxies using a `ProxyFactoryBean` or
+similar factory bean.
+
+Spring also allows us to use "autoproxy" bean definitions, which can automatically proxy
+selected bean definitions. This is built on Spring "bean post processor" infrastructure,
+which enables modification of any bean definition as the container loads.
+
+In this model, you set up some special bean definitions in your XML bean definition file
+to configure the auto proxy infrastructure. This allows you just to declare the targets
+eligible for autoproxying: you don't need to use `ProxyFactoryBean`.
+
+There are two ways to do this:
+
+* Using an autoproxy creator that refers to specific beans in the current context.
+* A special case of autoproxy creation that deserves to be considered separately;
+  autoproxy creation driven by source-level metadata attributes.
+
+
+
+[[classic-aop-autoproxy-choices]]
+==== Autoproxy bean definitions
+The `org.springframework.aop.framework.autoproxy` package provides the following
+standard autoproxy creators.
+
+
+[[classic-aop-api-autoproxy]]
+===== BeanNameAutoProxyCreator
+The `BeanNameAutoProxyCreator` class is a `BeanPostProcessor` that automatically creates
+AOP proxies for beans with names matching literal values or wildcards.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean class="org.springframework.aop.framework.autoproxy.BeanNameAutoProxyCreator">
+		<property name="beanNames"><value>jdk*,onlyJdk</value></property>
+		<property name="interceptorNames">
+			<list>
+				<value>myInterceptor</value>
+			</list>
+		</property>
+	</bean>
+----
+
+As with `ProxyFactoryBean`, there is an `interceptorNames` property rather than a list
+of interceptors, to allow correct behavior for prototype advisors. Named "interceptors"
+can be advisors or any advice type.
+
+As with auto proxying in general, the main point of using `BeanNameAutoProxyCreator` is
+to apply the same configuration consistently to multiple objects, with minimal volume of
+configuration. It is a popular choice for applying declarative transactions to multiple
+objects.
+
+Bean definitions whose names match, such as "jdkMyBean" and "onlyJdk" in the above
+example, are plain old bean definitions with the target class. An AOP proxy will be
+created automatically by the `BeanNameAutoProxyCreator`. The same advice will be applied
+to all matching beans. Note that if advisors are used (rather than the interceptor in
+the above example), the pointcuts may apply differently to different beans.
+
+

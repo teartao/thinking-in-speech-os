@@ -1,0 +1,57 @@
+[[cci-config-cci-connections]]
+==== Configuring CCI connections
+JCA CCI allow the developer to configure the connections to the EIS using the
+`ConnectionSpec` implementation of your connector. In order to configure its properties,
+you need to wrap the target connection factory with a dedicated adapter,
+`ConnectionSpecConnectionFactoryAdapter`. So, the dedicated `ConnectionSpec` can be
+configured with the property `connectionSpec` (as an inner bean).
+
+This property is not mandatory because the CCI `ConnectionFactory` interface defines two
+different methods to obtain a CCI connection. Some of the `ConnectionSpec` properties
+can often be configured in the application server (in managed mode) or on the
+corresponding local `ManagedConnectionFactory` implementation.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface ConnectionFactory implements Serializable, Referenceable {
+		...
+		Connection getConnection() throws ResourceException;
+		Connection getConnection(ConnectionSpec connectionSpec) throws ResourceException;
+		...
+	}
+----
+
+Spring provides a `ConnectionSpecConnectionFactoryAdapter` that allows for specifying a
+`ConnectionSpec` instance to use for all operations on a given factory. If the adapter's
+`connectionSpec` property is specified, the adapter uses the `getConnection` variant
+with the `ConnectionSpec` argument, otherwise the variant without argument.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="managedConnectionFactory"
+			class="com.sun.connector.cciblackbox.CciLocalTxManagedConnectionFactory">
+		<property name="connectionURL" value="jdbc:hsqldb:hsql://localhost:9001"/>
+		<property name="driverName" value="org.hsqldb.jdbcDriver"/>
+	</bean>
+
+	<bean id="targetConnectionFactory"
+			class="org.springframework.jca.support.LocalConnectionFactoryBean">
+		<property name="managedConnectionFactory" ref="managedConnectionFactory"/>
+	</bean>
+
+	<bean id="connectionFactory"
+			class="org.springframework.jca.cci.connection.ConnectionSpecConnectionFactoryAdapter">
+		<property name="targetConnectionFactory" ref="targetConnectionFactory"/>
+		<property name="connectionSpec">
+			<bean class="com.sun.connector.cciblackbox.CciConnectionSpec">
+				<property name="user" value="sa"/>
+				<property name="password" value=""/>
+			</bean>
+		</property>
+	</bean>
+----
+
+
+

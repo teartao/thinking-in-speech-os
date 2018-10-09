@@ -1,0 +1,71 @@
+[[cache-annotations-cacheable-cache-resolver]]
+===== Custom cache resolution
+
+The default cache resolution fits well for applications working with a
+single `CacheManager` and with no complex cache resolution requirements.
+
+For applications working with several cache managers, it is possible
+to set the `cacheManager` to use per operation:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Cacheable(value="books", **cacheManager="anotherCacheManager"**)
+	public Book findBook(ISBN isbn) {...}
+----
+
+It is also possible to replace the `CacheResolver` entirely in a similar
+fashion as for <<cache-annotations-cacheable-key,key generation>>. The
+resolution is requested for every cache operation, giving a chance to
+the implementation to actually resolve the cache(s) to use based on
+runtime arguments:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Cacheable(**cacheResolver="runtimeCacheResolver"**)
+	public Book findBook(ISBN isbn) {...}
+----
+
+[NOTE]
+====
+Since Spring 4.1, the `value` attribute of the cache annotations are no longer
+mandatory since this particular information can be provided by the `CacheResolver`
+regardless of the content of the annotation.
+
+Similarly to `key` and `keyGenerator`, the `cacheManager` and `cacheResolver`
+parameters are mutually exclusive and an operation specifying both will
+result in an exception as a custom `CacheManager` will be ignored by the
+`CacheResolver` implementation. This is probably not what you expect.
+====
+
+[[cache-annotations-cacheable-condition]]
+===== Conditional caching
+Sometimes, a method might not be suitable for caching all the time (for example, it
+might depend on the given arguments). The cache annotations support such functionality
+through the `condition` parameter which takes a `SpEL` expression that is evaluated to
+either `true` or `false`. If `true`, the method is cached - if not, it behaves as if the
+method is not cached, that is executed every since time no matter what values are in the
+cache or what arguments are used. A quick example - the following method will be cached
+only if the argument `name` has a length shorter than 32:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Cacheable(value="book", **condition="#name.length < 32"**)
+	public Book findBook(String name)
+----
+
+In addition the `condition` parameter, the `unless` parameter can be used to veto the
+adding of a value to the cache. Unlike `condition`, `unless` expressions are evaluated
+__after__ the method has been called. Expanding on the previous example - perhaps we
+only want to cache paperback books:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Cacheable(value="book", condition="#name.length < 32", **unless="#result.hardback"**)
+	public Book findBook(String name)
+----
+
+

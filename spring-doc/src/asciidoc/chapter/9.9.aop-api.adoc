@@ -1,0 +1,18 @@
+[[aop-extensibility]]
+=== 定义新的通知类型
+
+Spring AOP 是设计为可扩展的。虽然拦截实现策略目前在内部使用，但是它可以支持除开箱即用的环绕通知、前置通知、异常通知和后置通知外的任意通知类型。
+
+`org.springframework.aop.framework.adapter`包是一个SPI包，它支持允许在不改变核心框架的情况下添加新的通知类型。定义`Advice`类型的唯一限制是必须继承`org.aopalliance.aop.Advice`标记接口。
+
+请参考`org.springframework.aop.framework.adapter`文档了解更多信息。
+
+
+
+
+[[aop-api-resources]]
+=== 更多资源
+请参考Spring示例应用中更多关于Spring AOP的例子：
+
+* JPetStore的默认配置说明了如何使用`TransactionProxyFactoryBean`用于声明式事务管理。
+* JPetStore的`/attributes`目录说明了如何使用属性驱动的声明式事务管理。

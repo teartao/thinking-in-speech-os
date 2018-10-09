@@ -1,0 +1,88 @@
+[[aop-api-advisor]]
+=== Advisor API in Spring
+在Spring中, 一个通知器就是一个包含通知和切入点表达式的切面.
+
+除了一些特殊的情况, 任意的通知可以应用于任何的通知器.
+`org.springframework.aop.support.DefaultPointcutAdvisor` 是最常用的通知器类.
+例如, 它可以被用于 `MethodInterceptor`, `BeforeAdvice` or
+`ThrowsAdvice`.
+
+在Spring的相同的AOP代理中，通知和通知器混用是可行. 例如, 在一个代理配置中你
+可以使用环绕通知，异常通知和前置通知: Spring将会自动创建拦截器链.
+
+
+
+
+[[aop-pfb]]
+=== Using the ProxyFactoryBean to create AOP proxies
+如果你正在使用 Spring IoC 容器(ApplicationContext或者BeanFactory) 管理你的业务对象
+- 你会想要使用Spring的AOP FactoryBeans. (请记住一个factory bean是为了引进一种分层的
+机制，可以创建不同类型的对象.)
+
+[NOTE]
+====
+Spring AOP支持使用factory beans避免被覆盖.
+====
+
+在Spring当中创建代理的最好的方式是使用__org.springframework.aop.framework.ProxyFactoryBean__.
+对于切入点和通知的应用和顺序，它提供了完成的控制. 然后, 当你需要太多的控制时，更好的方式是通过使用简单的选项.
+
+
+
+[[aop-pfb-1]]
+==== Basics
+`ProxyFactoryBean`的实现就像其他的Spring的`FactoryBean`, 起到了分层的作用.
+如果你定义了一个名为`foo`的`ProxyFactoryBean`, 当引用了`foo`看到不会是`ProxyFactoryBean`的实例,
+而是通过`ProxyFactoryBean`实现的`getObject()`方法创建的对象.这个方法将会一个AOP的代理包装在目标类上.
+
+使用`ProxyFactoryBean`或者其他IoC-aware类来创建AOP代理,其中一个很大的好处就是通知和切入点将会
+被IoC容器管理. 这是一个很有用特性，当它开启时可以很好的确保不被其他的AOP框架所获得.
+例如, 一个通知可能引用到应用内的对象 (除了目标类之外, 这些都是可以在任何AOP框架内获得的),
+有利的是通过依赖注入，这些都是可插拔的.
+
+
+
+[[aop-pfb-2]]
+==== JavaBean properties
+通常情况下，Spring提供的`FactoryBean`实现, `ProxyFactoryBean`本身就是一个JavaBean. 有以下属性可以被设置:
+
+* 指定代理的目标类.
+* 指定哪一个用于CGLIB代理 (见文 <<aop-pfb-proxy-types>>).
+
+一些关键的属性继承于`org.springframework.aop.framework.ProxyConfig`
+(在Spring中，这个所有Aop代理工厂的超类). 这些关键的属性包括:
+
+* `proxyTargetClass`: `true`的情况下将使用类的代理, 而不是基于接口的代理.
+ 当属性设置为true的情况下，CGLIB代理将会被创建。(见文 <aop-pfb-proxy-types>>).
+* `optimize`: controls whether or not aggressive optimizations are applied to proxies
+  __created via CGLIB__. One should not blithely use this setting unless one fully
+  understands how the relevant AOP proxy handles optimization. 
+  只能使用 CGLIB 的代理; JDK 动态代理此项配置是无效的.
+* `frozen`: if a proxy configuration is `frozen`, then changes to the configuration are
+  no longer allowed. This is useful both as a slight optimization and for those cases
+  when you don't want callers to be able to manipulate the proxy (via the `Advised`
+  interface) after the proxy has been created. The default value of this property is
+  `false`, so changes such as adding additional advice are allowed.
+* `exposeProxy`: determines whether or not the current proxy should be exposed in a
+  `ThreadLocal` so that it can be accessed by the target. If a target needs to obtain
+  the proxy and the `exposeProxy` property is set to `true`, the target can use the
+  `AopContext.currentProxy()` method.
+
+其他可以指定的属性对于`ProxyFactoryBean`包括:
+
+* `proxyInterfaces`: String数组的接口名称. 如果没有找到这个接口, CGLIB的代理将会被创建
+ (可以见文 <<aop-pfb-proxy-types>>).
+* `interceptorNames`: String数组的`Advisor`, 拦截器或者其它的通知名称将会被应用。
+  数组顺序的是有重大意义的, 这些拦截器和通知将会被顺序的应用.
+
+  这些名称是bean的名称存在于当前的工厂中, 包括它父类的工厂中。
+  你将不能引用到bean，当`ProxyFactoryBean`中的通知不是使用单例.
+
+当你需要添加一个拦截器时，你可以添加一个星号 ( `*`). 整个应用中的拦截器的名称匹配星号前面的内容的拦截器将会被应用.
+一个样例可以在这里找到 <<aop-global-advisors>>.
+
+* singleton: 默认使用的单例模式, 不管调用`getObject()`的方法有多频繁。默认值是`true`. 
+你想要使用普通状态的对象，可以配置成`false`.
+
+
+

@@ -1,0 +1,198 @@
+[[mvc-multipart]]
+=== Spring's multipart (文件上传) 支持
+
+
+
+[[mvc-multipart-introduction]]
+==== Introduction
+Spring's built-in multipart support handles file uploads in web applications. You enable
+this multipart support with pluggable `MultipartResolver` objects, defined in the
+`org.springframework.web.multipart` package. Spring provides one `MultipartResolver`
+implementation for use with http://jakarta.apache.org/commons/fileupload[__Commons
+FileUpload__] and another for use with Servlet 3.0 multipart request parsing.
+
+By default, Spring does no multipart handling, because some developers want to handle
+multiparts themselves. You enable Spring multipart handling by adding a multipart
+resolver to the web application's context. Each request is inspected to see if it
+contains a multipart. If no multipart is found, the request continues as expected. If a
+multipart is found in the request, the `MultipartResolver` that has been declared in
+your context is used. After that, the multipart attribute in your request is treated
+like any other attribute.
+
+
+
+[[mvc-multipart-resolver-commons]]
+==== Using a MultipartResolver with __Commons FileUpload__
+
+下面的例子将展示如何使用 `CommonsMultipartResolver`:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+    <bean id="multipartResolver"
+			class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+
+		<!-- 其中一个可以配置的属性; 上传文件的最大字节 -->
+		<property name="maxUploadSize" value="100000"/>
+
+	</bean>
+----
+
+当然，为了multipart resolver 能够正常运行，需要在类路径添加一些jar包.
+对于 `CommonsMultipartResolver` 而言, 你需要使用
+`commons-fileupload.jar`.
+
+当 Spring `DispatcherServlet` 检测到一个 multi-part 请求时, 就激活在上下文定义的resolver
+并移交请求. 然后，resolver 包装当前 `HttpServletRequest` 成支持multipart文件上传的 `MultipartHttpServletRequest`.
+通过 `MultipartHttpServletRequest`, 你可以获取当前请求所包含multiparts信息，实际上你也可以在controllers获取多个multipart文件.
+
+
+[[mvc-multipart-resolver-standard]]
+==== Using a MultipartResolver with __Servlet 3.0__
+
+为了使用基于Servlet 3.0 的 multipart 解析, 在 `web.xml` 中， `DispatcherServlet` 需要用 `"multipart-config"` 标记,
+或者使用 `javax.servlet.MultipartConfigElement` 以编程的方式注册,
+或者在自定义的servlet中使用 `javax.servlet.annotation.MultipartConfig`注解.
+文件上传大小或者存储的地方需要在Servlet注册级别上设置，因为Servlet 3.0不允许这些被 MultipartResolver 设置.
+
+一旦 Servlet 3.0 multipart parsing 已经启用了上述的方式之一，
+就可以在Spring配置中添加 `StandardServletMultipartResolver`:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="multipartResolver"
+			class="org.springframework.web.multipart.support.StandardServletMultipartResolver">
+	</bean>
+----
+
+
+
+[[mvc-multipart-forms]]
+==== 在表单中处理一个上传文件
+在完成添加 `MultipartResolver` 之后, 这个请求就会和普通请求一样被处理.
+首先, 创建一个带上传文件的表单.
+设置( `enctype="multipart/form-data"`) 告诉浏览器将表单编码成 multipart request:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<html>
+		<head>
+			<title>Upload a file please</title>
+		</head>
+		<body>
+			<h1>Please upload a file</h1>
+			<form method="post" action="/form" enctype="multipart/form-data">
+				<input type="text" name="name"/>
+				<input type="file" name="file"/>
+				<input type="submit"/>
+			</form>
+		</body>
+	</html>
+----
+
+下一步是创建一个 controller 处理上传文件.
+需要在请求参数中使用 `MultipartHttpServletRequest` 或者 `MultipartFile`, 这个 controller 和
+<<mvc-ann-controller,normal annotated `@Controller`>>非常相似:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Controller
+	public class FileUploadController {
+
+		@RequestMapping(value = "/form", method = RequestMethod.POST)
+		public String handleFormUpload(@RequestParam("name") String name,
+				@RequestParam("file") MultipartFile file) {
+
+			if (!file.isEmpty()) {
+				byte[] bytes = file.getBytes();
+				// 将bytes保存
+				return "redirect:uploadSuccess";
+			}
+
+			return "redirect:uploadFailure";
+		}
+
+	}
+----
+
+注意 `@RequestParam` 将方法参数映射输入元素的声明形式.
+在这个例子中, 对 `byte[]` 并没有做什么操作, 但是在实践中你可以保存在数据库, 存储在文件系统, 等等.
+
+当使用 Servlet 3.0 multipart 解析时,你也可以使用 `javax.servlet.http.Part` 作为方法参数:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Controller
+	public class FileUploadController {
+
+		@RequestMapping(value = "/form", method = RequestMethod.POST)
+		public String handleFormUpload(@RequestParam("name") String name,
+				@RequestParam("file") Part file) {
+
+			InputStream inputStream = file.getInputStream();
+			// 将上传的bytes保存
+
+			return "redirect:uploadSuccess";
+		}
+
+	}
+----
+
+
+
+[[mvc-multipart-forms-non-browsers]]
+==== Handling a file upload request from programmatic clients
+在RESTful service场景中,Multipart requests 可以从一个没有浏览器的客户端提交.
+上面的例子和配置同样可以在此适用.
+但是, 与通常提交文件和简单表单域的浏览器不同,
+一个programmatic clients 还可以发送一个特定内容类型的更复杂的数据,
+比如说一个 multipart 请求可以第一部分包含文件第二部分包含 JSON 格式的数据:
+
+[literal]
+[subs="verbatim,quotes"]
+----
+POST /someUrl
+Content-Type: multipart/mixed
+
+--edt7Tfrdusa7r3lNQc79vXuhIIMlatb7PQg7Vp
+Content-Disposition: form-data; name="meta-data"
+Content-Type: application/json; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+{
+	"name": "value"
+}
+--edt7Tfrdusa7r3lNQc79vXuhIIMlatb7PQg7Vp
+Content-Disposition: form-data; name="file-data"; filename="file.properties"
+Content-Type: text/xml
+Content-Transfer-Encoding: 8bit
+... File Data ...
+----
+
+你可以通过 `@RequestParam("meta-data") String
+metadata`获取 名字为 "meta-data" 的参数.
+但是,你可能更喜欢接收一个从 JSON 格式数据强制转换的对象,
+这和 `@RequestBody` 在 `HttpMessageConverter` 的协助下在 non-multipart 请求中转换目标对象非常相似.
+
+为了达到这个目的,你可以使用  `@RequestPart` 注解 代替 `@RequestParam` 注解.
+通过一个 `HttpMessageConverter` 分析 multipart 的头部 `'Content-Type'`,
+可以让你获取 multipart 的特定内容:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RequestMapping(value="/someUrl", method = RequestMethod.POST)
+	public String onSubmit(**@RequestPart("meta-data") MetaData metadata,
+			@RequestPart("file-data") MultipartFile file**) {
+
+		// ...
+
+	}
+----
+注意 `MultipartFile` 方法参数通过 `@RequestParam` 或 `@RequestPart` 的互换方式.
+在基于 `'Content-Type'`  头和  `MappingJackson2HttpMessageConverter`的情况下
+`@RequestPart("meta-data") MetaData` 方法参数被读取为JSON.

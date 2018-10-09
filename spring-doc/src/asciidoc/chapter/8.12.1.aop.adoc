@@ -1,0 +1,167 @@
+[[aop-atconfigurable]]
+==== Using AspectJ to dependency inject domain objects with Spring
+The Spring container instantiates and configures beans defined in your application
+context. It is also possible to ask a bean factory to configure a __pre-existing__
+object given the name of a bean definition containing the configuration to be applied.
+The `spring-aspects.jar` contains an annotation-driven aspect that exploits this
+capability to allow dependency injection of __any object__. The support is intended to
+be used for objects created __outside of the control of any container__. Domain objects
+often fall into this category because they are often created programmatically using the
+`new` operator, or by an ORM tool as a result of a database query.
+
+The `@Configurable` annotation marks a class as eligible for Spring-driven
+configuration. In the simplest case it can be used just as a marker annotation:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package com.xyz.myapp.domain;
+
+	import org.springframework.beans.factory.annotation.Configurable;
+
+	@Configurable
+	public class Account {
+		// ...
+	}
+----
+
+When used as a marker interface in this way, Spring will configure new instances of the
+annotated type ( `Account` in this case) using a bean definition (typically
+prototype-scoped) with the same name as the fully-qualified type name (
+`com.xyz.myapp.domain.Account`). Since the default name for a bean is the
+fully-qualified name of its type, a convenient way to declare the prototype definition
+is simply to omit the `id` attribute:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean class="com.xyz.myapp.domain.Account" scope="prototype">
+		<property name="fundsTransferService" ref="fundsTransferService"/>
+	</bean>
+----
+
+If you want to explicitly specify the name of the prototype bean definition to use, you
+can do so directly in the annotation:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package com.xyz.myapp.domain;
+
+	import org.springframework.beans.factory.annotation.Configurable;
+
+	@Configurable("account")
+	public class Account {
+		// ...
+	}
+----
+
+Spring will now look for a bean definition named " `account`" and use that as the
+definition to configure new `Account` instances.
+
+You can also use autowiring to avoid having to specify a dedicated bean definition at
+all. To have Spring apply autowiring use the '++autowire++' property of the
+`@Configurable` annotation: specify either `@Configurable(autowire=Autowire.BY_TYPE)` or
+`@Configurable(autowire=Autowire.BY_NAME` for autowiring by type or by name
+respectively. As an alternative, as of Spring 2.5 it is preferable to specify explicit,
+annotation-driven dependency injection for your `@Configurable` beans by using
+`@Autowired` or `@Inject` at the field or method level (see <<beans-annotation-config>>
+for further details).
+
+Finally you can enable Spring dependency checking for the object references in the newly
+created and configured object by using the `dependencyCheck` attribute (for example:
+`@Configurable(autowire=Autowire.BY_NAME,dependencyCheck=true)`). If this attribute is
+set to true, then Spring will validate after configuration that all properties (__which
+are not primitives or collections__) have been set.
+
+Using the annotation on its own does nothing of course. It is the
+`AnnotationBeanConfigurerAspect` in `spring-aspects.jar` that acts on the presence of
+the annotation. In essence the aspect says "after returning from the initialization of a
+new object of a type annotated with `@Configurable`, configure the newly created object
+using Spring in accordance with the properties of the annotation". In this context,
+__initialization__ refers to newly instantiated objects (e.g., objects instantiated with
+the '++new++' operator) as well as to `Serializable` objects that are undergoing
+deserialization (e.g., via
+http://docs.oracle.com/javase/6/docs/api/java/io/Serializable.html[readResolve()]).
+
+[NOTE]
+====
+One of the key phrases in the above paragraph is '__in essence__'. For most cases, the
+exact semantics of '__after returning from the initialization of a new object__' will be
+fine... in this context, '__after initialization__' means that the dependencies will be
+injected __after__ the object has been constructed - this means that the dependencies
+will not be available for use in the constructor bodies of the class. If you want the
+dependencies to be injected __before__ the constructor bodies execute, and thus be
+available for use in the body of the constructors, then you need to define this on the
+`@Configurable` declaration like so:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Configurable(preConstruction=true)
+----
+
+You can find out more information about the language semantics of the various pointcut
+types in AspectJ
+http://www.eclipse.org/aspectj/doc/next/progguide/semantics-joinPoints.html[in this
+appendix] of the http://www.eclipse.org/aspectj/doc/next/progguide/index.html[AspectJ
+Programming Guide].
+====
+
+For this to work the annotated types must be woven with the AspectJ weaver - you can
+either use a build-time Ant or Maven task to do this (see for example the
+http://www.eclipse.org/aspectj/doc/released/devguide/antTasks.html[AspectJ Development
+Environment Guide]) or load-time weaving (see <<aop-aj-ltw>>). The
+`AnnotationBeanConfigurerAspect` itself needs configuring by Spring (in order to obtain
+a reference to the bean factory that is to be used to configure new objects). If you are
+using Java based configuration simply add `@EnableSpringConfigured` to any
+`@Configuration` class.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Configuration
+	@EnableSpringConfigured
+	public class AppConfig {
+
+	}
+----
+
+If you prefer XML based configuration, the Spring <<xsd-config-body-schemas-context,
+`context` namespace>> defines a convenient `context:spring-configured` element:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<context:spring-configured/>
+----
+
+Instances of `@Configurable` objects created __before__ the aspect has been configured
+will result in a message being issued to the debug log and no configuration of the
+object taking place. An example might be a bean in the Spring configuration that creates
+domain objects when it is initialized by Spring. In this case you can use the
+"depends-on" bean attribute to manually specify that the bean depends on the
+configuration aspect.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="myService"
+			class="com.xzy.myapp.service.MyService"
+			depends-on="org.springframework.beans.factory.aspectj.AnnotationBeanConfigurerAspect">
+
+		<!-- ... -->
+
+	</bean>
+----
+
+[NOTE]
+====
+Do not activate `@Configurable` processing through the bean configurer aspect unless you
+really mean to rely on its semantics at runtime. In particular, make sure that you do
+not use `@Configurable` on bean classes which are registered as regular Spring beans
+with the container: You would get double initialization otherwise, once through the
+container and once through the aspect.
+====
+
+

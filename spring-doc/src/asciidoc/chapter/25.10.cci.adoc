@@ -1,0 +1,87 @@
+[[cci-object]]
+=== Modeling CCI access as operation objects
+The `org.springframework.jca.cci.object` package contains support classes that allow you
+to access the EIS in a different style: through reusable operation objects, analogous to
+Spring's JDBC operation objects (see JDBC chapter). This will usually encapsulate the
+CCI API: an application-level input object will be passed to the operation object, so it
+can construct the input record and then convert the received record data to an
+application-level output object and return it.
+
+[NOTE]
+====
+This approach is internally based on the `CciTemplate` class and the
+`RecordCreator` / `RecordExtractor` interfaces, reusing the machinery of Spring's core
+CCI support.
+====
+
+
+
+[[cci-object-mapping-record]]
+==== MappingRecordOperation
+
+`MappingRecordOperation` essentially performs the same work as `CciTemplate`, but
+represents a specific, pre-configured operation as an object. It provides two template
+methods to specify how to convert an input object to a input record, and how to convert
+an output record to an output object (record mapping):
+
+* `createInputRecord(..)` to specify how to convert an input object to an input `Record`
+* `extractOutputData(..)` to specify how to extract an output object from an output
+  `Record`
+
+Here are the signatures of these methods:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public abstract class MappingRecordOperation extends EisOperation {
+
+		...
+
+		protected abstract Record createInputRecord(RecordFactory recordFactory,
+				Object inputObject) throws ResourceException, DataAccessException {
+			// ...
+		}
+
+		protected abstract Object extractOutputData(Record outputRecord)
+				throws ResourceException, SQLException, DataAccessException {
+			// ...
+		}
+
+		...
+
+	}
+----
+
+Thereafter, in order to execute an EIS operation, you need to use a single execute
+method, passing in an application-level input object and receiving an application-level
+output object as result:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public abstract class MappingRecordOperation extends EisOperation {
+
+		...
+
+		public Object execute(Object inputObject) throws DataAccessException {
+		}
+
+		...
+	}
+----
+
+As you can see, contrary to the `CciTemplate` class, this `execute(..)` method does not
+have an `InteractionSpec` as argument. Instead, the `InteractionSpec` is global to the
+operation. The following constructor must be used to instantiate an operation object
+with a specific `InteractionSpec`:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	InteractionSpec spec = ...;
+	MyMappingRecordOperation eisOperation = new MyMappingRecordOperation(getConnectionFactory(), spec);
+	...
+----
+
+
+

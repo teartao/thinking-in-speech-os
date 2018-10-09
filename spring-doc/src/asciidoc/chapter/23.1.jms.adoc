@@ -1,0 +1,35 @@
+[[jms-tx]]
+==== Transaction management
+Spring provides a `JmsTransactionManager` that manages transactions for a single JMS
+`ConnectionFactory`. This allows JMS applications to leverage the managed transaction
+features of Spring as described in <<transaction>>. The `JmsTransactionManager` performs
+local resource transactions, binding a JMS Connection/Session pair from the specified
+`ConnectionFactory` to the thread. `JmsTemplate` automatically detects such
+transactional resources and operates on them accordingly.
+
+In a Java EE environment, the `ConnectionFactory` will pool Connections and Sessions, so
+those resources are efficiently reused across transactions. In a standalone environment,
+using Spring's `SingleConnectionFactory` will result in a shared JMS `Connection`, with
+each transaction having its own independent `Session`. Alternatively, consider the use
+of a provider-specific pooling adapter such as ActiveMQ's `PooledConnectionFactory`
+class.
+
+`JmsTemplate` can also be used with the `JtaTransactionManager` and an XA-capable JMS
+`ConnectionFactory` for performing distributed transactions. Note that this requires the
+use of a JTA transaction manager as well as a properly XA-configured ConnectionFactory!
+(Check your Java EE server's / JMS provider's documentation.)
+
+Reusing code across a managed and unmanaged transactional environment can be confusing
+when using the JMS API to create a `Session` from a `Connection`. This is because the
+JMS API has only one factory method to create a `Session` and it requires values for the
+transaction and acknowledgement modes. In a managed environment, setting these values is
+the responsibility of the environment's transactional infrastructure, so these values
+are ignored by the vendor's wrapper to the JMS Connection. When using the `JmsTemplate`
+in an unmanaged environment you can specify these values through the use of the
+properties `sessionTransacted` and `sessionAcknowledgeMode`. When using a
+`PlatformTransactionManager` with `JmsTemplate`, the template will always be given a
+transactional JMS `Session`.
+
+
+
+

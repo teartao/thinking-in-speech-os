@@ -1,0 +1,79 @@
+[[portlet-controller-wrapping]]
+==== PortletWrappingController
+
+Instead of developing new controllers, it is possible to use existing portlets and map
+requests to them from a `DispatcherPortlet`. Using the `PortletWrappingController`, you
+can instantiate an existing `Portlet` as a `Controller` as follows:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="myPortlet" class="org.springframework.web.portlet.mvc.PortletWrappingController">
+		<property name="portletClass" value="sample.MyPortlet"/>
+		<property name="portletName" value="my-portlet"/>
+		<property name="initParameters">
+			<value>config=/WEB-INF/my-portlet-config.xml</value>
+		</property>
+	</bean>
+----
+
+This can be very valuable since you can then use interceptors to pre-process and
+post-process requests going to these portlets. Since JSR-168 does not support any kind
+of filter mechanism, this is quite handy. For example, this can be used to wrap the
+Hibernate `OpenSessionInViewInterceptor` around a MyFaces JSF Portlet.
+
+
+
+
+[[portlet-handlermapping]]
+=== Handler mappings
+Using a handler mapping you can map incoming portlet requests to appropriate handlers.
+There are some handler mappings you can use out of the box, for example, the
+`PortletModeHandlerMapping`, but let's first examine the general concept of a
+`HandlerMapping`.
+
+Note: We are intentionally using the term "Handler" here instead of "Controller".
+`DispatcherPortlet` is designed to be used with other ways to process requests than just
+Spring Portlet MVC's own Controllers. A Handler is any Object that can handle portlet
+requests. Controllers are an example of Handlers, and they are of course the default. To
+use some other framework with `DispatcherPortlet`, a corresponding implementation of
+`HandlerAdapter` is all that is needed.
+
+The functionality a basic `HandlerMapping` provides is the delivering of a
+`HandlerExecutionChain`, which must contain the handler that matches the incoming
+request, and may also contain a list of handler interceptors that are applied to the
+request. When a request comes in, the `DispatcherPortlet` will hand it over to the
+handler mapping to let it inspect the request and come up with an appropriate
+`HandlerExecutionChain`. Then the `DispatcherPortlet` will execute the handler and
+interceptors in the chain (if any). These concepts are all exactly the same as in Spring
+Web MVC.
+
+The concept of configurable handler mappings that can optionally contain interceptors
+(executed before or after the actual handler was executed, or both) is extremely
+powerful. A lot of supporting functionality can be built into a custom `HandlerMapping`.
+Think of a custom handler mapping that chooses a handler not only based on the portlet
+mode of the request coming in, but also on a specific state of the session associated
+with the request.
+
+In Spring Web MVC, handler mappings are commonly based on URLs. Since there is really no
+such thing as a URL within a Portlet, we must use other mechanisms to control mappings.
+The two most common are the portlet mode and a request parameter, but anything available
+to the portlet request can be used in a custom handler mapping.
+
+The rest of this section describes three of Spring Portlet MVC's most commonly used
+handler mappings. They all extend `AbstractHandlerMapping` and share the following
+properties:
+
+* `interceptors`: The list of interceptors to use. ++HandlerInterceptor++s are discussed
+  in <<portlet-handlermapping-interceptor>>.
+* `defaultHandler`: The default handler to use, when this handler mapping does not
+  result in a matching handler.
+* `order`: Based on the value of the order property (see the
+  `org.springframework.core.Ordered` interface), Spring will sort all handler mappings
+  available in the context and apply the first matching handler.
+* `lazyInitHandlers`: Allows for lazy initialization of singleton handlers (prototype
+  handlers are always lazily initialized). Default value is false. This property is
+  directly implemented in the three concrete Handlers.
+
+
+

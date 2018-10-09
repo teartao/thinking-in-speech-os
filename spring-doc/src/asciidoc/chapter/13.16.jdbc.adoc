@@ -1,0 +1,97 @@
+[[jdbc-simple-jdbc-call-2]]
+==== Explicitly declaring parameters to use for a SimpleJdbcCall
+You have seen how the parameters are deduced based on metadata, but you can declare then
+explicitly if you wish. You do this by creating and configuring `SimpleJdbcCall` with
+the `declareParameters` method, which takes a variable number of `SqlParameter` objects
+as input. See the next section for details on how to define an `SqlParameter`.
+
+[NOTE]
+====
+Explicit declarations are necessary if the database you use is not a Spring-supported
+database. Currently Spring supports metadata lookup of stored procedure calls for the
+following databases: Apache Derby, DB2, MySQL, Microsoft SQL Server, Oracle, and Sybase.
+We also support metadata lookup of stored functions for: MySQL, Microsoft SQL Server,
+and Oracle.
+====
+
+You can opt to declare one, some, or all the parameters explicitly. The parameter
+metadata is still used where you do not declare parameters explicitly. To bypass all
+processing of metadata lookups for potential parameters and only use the declared
+parameters, you call the method `withoutProcedureColumnMetaDataAccess` as part of the
+declaration. Suppose that you have two or more different call signatures declared for a
+database function. In this case you call the `useInParameterNames` to specify the list
+of IN parameter names to include for a given signature.
+
+The following example shows a fully declared procedure call, using the information from
+the preceding example.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class JdbcActorDao implements ActorDao {
+
+		private SimpleJdbcCall procReadActor;
+
+		public void setDataSource(DataSource dataSource) {
+			JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+			jdbcTemplate.setResultsMapCaseInsensitive(true);
+			this.procReadActor = new SimpleJdbcCall(jdbcTemplate)
+					.withProcedureName("read_actor")
+					.withoutProcedureColumnMetaDataAccess()
+					.useInParameterNames("in_id")
+					.declareParameters(
+							new SqlParameter("in_id", Types.NUMERIC),
+							new SqlOutParameter("out_first_name", Types.VARCHAR),
+							new SqlOutParameter("out_last_name", Types.VARCHAR),
+							new SqlOutParameter("out_birth_date", Types.DATE)
+					);
+		}
+
+		// ... additional methods
+	}
+----
+
+The execution and end results of the two examples are the same; this one specifies all
+details explicitly rather than relying on metadata.
+
+
+
+[[jdbc-params]]
+==== How to define SqlParameters
+To define a parameter for the SimpleJdbc classes and also for the RDBMS operations
+classes, covered in <<jdbc-object>>, you use an `SqlParameter` or one of its subclasses.
+You typically specify the parameter name and SQL type in the constructor. The SQL type
+is specified using the `java.sql.Types` constants. We have already seen declarations
+like:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	new SqlParameter("in_id", Types.NUMERIC),
+		new SqlOutParameter("out_first_name", Types.VARCHAR),
+----
+
+The first line with the `SqlParameter` declares an IN parameter. IN parameters can be
+used for both stored procedure calls and for queries using the `SqlQuery` and its
+subclasses covered in the following section.
+
+The second line with the `SqlOutParameter` declares an `out` parameter to be used in a
+stored procedure call. There is also an `SqlInOutParameter` for `InOut` parameters,
+parameters that provide an `IN` value to the procedure and that also return a value.
+
+[NOTE]
+====
+Only parameters declared as `SqlParameter` and `SqlInOutParameter` will be used to
+provide input values. This is different from the `StoredProcedure` class, which for
+backwards compatibility reasons allows input values to be provided for parameters
+declared as `SqlOutParameter`.
+====
+
+For IN parameters, in addition to the name and the SQL type, you can specify a scale for
+numeric data or a type name for custom database types. For `out` parameters, you can
+provide a `RowMapper` to handle mapping of rows returned from a `REF` cursor. Another
+option is to specify an `SqlReturnType` that provides an opportunity to define
+customized handling of the return values.
+
+
+

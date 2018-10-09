@@ -1,0 +1,204 @@
+[[aop-aj-ltw-aop_dot_xml]]
+===== 'META-INF/aop.xml'
+
+The AspectJ LTW infrastructure is configured using one or more '++META-INF/aop.xml++'
+files, that are on the Java classpath (either directly, or more typically in jar files).
+
+The structure and contents of this file is detailed in the main AspectJ reference
+documentation, and the interested reader is
+http://www.eclipse.org/aspectj/doc/released/devguide/ltw-configuration.html[referred to
+that resource]. (I appreciate that this section is brief, but the '++aop.xml++' file is
+100% AspectJ - there is no Spring-specific information or semantics that apply to it,
+and so there is no extra value that I can contribute either as a result), so rather than
+rehash the quite satisfactory section that the AspectJ developers wrote, I am just
+directing you there.)
+
+
+[[aop-aj-ltw-libraries]]
+===== Required libraries (JARS)
+At a minimum you will need the following libraries to use the Spring Framework's support
+for AspectJ LTW:
+
+* `spring-aop.jar` (version 2.5 or later, plus all mandatory dependencies)
+* `aspectjweaver.jar` (version 1.6.8 or later)
+
+If you are using the <<aop-aj-ltw-environment-generic,Spring-provided agent to enable
+instrumentation>>, you will also need:
+
+* `spring-instrument.jar`
+
+
+[[aop-aj-ltw-spring]]
+===== Spring configuration
+The key component in Spring's LTW support is the `LoadTimeWeaver` interface (in the
+`org.springframework.instrument.classloading` package), and the numerous implementations
+of it that ship with the Spring distribution. A `LoadTimeWeaver` is responsible for
+adding one or more `java.lang.instrument.ClassFileTransformers` to a `ClassLoader` at
+runtime, which opens the door to all manner of interesting applications, one of which
+happens to be the LTW of aspects.
+
+[TIP]
+====
+
+If you are unfamiliar with the idea of runtime class file transformation, you are
+encouraged to read the javadoc API documentation for the `java.lang.instrument` package
+before continuing. This is not a huge chore because there is - rather annoyingly -
+precious little documentation there... the key interfaces and classes will at least be
+laid out in front of you for reference as you read through this section.
+====
+
+Configuring a `LoadTimeWeaver` for a particular `ApplicationContext` can be as easy as
+adding one line. (Please note that you almost certainly will need to be using an
+`ApplicationContext` as your Spring container - typically a `BeanFactory` will not be
+enough because the LTW support makes use of `BeanFactoryPostProcessors`.)
+
+To enable the Spring Framework's LTW support, you need to configure a `LoadTimeWeaver`,
+which typically is done using the `@EnableLoadTimeWeaving` annotation.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Configuration
+	@EnableLoadTimeWeaving
+	public class AppConfig {
+
+	}
+----
+
+Alternatively, if you prefer XML based configuration, use the
+`<context:load-time-weaver/>` element. Note that the element is defined in the
+'++context++' namespace.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns:context="http://www.springframework.org/schema/context"
+		xsi:schemaLocation="
+			http://www.springframework.org/schema/beans
+			http://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.springframework.org/schema/context
+			http://www.springframework.org/schema/context/spring-context.xsd">
+
+		<context:load-time-weaver/>
+
+	</beans>
+----
+
+The above configuration will define and register a number of LTW-specific infrastructure
+beans for you automatically, such as a `LoadTimeWeaver` and an `AspectJWeavingEnabler`.
+The default `LoadTimeWeaver` is the `DefaultContextLoadTimeWeaver` class, which attempts
+to decorate an automatically detected `LoadTimeWeaver`: the exact type of
+`LoadTimeWeaver` that will be 'automatically detected' is dependent upon your runtime
+environment (summarized in the following table).
+
+[[aop-aj-ltw-spring-env-impls]]
+.DefaultContextLoadTimeWeaver LoadTimeWeavers
+|===
+| Runtime Environment| `LoadTimeWeaver` implementation
+
+| Running in
+  http://www.bea.com/framework.jsp?CNT=index.htm&FP=/content/products/weblogic/server[BEA's
+  Weblogic 10]
+| `WebLogicLoadTimeWeaver`
+
+| Running in http://www-01.ibm.com/software/webservers/appserv/was/[IBM WebSphere
+  Application Server 7]
+| `WebSphereLoadTimeWeaver`
+
+| Running in http://glassfish.dev.java.net/[GlassFish]
+| `GlassFishLoadTimeWeaver`
+
+| Running in http://www.jboss.org/jbossas/[JBoss AS]
+| `JBossLoadTimeWeaver`
+
+| JVM started with Spring `InstrumentationSavingAgent` __(java
+  -javaagent:path/to/spring-instrument.jar)__
+| `InstrumentationLoadTimeWeaver`
+
+| Fallback, expecting the underlying ClassLoader to follow common conventions (e.g.
+  applicable to `TomcatInstrumentableClassLoader` and http://www.caucho.com/[Resin])
+| `ReflectiveLoadTimeWeaver`
+|===
+
+Note that these are just the `LoadTimeWeavers` that are autodetected when using the
+`DefaultContextLoadTimeWeaver`: it is of course possible to specify exactly which
+`LoadTimeWeaver` implementation that you wish to use.
+
+To specify a specific `LoadTimeWeaver` with Java configuration implement the
+`LoadTimeWeavingConfigurer` interface and override the `getLoadTimeWeaver()` method:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Configuration
+	@EnableLoadTimeWeaving
+	public class AppConfig implements LoadTimeWeavingConfigurer {
+
+		@Override
+		public LoadTimeWeaver getLoadTimeWeaver() {
+			return new ReflectiveLoadTimeWeaver();
+		}
+	}
+----
+
+If you are using XML based configuration you can specify the fully-qualified classname
+as the value of the '++weaver-class++' attribute on the `<context:load-time-weaver/>`
+element:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns:context="http://www.springframework.org/schema/context"
+		xsi:schemaLocation="
+			http://www.springframework.org/schema/beans
+			http://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.springframework.org/schema/context
+			http://www.springframework.org/schema/context/spring-context.xsd">
+
+		<context:load-time-weaver
+				weaver-class="org.springframework.instrument.classloading.ReflectiveLoadTimeWeaver"/>
+
+	</beans>
+----
+
+The `LoadTimeWeaver` that is defined and registered by the configuration can be later
+retrieved from the Spring container using the well-known name '++loadTimeWeaver++'.
+Remember that the `LoadTimeWeaver` exists just as a mechanism for Spring's LTW
+infrastructure to add one or more `ClassFileTransformers`. The actual
+`ClassFileTransformer` that does the LTW is the `ClassPreProcessorAgentAdapter` (from
+the `org.aspectj.weaver.loadtime` package) class. See the class-level javadocs of the
+`ClassPreProcessorAgentAdapter` class for further details, because the specifics of how
+the weaving is actually effected is beyond the scope of this section.
+
+There is one final attribute of the configuration left to discuss: the
+'++aspectjWeaving++' attribute (or '++aspectj-weaving++' if you are using XML). This is a
+simple attribute that controls whether LTW is enabled or not; it is as simple as that.
+It accepts one of three possible values, summarized below, with the default value being
+'++autodetect++' if the attribute is not present.
+
+[[aop-aj-ltw-ltw-tag-attrs]]
+.AspectJ weaving attribute values
+|===
+| Annotation Value| XML Value| Explanation
+
+| `ENABLED`
+| `on`
+| AspectJ weaving is on, and aspects will be woven at load-time as appropriate.
+
+| `DISABLED`
+| `off`
+| LTW is off... no aspect will be woven at load-time.
+
+| `AUTODETECT`
+| `autodetect`
+| If the Spring LTW infrastructure can find at least one '++META-INF/aop.xml++' file,
+  then AspectJ weaving is on, else it is off. This is the default value.
+|===
+
+

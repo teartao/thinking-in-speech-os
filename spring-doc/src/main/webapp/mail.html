@@ -1,0 +1,343 @@
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+   <title>26.&nbsp;Email</title><link rel="stylesheet" type="text/css" href="css/manual-multipage.css"><meta name="generator" content="DocBook XSL Stylesheets V1.78.1"><link rel="home" href="index.html" title="Spring Framework Reference Documentation"><link rel="up" href="spring-integration.html" title="Part&nbsp;VI.&nbsp;Integration"><link rel="prev" href="cci.html" title="25.&nbsp;JCA CCI"><link rel="next" href="scheduling.html" title="27.&nbsp;Task Execution and Scheduling"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">26.&nbsp;Email</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="cci.html">Prev</a>&nbsp;</td><th width="60%" align="center">Part&nbsp;VI.&nbsp;Integration</th><td width="20%" align="right">&nbsp;<a accesskey="n" href="scheduling.html">Next</a></td></tr></table><hr></div><div class="chapter"><div class="titlepage"><div><div><h2 class="title"><a name="mail" href="#mail"></a>26.&nbsp;Email</h2></div></div></div>
+
+<div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="mail-introduction" href="#mail-introduction"></a>26.1&nbsp;&#20171;&#32461;</h2></div></div></div>
+
+<div class="sidebar"><div class="titlepage"><div><div><p class="title"><b>&#20381;&#36182;&#24211;</b></p></div></div></div>
+
+<p>&#20026;&#20102;&#20320;&#30340;&#31243;&#24207;&#33021;&#22815;&#20351;&#29992;Spring Framework&#30340;email&#24211;&#65292;&#38656;&#35201;&#22312;classpath&#20013;&#28155;&#21152;&#22914;&#19979;&#38468;&#21152;&#30340;jar&#25991;&#20214;&#12290;</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+The <a class="ulink" href="https://java.net/projects/javamail/pages/Home" target="_top">JavaMail</a> <code class="literal">mail.jar</code> library 	- JavaMail &#24179;&#21488;&#21327;&#35758;&#26080;&#20851;&#30340;&#37038;&#20214;&#28040;&#24687;&#24211;
+</li><li class="listitem">
+The <a class="ulink" href="http://www.oracle.com/technetwork/java/jaf11-139815.html" target="_top">JAF</a>
+<code class="literal">activation.jar</code> library     - JAF [JavaBeans Activation Framework]
+</li></ul></div>
+
+<p>&#25152;&#26377;&#36825;&#20123;&#24211;&#37117;&#21487;&#20197;&#22312;&#32593;&#19978;&#20813;&#36153;&#33719;&#21462;&#12290;</p>
+</div>
+
+<p>Spring Framework &#25552;&#20379;&#20102;&#21457;&#36865;&#37038;&#20214;&#30340;&#24110;&#21161;&#24037;&#20855;&#24211;&#65292;&#25226;&#29992;&#25143;&#19982;&#24213;&#23618;&#37038;&#20214;&#31995;&#32479;&#32454;&#33410;&#36827;&#34892;&#35299;&#32806;&#12290;&#24182;&#19988;&#30001;Spring Framework&#36127;&#36131;&#22788;&#29702;&#23458;&#25143;&#31471;&#30340;&#24213;&#23618;&#36164;&#28304;&#12290;
+<span class="emphasis"><em>org.springframework.mail</em></span>&#26159;Spring Framework&#23545;&#37038;&#20214;&#25903;&#25345;&#30340;&#26681;&#32423;&#21253;&#12290;<span class="emphasis"><em>MailSender</em></span>&#26159;&#26680;&#24515;&#21457;&#36865;&#25509;&#21475;&#65307;
+&#25226;&#31616;&#21333;&#30340;&#20540;&#23545;&#35937;&#23553;&#35013;&#21040;&#31616;&#21333;&#37038;&#20214;&#23646;&#24615;&#20013;&#65292;&#20363;&#22914;&#65306;&#20174;&#21738;&#37324;&#21457;&#36865;&#21040;&#21738;&#37324;(&#21487;&#20197;&#28155;&#21152;&#26356;&#22810;&#30340;&#20154;)&#26159;<span class="emphasis"><em>SimpleMailMessage</em></span>&#31867;&#12290;
+&#36825;&#20010;&#21253;&#21516;&#26679;&#21253;&#21547;&#20102;&#24322;&#24120;&#23618;&#27425;&#26816;&#26597;&#65292;&#20363;&#22914;<code class="literal">MailException</code>&#26159;&#26681;&#24322;&#24120;&#65292;&#22312;&#37038;&#20214;&#31995;&#32479;&#24322;&#24120;&#20174;&#20302;&#31561;&#32423;&#24322;&#24120;&#25277;&#35937;&#25104;&#20026;&#39640;&#31561;&#32423;&#24322;&#24120;&#12290;
+&#35814;&#32454;&#20449;&#24687;&#35831;&#21435;&#21442;&#38405;javadocs&#25991;&#26723;&#65292;&#25991;&#26723;&#26174;&#31034;&#20102;&#35814;&#32454;&#30340;&#24322;&#24120;&#23618;&#27425;&#32467;&#26500;&#12290;</p>
+<p>&#25509;&#21475;<code class="literal">org.springframework.mail.javamail.JavaMailSender</code>&#28155;&#21152;&#20102;<span class="emphasis"><em>JavaMail</em></span> &#29305;&#24615;&#65292;&#20363;&#22914;&#36890;&#36807;<code class="literal">MailSender</code>&#25509;&#21475;&#25903;&#25345;MIME&#20449;&#24687;(&#20174;JavaMailSender&#32487;&#25215;)
+<code class="literal">JavaMailSender</code>&#36824;&#20026;JavaMail MIME&#20449;&#24687;&#20934;&#22791;&#20102;&#19968;&#20010;&#22238;&#35843;&#25509;&#21475;&#65292;&#21483;&#20570;<code class="literal">org.springframework.mail.javamail.MimeMessagePreparator</code></p>
+</div>
+<div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="mail-usage" href="#mail-usage"></a>26.2&nbsp;&#20351;&#29992;</h2></div></div></div>
+
+<p>&#25105;&#20204;&#26469;&#20551;&#35774;&#26377;&#19968;&#20010;&#19994;&#21153;&#25509;&#21475;&#21483;&#20570;<code class="literal">OrderManager</code>:</p>
+<pre class="programlisting"><span class="hl-keyword">public</span> <span class="hl-keyword">interface</span> OrderManager {
+
+    <span class="hl-keyword">void</span> placeOrder(Order order);
+
+}</pre>
+
+<p>&#25105;&#20204;&#36824;&#35201;&#20551;&#35774;&#19968;&#20010;&#35201;&#27714;&#35828;&#26126;&#65306;&#38656;&#35201;&#29983;&#25104;&#19968;&#20010;&#35746;&#21333;&#21495;&#24182;&#25226;&#30456;&#20851;&#35746;&#21333;&#21457;&#36865;&#32473;&#23458;&#25143;&#30340;&#37038;&#20214;&#20449;&#24687;&#12290;</p>
+<div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="mail-usage-simple" href="#mail-usage-simple"></a>26.2.1&nbsp;MailSender&#21644;SimpleMailMessage&#30340;&#22522;&#30784;&#20351;&#29992;</h3></div></div></div>
+
+<pre class="programlisting"><span class="hl-keyword">import</span> org.springframework.mail.MailException;
+<span class="hl-keyword">import</span> org.springframework.mail.MailSender;
+<span class="hl-keyword">import</span> org.springframework.mail.SimpleMailMessage;
+
+<span class="hl-keyword">public</span> <span class="hl-keyword">class</span> SimpleOrderManager <span class="hl-keyword">implements</span> OrderManager {
+
+    <span class="hl-keyword">private</span> MailSender mailSender;
+    <span class="hl-keyword">private</span> SimpleMailMessage templateMessage;
+
+    <span class="hl-keyword">public</span> <span class="hl-keyword">void</span> setMailSender(MailSender mailSender) {
+        <span class="hl-keyword">this</span>.mailSender = mailSender;
+    }
+
+    <span class="hl-keyword">public</span> <span class="hl-keyword">void</span> setTemplateMessage(SimpleMailMessage templateMessage) {
+        <span class="hl-keyword">this</span>.templateMessage = templateMessage;
+    }
+
+    <span class="hl-keyword">public</span> <span class="hl-keyword">void</span> placeOrder(Order order) {
+
+        <span class="hl-comment">// &#36827;&#34892;&#19994;&#21153;&#30340;&#35745;&#31639;...</span>
+
+        <span class="hl-comment">// &#36890;&#30693;&#21512;&#20316;&#20249;&#20276;&#32487;&#32493;&#35746;&#21333;...</span>
+
+        <span class="hl-comment">// &#32473;&#27169;&#26495;&#20449;&#24687;&#21644;&#33258;&#23450;&#20041;&#20869;&#23481;&#21019;&#24314;&#19968;&#20010;&#32447;&#31243;&#23433;&#20840;&#30340;"&#21103;&#26412;"</span>
+        SimpleMailMessage msg = <span class="hl-keyword">new</span> SimpleMailMessage(<span class="hl-keyword">this</span>.templateMessage);
+        msg.setTo(order.getCustomer().getEmailAddress());
+        msg.setText(
+            <span class="hl-string">"Dear "</span> + order.getCustomer().getFirstName()
+                + order.getCustomer().getLastName()
+                + <span class="hl-string">", thank you for placing order. Your order number is "</span>
+                + order.getOrderNumber());
+        <span class="hl-keyword">try</span>{
+            <span class="hl-keyword">this</span>.mailSender.send(msg);
+        }
+        <span class="hl-keyword">catch</span> (MailException ex) {
+            <span class="hl-comment">// &#31616;&#21333;&#30340;&#26085;&#24535;&#26469;&#35760;&#24405;&#65292;&#24182;&#32487;&#32493;&#25191;&#34892;...</span>
+            System.err.println(ex.getMessage());
+        }
+    }
+
+}</pre>
+
+<p>&#23450;&#20041;&#19978;&#38754;&#36825;&#20123;&#20195;&#30721;&#30340;bean&#22914;&#19979;:</p>
+<pre class="programlisting"><span class="hl-tag">&lt;bean</span> <span class="hl-attribute">id</span>=<span class="hl-value">"mailSender"</span> <span class="hl-attribute">class</span>=<span class="hl-value">"org.springframework.mail.javamail.JavaMailSenderImpl"</span><span class="hl-tag">&gt;</span>
+    <span class="hl-tag">&lt;property</span> <span class="hl-attribute">name</span>=<span class="hl-value">"host"</span> <span class="hl-attribute">value</span>=<span class="hl-value">"mail.mycompany.com"</span><span class="hl-tag">/&gt;</span>
+<span class="hl-tag">&lt;/bean&gt;</span>
+
+<span class="hl-comment">&lt;!-- &#36825;&#26159;&#19968;&#20010;&#21487;&#20197;&#39044;&#21152;&#36733;&#40664;&#35748;&#29366;&#24577;&#30340;&#27169;&#26495;&#20449;&#24687; --&gt;</span>
+<span class="hl-tag">&lt;bean</span> <span class="hl-attribute">id</span>=<span class="hl-value">"templateMessage"</span> <span class="hl-attribute">class</span>=<span class="hl-value">"org.springframework.mail.SimpleMailMessage"</span><span class="hl-tag">&gt;</span>
+    <span class="hl-tag">&lt;property</span> <span class="hl-attribute">name</span>=<span class="hl-value">"from"</span> <span class="hl-attribute">value</span>=<span class="hl-value">"customerservice@mycompany.com"</span><span class="hl-tag">/&gt;</span>
+    <span class="hl-tag">&lt;property</span> <span class="hl-attribute">name</span>=<span class="hl-value">"subject"</span> <span class="hl-attribute">value</span>=<span class="hl-value">"Your order"</span><span class="hl-tag">/&gt;</span>
+<span class="hl-tag">&lt;/bean&gt;</span>
+
+<span class="hl-tag">&lt;bean</span> <span class="hl-attribute">id</span>=<span class="hl-value">"orderManager"</span> <span class="hl-attribute">class</span>=<span class="hl-value">"com.mycompany.businessapp.support.SimpleOrderManager"</span><span class="hl-tag">&gt;</span>
+    <span class="hl-tag">&lt;property</span> <span class="hl-attribute">name</span>=<span class="hl-value">"mailSender"</span> <span class="hl-attribute">ref</span>=<span class="hl-value">"mailSender"</span><span class="hl-tag">/&gt;</span>
+    <span class="hl-tag">&lt;property</span> <span class="hl-attribute">name</span>=<span class="hl-value">"templateMessage"</span> <span class="hl-attribute">ref</span>=<span class="hl-value">"templateMessage"</span><span class="hl-tag">/&gt;</span>
+<span class="hl-tag">&lt;/bean&gt;</span></pre>
+
+</div>
+<div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="mail-usage-mime" href="#mail-usage-mime"></a>26.2.2&nbsp;JavaMailSender&#21644;MimeMessagePreparator&#30340;&#20351;&#29992;</h3></div></div></div>
+
+<p>&#36825;&#37324;&#26159;&#20351;&#29992;<code class="literal">MimeMessagePreparator</code>&#22238;&#35843;&#25509;&#21475;&#21478;&#22806;&#23454;&#29616;&#20102;<code class="literal">OrderManager</code>&#12290;
+&#35831;&#27880;&#24847;&#36825;&#20010;&#20363;&#23376;&#37324;&#38754;&#20351;&#29992;<code class="literal">JavaMailSender</code>&#31867;&#22411;&#20316;&#20026;<code class="literal">mailSender</code>&#30340;&#23646;&#24615;&#12290;
+&#20197;&#20415;&#25105;&#20204;&#33021;&#22815;&#20351;&#29992;JavaMail&#30340;<code class="literal">MimeMessage</code>&#31867;&#65306;</p>
+<pre class="programlisting"><span class="hl-keyword">import</span> javax.mail.Message;
+<span class="hl-keyword">import</span> javax.mail.MessagingException;
+<span class="hl-keyword">import</span> javax.mail.internet.InternetAddress;
+<span class="hl-keyword">import</span> javax.mail.internet.MimeMessage;
+
+<span class="hl-keyword">import</span> javax.mail.internet.MimeMessage;
+<span class="hl-keyword">import</span> org.springframework.mail.MailException;
+<span class="hl-keyword">import</span> org.springframework.mail.javamail.JavaMailSender;
+<span class="hl-keyword">import</span> org.springframework.mail.javamail.MimeMessagePreparator;
+
+<span class="hl-keyword">public</span> <span class="hl-keyword">class</span> SimpleOrderManager <span class="hl-keyword">implements</span> OrderManager {
+
+    <span class="hl-keyword">private</span> JavaMailSender mailSender;
+
+    <span class="hl-keyword">public</span> <span class="hl-keyword">void</span> setMailSender(JavaMailSender mailSender) {
+        <span class="hl-keyword">this</span>.mailSender = mailSender;
+    }
+
+    <span class="hl-keyword">public</span> <span class="hl-keyword">void</span> placeOrder(<span class="hl-keyword">final</span> Order order) {
+
+        <span class="hl-comment">// &#36827;&#34892;&#19994;&#21153;&#30340;&#35745;&#31639;...</span>
+
+        <span class="hl-comment">// &#36890;&#30693;&#21512;&#20316;&#20249;&#20276;&#32487;&#32493;&#35746;&#21333;...</span>
+
+        MimeMessagePreparator preparator = <span class="hl-keyword">new</span> MimeMessagePreparator() {
+
+            <span class="hl-keyword">public</span> <span class="hl-keyword">void</span> prepare(MimeMessage mimeMessage) <span class="hl-keyword">throws</span> Exception {
+
+                mimeMessage.setRecipient(Message.RecipientType.TO,
+                        <span class="hl-keyword">new</span> InternetAddress(order.getCustomer().getEmailAddress()));
+                mimeMessage.setFrom(<span class="hl-keyword">new</span> InternetAddress(<span class="hl-string">"mail@mycompany.com"</span>));
+                mimeMessage.setText(
+                        <span class="hl-string">"Dear "</span> + order.getCustomer().getFirstName() + <span class="hl-string">" "</span>
+                            + order.getCustomer().getLastName()
+                            + <span class="hl-string">", thank you for placing order. Your order number is "</span>
+                            + order.getOrderNumber());
+            }
+        };
+
+        <span class="hl-keyword">try</span> {
+            <span class="hl-keyword">this</span>.mailSender.send(preparator);
+        }
+        <span class="hl-keyword">catch</span> (MailException ex) {
+            <span class="hl-comment">// &#31616;&#21333;&#30340;&#26085;&#24535;&#26469;&#35760;&#24405;&#65292;&#24182;&#32487;&#32493;&#25191;&#34892;...</span>
+            System.err.println(ex.getMessage());
+        }
+    }
+
+}</pre>
+
+<div class="note" style="margin-left: 0.5in; margin-right: 0.5in;"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="images/note.png"></td><th align="left">Note</th></tr><tr><td align="left" valign="top">
+<p>&#37038;&#20214;&#20195;&#30721;&#20316;&#20026;&#19968;&#20010;&#27178;&#20999;&#30340;&#20851;&#27880;&#28857;&#65292;&#21487;&#33021;&#20197;&#20505;&#36873;&#30340;&#36523;&#20221;&#37325;&#26500;&#36827;&#20837;<a class="link" href="aop.html" title="9.&nbsp;Aspect Oriented Programming with Spring">custom Spring AOP aspect</a>&#65292;
+&#37038;&#20214;&#20195;&#30721;&#36827;&#20837;AOP&#21518;&#23558;&#20250;&#22312;<code class="literal">OrderManager</code>&#26631;&#31614;&#19979;&#36866;&#24403;&#30340;&#20999;&#38754;&#20013;&#25191;&#34892;&#12290;</p>
+</td></tr></table></div>
+
+<p>Spring Framework&#37038;&#20214;&#25903;&#25345;&#38468;&#24102;&#26631;&#20934;&#30340;JavaMail&#23454;&#29616;&#12290;
+&#26356;&#22810;&#20449;&#24687;&#35831;&#21442;&#38405;&#30456;&#20851;&#32852;javadocs&#20869;&#23481;&#12290;</p>
+</div>
+</div>
+<div class="section"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="mail-javamail-mime" href="#mail-javamail-mime"></a>26.3&nbsp;&#20351;&#29992;JavaMail&#30340;MimeMessageHelper</h2></div></div></div>
+
+<p><code class="literal">org.springframework.mail.javamail.MimeMessageHelper</code>&#31867;&#21487;&#20197;&#24456;&#26041;&#38754;&#30340;&#22788;&#29702;JavaMail&#20449;&#24687;&#65292;&#20351;&#20320;&#19982;&#35814;&#32454;&#30340;JavaMail API&#35299;&#32806;&#12290;
+&#24456;&#23481;&#26131;&#30340;&#29992;<code class="literal">MimeMessageHelper</code>&#21019;&#24314;&#19968;&#26465;<code class="literal">MimeMessage</code>&#65306;</p>
+<pre class="programlisting"><span class="hl-comment">// &#20320;&#24403;&#28982;&#21487;&#20197;&#20351;&#29992;&#29616;&#23454;&#19990;&#30028;&#20013;&#30340;DI&#20363;&#23376;</span>
+JavaMailSenderImpl sender = <span class="hl-keyword">new</span> JavaMailSenderImpl();
+sender.setHost(<span class="hl-string">"mail.host.com"</span>);
+
+MimeMessage message = sender.createMimeMessage();
+MimeMessageHelper helper = <span class="hl-keyword">new</span> MimeMessageHelper(message);
+helper.setTo(<span class="hl-string">"test@host.com"</span>);
+helper.setText(<span class="hl-string">"Thank you for ordering!"</span>);
+
+sender.send(message);</pre>
+
+<div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="mail-javamail-mime-attachments" href="#mail-javamail-mime-attachments"></a>26.3.1&nbsp;&#21457;&#36865;&#38468;&#20214;&#21644;&#20869;&#23884;&#36164;&#28304;</h3></div></div></div>
+
+<p>&#32477;&#22823;&#22810;&#25968;&#30005;&#23376;&#37038;&#20214;&#28040;&#24687;&#21516;&#26102;&#20801;&#35768;&#38468;&#20214;&#21644;&#20869;&#23884;&#36164;&#28304;&#12290;&#20197;&#20869;&#23884;&#36164;&#28304;&#20030;&#20363;&#65292;&#24744;&#24076;&#26395;&#24744;&#30340;&#22270;&#29255;&#25110;&#32773;&#34920;&#26684;&#30452;&#25509;&#26174;&#31034;&#22312;&#20320;&#30340;&#20449;&#24687;&#20013;&#65292;&#32780;&#19981;&#26159;&#20197;&#38468;&#20214;&#30340;&#24418;&#24335;&#36827;&#34892;&#26174;&#31034;&#12290;</p>
+<div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="mail-javamail-mime-attachments-attachment" href="#mail-javamail-mime-attachments-attachment"></a>&#38468;&#20214;</h4></div></div></div>
+
+<p>&#36890;&#36807;&#36825;&#20010;&#20363;&#23376;&#65292;&#20320;&#21487;&#20197;&#20102;&#35299;&#21040;&#22914;&#20309;&#20351;&#29992;<code class="literal">MimeMessageHelper</code>&#26469;&#21457;&#36865;&#19968;&#23553;&#24102;&#26377;&#31616;&#21333;&#30340;JPEG&#22270;&#29255;&#38468;&#20214;&#30340;&#37038;&#20214;&#12290;</p>
+<pre class="programlisting">JavaMailSenderImpl sender = <span class="hl-keyword">new</span> JavaMailSenderImpl();
+sender.setHost(<span class="hl-string">"mail.host.com"</span>);
+
+MimeMessage message = sender.createMimeMessage();
+
+<span class="hl-comment">// &#20320;&#38656;&#35201;&#20351;&#29992;true&#20316;&#20026;&#26631;&#35760;&#26469;&#25351;&#20986;&#20320;&#22810;&#26465;&#20449;&#24687;&#25152;&#38656;&#35201;&#21457;&#36865;&#30340;&#20869;&#23481;</span>
+MimeMessageHelper helper = <span class="hl-keyword">new</span> MimeMessageHelper(message, true);
+helper.setTo(<span class="hl-string">"test@host.com"</span>);
+
+helper.setText(<span class="hl-string">"Check out this image!"</span>);
+
+<span class="hl-comment">// &#35753;&#25105;&#20204;&#26469;&#25226;&#33261;&#21517;&#26157;&#33879;&#30340;windows&#31034;&#20363;&#25991;&#20214;&#38468;&#20214;&#19978;(&#36825;&#27425;&#25105;&#20204;&#24050;&#32463;&#22797;&#21046;&#21040;c:/)</span>
+FileSystemResource file = <span class="hl-keyword">new</span> FileSystemResource(<span class="hl-keyword">new</span> File(<span class="hl-string">"c:/Sample.jpg"</span>));
+helper.addAttachment(<span class="hl-string">"CoolImage.jpg"</span>, file);
+
+sender.send(message);</pre>
+
+</div>
+<div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="mail-javamail-mime-attachments-inline" href="#mail-javamail-mime-attachments-inline"></a>&#20869;&#23884;&#36164;&#28304;</h4></div></div></div>
+
+<p>&#36890;&#36807;&#36825;&#20010;&#20363;&#23376;&#65292;&#20320;&#21487;&#20197;&#38142;&#25509;&#21040;&#22914;&#20309;&#20351;&#29992;<code class="literal">MimeMessageHelper</code>&#26469;&#21457;&#36865;&#19968;&#20221;&#20869;&#23884;&#22270;&#29255;&#30340;&#37038;&#20214;&#12290;</p>
+<pre class="programlisting">JavaMailSenderImpl sender = <span class="hl-keyword">new</span> JavaMailSenderImpl();
+sender.setHost(<span class="hl-string">"mail.host.com"</span>);
+
+MimeMessage message = sender.createMimeMessage();
+
+<span class="hl-comment">// &#20320;&#38656;&#35201;&#20351;&#29992;true&#20316;&#20026;&#26631;&#35760;&#26469;&#25351;&#20986;&#20320;&#22810;&#26465;&#20449;&#24687;&#25152;&#38656;&#35201;&#21457;&#36865;&#30340;&#20869;&#23481;</span>
+MimeMessageHelper helper = <span class="hl-keyword">new</span> MimeMessageHelper(message, true);
+helper.setTo(<span class="hl-string">"test@host.com"</span>);
+
+<span class="hl-comment">// &#20351;&#29992;true&#20316;&#20026;&#26631;&#38388;&#25351;&#20986;&#25991;&#26412;&#21253;&#21547;&#30340;&#26159;HTML</span>
+helper.setText(<span class="hl-string">"&lt;html&gt;&lt;body&gt;&lt;img src=</span><span class="emphasis"><em>'cid:identifier1234</em></span><span class="hl-string">'&gt;&lt;/body&gt;&lt;/html&gt;", true);
+</span>
+<span class="hl-comment">// &#35753;&#25105;&#20204;&#25226;&#33261;&#21517;&#26157;&#33879;&#30340;windows&#31034;&#20363;&#25991;&#20214;&#21253;&#21547;&#36827;(&#36825;&#27425;&#25105;&#20204;&#24050;&#32463;&#22797;&#21046;&#21040;c:/)</span>
+FileSystemResource res = <span class="hl-keyword">new</span> FileSystemResource(<span class="hl-keyword">new</span> File(<span class="hl-string">"c:/Sample.jpg"</span>));
+helper.addInline(<span class="hl-string">"identifier1234"</span>, res);
+
+sender.send(message);</pre>
+
+<div class="warning" style="margin-left: 0.5in; margin-right: 0.5in;"><table border="0" summary="Warning"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="images/warning.png"></td><th align="left">Warning</th></tr><tr><td align="left" valign="top">
+<p>mime&#20449;&#24687;&#20351;&#29992;&#25351;&#23450;&#30340;<code class="literal">Content-ID</code>&#28155;&#21152;&#20869;&#23884;&#36164;&#28304;(&#22312;&#19978;&#38754;<code class="literal">identifier1234</code>&#30340;&#31034;&#20363;&#20013;)&#12290;&#20320;&#25152;&#28155;&#21152;&#30340;&#25991;&#26412;&#19982;&#36164;&#28304;&#30340;&#20808;&#21518;&#27425;&#24207;&#26159;<span class="emphasis"><em>&#38750;&#24120;</em></span>&#37325;&#35201;&#12290;
+&#35831;<span class="emphasis"><em>&#20808;&#28155;&#21152;&#25991;&#26412;&#20449;&#24687;</em></span>&#20877;&#28155;&#21152;&#36164;&#28304;&#12290;&#22914;&#26524;&#20320;&#20197;&#20854;&#20182;&#26041;&#24335;&#65292;&#20869;&#23884;&#20449;&#24687;&#26159;&#19981;&#20250;&#27491;&#24120;&#24037;&#20316;&#30340;&#12290;</p>
+</td></tr></table></div>
+
+</div>
+</div>
+<div class="section"><div class="titlepage"><div><div><h3 class="title"><a name="mail-templates" href="#mail-templates"></a>26.3.2&nbsp;&#29992;&#27169;&#26495;&#24211;&#26469;&#21019;&#24314;Email&#20869;&#23481;</h3></div></div></div>
+
+<p>&#22312;&#21069;&#38754;&#30340;&#31034;&#20363;&#20013;&#65292;&#20195;&#30721;&#25191;&#34892;<code class="literal">message.setText(..)</code>&#20989;&#25968;&#21019;&#24314;email&#20449;&#24687;&#20869;&#23481;&#12290;
+&#19978;&#36848;&#20363;&#23376;&#26159;&#19968;&#20123;&#24456;&#31616;&#26126;&#24182;&#19978;&#19979;&#25991;&#36830;&#36143;&#30340;&#20363;&#23376;&#65292;&#36825;&#20123;&#20363;&#23376;&#32473;&#20320;&#23637;&#31034;&#20102;&#38750;&#24120;&#22522;&#30784;&#30340;API&#12290;</p>
+<p>&#20320;&#21487;&#33021;&#22312;&#20856;&#22411;&#20225;&#19994;&#24212;&#29992;&#20013;&#26377;&#22823;&#37327;&#30340;&#21407;&#22240;&#19981;&#20351;&#29992;&#19978;&#36848;&#30340;&#26041;&#27861;&#26469;&#21019;&#24314;&#20320;&#30340;&#37038;&#20214;&#20869;&#23481;&#65306;</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+&#22312;Java&#20195;&#30721;&#20013;&#21019;&#24314;&#22522;&#20110;HTML&#30340;&#37038;&#20214;&#20869;&#23481;&#26159;&#20047;&#21619;&#21644;&#26131;&#38169;&#30340;
+</li><li class="listitem">
+&#26174;&#31034;&#36923;&#36753;&#21644;&#19994;&#21153;&#36923;&#36753;&#27809;&#26377;&#28165;&#26224;&#30340;&#20998;&#31163;
+</li><li class="listitem">
+&#38656;&#35201;&#19981;&#20572;&#37325;&#20889;Java&#20195;&#30721;&#12289;&#37325;&#26032;&#32534;&#35793;&#12289;&#37096;&#32626;&#25165;&#33021;&#22815;&#25913;&#20889;&#37038;&#20214;&#20869;&#23481;&#30340;&#26174;&#31034;&#32467;&#26500;
+</li></ul></div>
+
+<p>&#35299;&#20915;&#36825;&#20123;&#38382;&#39064;&#30340;&#36890;&#24120;&#36947;&#36335;&#26159;&#20197;&#27169;&#26495;&#24211;&#30340;&#26041;&#24335;&#65292;&#20363;&#22914;&#20351;&#29992;&#20363;&#22914;FreeMarker&#25110;&#32773;Velocity&#31561;&#27169;&#26495;&#24211;&#26469;&#23450;&#20041;&#37038;&#20214;&#30340;&#26174;&#31034;&#20869;&#23481;&#12290;
+&#36825;&#20351;&#24471;&#20320;&#20195;&#30721;&#30340;&#24037;&#20316;&#20869;&#23481;&#65292;&#20165;&#20165;&#38656;&#35201;&#21019;&#24314;&#37038;&#20214;&#28210;&#26579;&#25152;&#38656;&#30340;&#25968;&#25454;&#24182;&#21457;&#36865;&#37038;&#20214;&#12290;
+&#21738;&#24597;&#20320;&#30340;&#37038;&#20214;&#21464;&#24471;&#27604;&#20197;&#21069;&#26356;&#22797;&#26434;&#65292;&#20351;&#29992;&#31616;&#21333;&#30340;Spring Framework&#30340;FreeMarker&#21644;Velocity&#25903;&#25345;&#31867;&#65292;&#32477;&#23545;&#26159;&#26368;&#20339;&#30340;&#20570;&#27861;&#12290;
+&#19979;&#38754;&#30340;&#31034;&#20363;&#23637;&#31034;&#20102;&#20351;&#29992;&#20102;Velocity&#27169;&#26495;&#24211;&#21019;&#24314;&#37038;&#20214;&#20869;&#23481;&#12290;</p>
+<div class="section"><div class="titlepage"><div><div><h4 class="title"><a name="mail-templates-example" href="#mail-templates-example"></a>&#20351;&#29992;Velocity&#30340;&#22522;&#30784;&#20363;&#23376;</h4></div></div></div>
+
+<p>&#20351;&#29992; <a class="ulink" href="http://velocity.apache.org" target="_top">Velocity</a> &#21019;&#24314;&#20320;&#30340;&#37038;&#20214;&#27169;&#26495;&#65292;Velocity&#24211;&#38656;&#35201;&#22312;&#20320;&#30340;classpath&#20013;&#21487;&#20197;&#20351;&#29992;&#12290;
+&#20320;&#38656;&#35201;&#20026;&#20320;&#30340;&#24212;&#29992;&#21019;&#24314;&#19968;&#20010;&#25110;&#22810;&#20010;email&#20869;&#23481;&#30340;Velocity&#27169;&#26495;&#12290;&#22312;&#19979;&#38754;&#31034;&#20363;&#20351;&#29992;&#20102;Velocity&#27169;&#26495;&#12290;
+&#20320;&#25152;&#30475;&#21040;&#22522;&#30784;&#30340;HTML&#20869;&#23481;&#65292;&#21487;&#20197;&#36890;&#36807;&#20320;&#21916;&#27426;HTML&#25110;&#32773;&#25991;&#26412;&#32534;&#36753;&#22120;&#32534;&#36753;&#25104;&#32431;&#25991;&#26412;&#12290;</p>
+<pre class="programlisting"># in the com/foo/package
+<span class="hl-tag">&lt;html&gt;</span>
+    <span class="hl-tag">&lt;body&gt;</span>
+        <span class="hl-tag">&lt;h3&gt;</span>Hi ${user.userName}, welcome to the Chipping Sodbury On-the-Hill message boards!<span class="hl-tag">&lt;/h3&gt;</span>
+
+        <span class="hl-tag">&lt;div&gt;</span>
+            Your email address is <span class="hl-tag">&lt;a</span> <span class="hl-attribute">href</span>=<span class="hl-value">"mailto:${user.emailAddress}"</span><span class="hl-tag">&gt;</span>${user.emailAddress}<span class="hl-tag">&lt;/a&gt;</span>.
+        <span class="hl-tag">&lt;/div&gt;</span>
+    <span class="hl-tag">&lt;/body&gt;</span>
+<span class="hl-tag">&lt;/html&gt;</span></pre>
+
+<p>&#19979;&#38754;&#20351;&#29992;&#20102;&#19968;&#20123;&#31616;&#21333;&#30340;&#20195;&#30721;&#21644;Spring XML&#37197;&#32622;&#65292;&#22312;&#21152;&#19978;Velocity&#27169;&#26495;&#23436;&#25104;&#20102;&#21019;&#24314;Email&#20869;&#23481;&#24182;&#21457;&#36865;Email(s)&#12290;</p>
+<pre class="programlisting"><span class="hl-keyword">package</span> com.foo;
+
+<span class="hl-keyword">import</span> org.apache.velocity.app.VelocityEngine;
+<span class="hl-keyword">import</span> org.springframework.mail.javamail.JavaMailSender;
+<span class="hl-keyword">import</span> org.springframework.mail.javamail.MimeMessageHelper;
+<span class="hl-keyword">import</span> org.springframework.mail.javamail.MimeMessagePreparator;
+<span class="hl-keyword">import</span> org.springframework.ui.velocity.VelocityEngineUtils;
+
+<span class="hl-keyword">import</span> javax.mail.internet.MimeMessage;
+<span class="hl-keyword">import</span> java.util.HashMap;
+<span class="hl-keyword">import</span> java.util.Map;
+
+<span class="hl-keyword">public</span> <span class="hl-keyword">class</span> SimpleRegistrationService <span class="hl-keyword">implements</span> RegistrationService {
+
+    <span class="hl-keyword">private</span> JavaMailSender mailSender;
+    <span class="hl-keyword">private</span> VelocityEngine velocityEngine;
+
+    <span class="hl-keyword">public</span> <span class="hl-keyword">void</span> setMailSender(JavaMailSender mailSender) {
+        <span class="hl-keyword">this</span>.mailSender = mailSender;
+    }
+
+    <span class="hl-keyword">public</span> <span class="hl-keyword">void</span> setVelocityEngine(VelocityEngine velocityEngine) {
+        <span class="hl-keyword">this</span>.velocityEngine = velocityEngine;
+    }
+
+    <span class="hl-keyword">public</span> <span class="hl-keyword">void</span> register(User user) {
+
+        <span class="hl-comment">// &#36825;&#37324;&#32534;&#20889;&#30331;&#24405;&#36923;&#36753;...</span>
+
+        sendConfirmationEmail(user);
+    }
+
+    <span class="hl-keyword">private</span> <span class="hl-keyword">void</span> sendConfirmationEmail(<span class="hl-keyword">final</span> User user) {
+        MimeMessagePreparator preparator = <span class="hl-keyword">new</span> MimeMessagePreparator() {
+            <span class="hl-keyword">public</span> <span class="hl-keyword">void</span> prepare(MimeMessage mimeMessage) <span class="hl-keyword">throws</span> Exception {
+                MimeMessageHelper message = <span class="hl-keyword">new</span> MimeMessageHelper(mimeMessage);
+                message.setTo(user.getEmailAddress());
+                message.setFrom(<span class="hl-string">"webmaster@csonth.gov.uk"</span>); <span class="hl-comment">// &#21487;&#20197;&#34987;&#21442;&#25968;&#21270;...</span>
+                Map model = <span class="hl-keyword">new</span> HashMap();
+                model.put(<span class="hl-string">"user"</span>, user);
+                String text = VelocityEngineUtils.mergeTemplateIntoString(
+                        velocityEngine, <span class="hl-string">"com/dns/registration-confirmation.vm"</span>, model);
+                message.setText(text, true);
+            }
+        };
+        <span class="hl-keyword">this</span>.mailSender.send(preparator);
+    }
+
+}</pre>
+
+<pre class="programlisting"><span class="hl-directive" style="color: maroon">&lt;?xml version="1.0" encoding="UTF-8"?&gt;</span>
+<span class="hl-tag">&lt;beans</span> <span class="hl-attribute">xmlns</span>=<span class="hl-value">"http://www.springframework.org/schema/beans"</span>
+    <span class="hl-attribute">xmlns:xsi</span>=<span class="hl-value">"http://www.w3.org/2001/XMLSchema-instance"</span>
+    <span class="hl-attribute">xsi:schemaLocation</span>=<span class="hl-value">"http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd"</span><span class="hl-tag">&gt;</span>
+
+    <span class="hl-tag">&lt;bean</span> <span class="hl-attribute">id</span>=<span class="hl-value">"mailSender"</span> <span class="hl-attribute">class</span>=<span class="hl-value">"org.springframework.mail.javamail.JavaMailSenderImpl"</span><span class="hl-tag">&gt;</span>
+        <span class="hl-tag">&lt;property</span> <span class="hl-attribute">name</span>=<span class="hl-value">"host"</span> <span class="hl-attribute">value</span>=<span class="hl-value">"mail.csonth.gov.uk"</span><span class="hl-tag">/&gt;</span>
+    <span class="hl-tag">&lt;/bean&gt;</span>
+
+    <span class="hl-tag">&lt;bean</span> <span class="hl-attribute">id</span>=<span class="hl-value">"registrationService"</span> <span class="hl-attribute">class</span>=<span class="hl-value">"com.foo.SimpleRegistrationService"</span><span class="hl-tag">&gt;</span>
+        <span class="hl-tag">&lt;property</span> <span class="hl-attribute">name</span>=<span class="hl-value">"mailSender"</span> <span class="hl-attribute">ref</span>=<span class="hl-value">"mailSender"</span><span class="hl-tag">/&gt;</span>
+        <span class="hl-tag">&lt;property</span> <span class="hl-attribute">name</span>=<span class="hl-value">"velocityEngine"</span> <span class="hl-attribute">ref</span>=<span class="hl-value">"velocityEngine"</span><span class="hl-tag">/&gt;</span>
+    <span class="hl-tag">&lt;/bean&gt;</span>
+
+    <span class="hl-tag">&lt;bean</span> <span class="hl-attribute">id</span>=<span class="hl-value">"velocityEngine"</span> <span class="hl-attribute">class</span>=<span class="hl-value">"org.springframework.ui.velocity.VelocityEngineFactoryBean"</span><span class="hl-tag">&gt;</span>
+        <span class="hl-tag">&lt;property</span> <span class="hl-attribute">name</span>=<span class="hl-value">"velocityProperties"</span><span class="hl-tag">&gt;</span>
+            <span class="hl-tag">&lt;value&gt;</span>
+                resource.loader=class
+                class.resource.loader.class=org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader
+            <span class="hl-tag">&lt;/value&gt;</span>
+        <span class="hl-tag">&lt;/property&gt;</span>
+    <span class="hl-tag">&lt;/bean&gt;</span>
+
+<span class="hl-tag">&lt;/beans&gt;</span></pre>
+
+</div>
+</div>
+</div>
+</div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="cci.html">Prev</a>&nbsp;</td><td width="20%" align="center"><a accesskey="u" href="spring-integration.html">Up</a></td><td width="40%" align="right">&nbsp;<a accesskey="n" href="scheduling.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">25.&nbsp;JCA CCI&nbsp;</td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top">&nbsp;27.&nbsp;Task Execution and Scheduling</td></tr></table></div></body></html>

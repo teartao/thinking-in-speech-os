@@ -1,0 +1,117 @@
+[[portlet-ann-sessionattrib]]
+==== Specifying attributes to store in a Session with @SessionAttributes
+
+The type-level `@SessionAttributes` annotation declares session attributes used by a
+specific handler. This will typically list the names of model attributes or types of
+model attributes which should be transparently stored in the session or some
+conversational storage, serving as form-backing beans between subsequent requests.
+
+The following code snippet shows the usage of this annotation:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Controller
+	@RequestMapping("EDIT")
+	@SessionAttributes("site")
+	public class PetSitesEditController {
+		// ...
+	}
+----
+
+
+
+[[portlet-ann-webdatabinder]]
+==== Customizing WebDataBinder initialization
+
+To customize request parameter binding with PropertyEditors, etc. via Spring's
+`WebDataBinder`, you can either use `@InitBinder`-annotated methods within your
+controller or externalize your configuration by providing a custom
+`WebBindingInitializer`.
+
+
+[[portlet-ann-initbinder]]
+===== Customizing data binding with @InitBinder
+
+Annotating controller methods with `@InitBinder` allows you to configure web data
+binding directly within your controller class. `@InitBinder` identifies methods which
+initialize the `WebDataBinder` which will be used for populating command and form object
+arguments of annotated handler methods.
+
+Such init-binder methods support all arguments that `@RequestMapping` supports, except
+for command/form objects and corresponding validation result objects. Init-binder
+methods must not have a return value. Thus, they are usually declared as `void`. Typical
+arguments include `WebDataBinder` in combination with `WebRequest` or
+`java.util.Locale`, allowing code to register context-specific editors.
+
+The following example demonstrates the use of `@InitBinder` for configuring a
+`CustomDateEditor` for all `java.util.Date` form properties.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Controller
+	public class MyFormController {
+
+		@InitBinder
+		public void initBinder(WebDataBinder binder) {
+		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+			dateFormat.setLenient(false);
+			binder.registerCustomEditor(Date.class, new CustomDateEditor(dateFormat, false));
+		}
+
+		// ...
+
+	}
+----
+
+
+[[portlet-ann-webbindinginitializer]]
+===== Configuring a custom WebBindingInitializer
+
+To externalize data binding initialization, you can provide a custom implementation of
+the `WebBindingInitializer` interface, which you then enable by supplying a custom bean
+configuration for an `AnnotationMethodHandlerAdapter`, thus overriding the default
+configuration.
+
+
+
+
+[[portlet-deployment]]
+=== Portlet application deployment
+The process of deploying a Spring Portlet MVC application is no different than deploying
+any JSR-168 Portlet application. However, this area is confusing enough in general that
+it is worth talking about here briefly.
+
+Generally, the portal/portlet container runs in one webapp in your servlet container and
+your portlets run in another webapp in your servlet container. In order for the portlet
+container webapp to make calls into your portlet webapp it must make cross-context calls
+to a well-known servlet that provides access to the portlet services defined in your
+`portlet.xml` file.
+
+The JSR-168 specification does not specify exactly how this should happen, so each
+portlet container has its own mechanism for this, which usually involves some kind of
+"deployment process" that makes changes to the portlet webapp itself and then registers
+the portlets within the portlet container.
+
+At a minimum, the `web.xml` file in your portlet webapp is modified to inject the
+well-known servlet that the portlet container will call. In some cases a single servlet
+will service all portlets in the webapp, in other cases there will be an instance of the
+servlet for each portlet.
+
+Some portlet containers will also inject libraries and/or configuration files into the
+webapp as well. The portlet container must also make its implementation of the Portlet
+JSP Tag Library available to your webapp.
+
+The bottom line is that it is important to understand the deployment needs of your
+target portal and make sure they are met (usually by following the automated deployment
+process it provides). Be sure to carefully review the documentation from your portal for
+this process.
+
+Once you have deployed your portlet, review the resulting `web.xml` file for sanity.
+Some older portals have been known to corrupt the definition of the
+`ViewRendererServlet`, thus breaking the rendering of your portlets.
+
+
+
+

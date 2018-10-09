@@ -1,0 +1,109 @@
+[[remoting-httpinvoker-server]]
+==== Exposing the service object
+Setting up the HTTP invoker infrastructure for a service object resembles closely the
+way you would do the same using Hessian or Burlap. Just as Hessian support provides the
+`HessianServiceExporter`, Spring's HttpInvoker support provides the
+`org.springframework.remoting.httpinvoker.HttpInvokerServiceExporter`.
+
+To expose the `AccountService` (mentioned above) within a Spring Web MVC
+`DispatcherServlet`, the following configuration needs to be in place in the
+dispatcher's application context:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean name="/AccountService" class="org.springframework.remoting.httpinvoker.HttpInvokerServiceExporter">
+		<property name="service" ref="accountService"/>
+		<property name="serviceInterface" value="example.AccountService"/>
+	</bean>
+----
+
+Such an exporter definition will be exposed through the `DispatcherServlet`'s standard
+mapping facilities, as explained in the section on Hessian.
+
+Alternatively, create an `HttpInvokerServiceExporter` in your root application context
+(e.g. in `'WEB-INF/applicationContext.xml'`):
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean name="accountExporter" class="org.springframework.remoting.httpinvoker.HttpInvokerServiceExporter">
+		<property name="service" ref="accountService"/>
+		<property name="serviceInterface" value="example.AccountService"/>
+	</bean>
+----
+
+In addition, define a corresponding servlet for this exporter in `'web.xml'`, with the
+servlet name matching the bean name of the target exporter:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<servlet>
+		<servlet-name>accountExporter</servlet-name>
+		<servlet-class>org.springframework.web.context.support.HttpRequestHandlerServlet</servlet-class>
+	</servlet>
+
+	<servlet-mapping>
+		<servlet-name>accountExporter</servlet-name>
+		<url-pattern>/remoting/AccountService</url-pattern>
+	</servlet-mapping>
+----
+
+If you are running outside of a servlet container and are using Oracle's Java 6, then you
+can use the built-in HTTP server implementation. You can configure the
+`SimpleHttpServerFactoryBean` together with a `SimpleHttpInvokerServiceExporter` as is
+shown in this example:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean name="accountExporter"
+			class="org.springframework.remoting.httpinvoker.SimpleHttpInvokerServiceExporter">
+		<property name="service" ref="accountService"/>
+		<property name="serviceInterface" value="example.AccountService"/>
+	</bean>
+
+	<bean id="httpServer"
+			class="org.springframework.remoting.support.SimpleHttpServerFactoryBean">
+		<property name="contexts">
+			<util:map>
+				<entry key="/remoting/AccountService" value-ref="accountExporter"/>
+			</util:map>
+		</property>
+		<property name="port" value="8080" />
+	</bean>
+----
+
+
+
+[[remoting-httpinvoker-client]]
+==== Linking in the service at the client
+Again, linking in the service from the client much resembles the way you would do it
+when using Hessian or Burlap. Using a proxy, Spring will be able to translate your calls
+to HTTP POST requests to the URL pointing to the exported service.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="httpInvokerProxy" class="org.springframework.remoting.httpinvoker.HttpInvokerProxyFactoryBean">
+		<property name="serviceUrl" value="http://remotehost:8080/remoting/AccountService"/>
+		<property name="serviceInterface" value="example.AccountService"/>
+	</bean>
+----
+
+As mentioned before, you can choose what HTTP client you want to use. By default, the
+`HttpInvokerProxy` uses the JDK's HTTP functionality, but you can also use the Apache
+`HttpComponents` client by setting the `httpInvokerRequestExecutor` property:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<property name="httpInvokerRequestExecutor">
+		<bean class="org.springframework.remoting.httpinvoker.HttpComponentsHttpInvokerRequestExecutor"/>
+	</property>
+----
+
+
+
+

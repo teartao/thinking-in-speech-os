@@ -1,0 +1,100 @@
+[[template-summary]]
+==== Summary
+The following table summarizes the mechanisms of the `CciTemplate` class and the
+corresponding methods called on the CCI `Interaction` interface:
+
+[[cci-interaction-execute-methods]]
+.Usage of Interaction execute methods
+[cols="3,1,3"]
+|===
+| CciTemplate method signature| CciTemplate outputRecordCreator property| execute method called on the CCI Interaction
+
+| Record execute(InteractionSpec, Record)
+| not set
+| Record execute(InteractionSpec, Record)
+
+| Record execute(InteractionSpec, Record)
+| set
+| boolean execute(InteractionSpec, Record, Record)
+
+| void execute(InteractionSpec, Record, Record)
+| not set
+| void execute(InteractionSpec, Record, Record)
+
+| void execute(InteractionSpec, Record, Record)
+| set
+| void execute(InteractionSpec, Record, Record)
+
+| Record execute(InteractionSpec, RecordCreator)
+| not set
+| Record execute(InteractionSpec, Record)
+
+| Record execute(InteractionSpec, RecordCreator)
+| set
+| void execute(InteractionSpec, Record, Record)
+
+| Record execute(InteractionSpec, Record, RecordExtractor)
+| not set
+| Record execute(InteractionSpec, Record)
+
+| Record execute(InteractionSpec, Record, RecordExtractor)
+| set
+| void execute(InteractionSpec, Record, Record)
+
+| Record execute(InteractionSpec, RecordCreator, RecordExtractor)
+| not set
+| Record execute(InteractionSpec, Record)
+
+| Record execute(InteractionSpec, RecordCreator, RecordExtractor)
+| set
+| void execute(InteractionSpec, Record, Record)
+|===
+
+
+
+[[cci-straight]]
+==== Using a CCI Connection and Interaction directly
+
+`CciTemplate` also offers the possibility to work directly with CCI connections and
+interactions, in the same manner as `JdbcTemplate` and `JmsTemplate`. This is useful
+when you want to perform multiple operations on a CCI connection or interaction, for
+example.
+
+The interface `ConnectionCallback` provides a CCI `Connection` as argument, in order to
+perform custom operations on it, plus the CCI `ConnectionFactory` which the `Connection`
+was created with. The latter can be useful for example to get an associated
+`RecordFactory` instance and create indexed/mapped records, for example.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface ConnectionCallback {
+
+		Object doInConnection(Connection connection, ConnectionFactory connectionFactory)
+				throws ResourceException, SQLException, DataAccessException;
+
+	}
+----
+
+The interface `InteractionCallback` provides the CCI `Interaction`, in order to perform
+custom operations on it, plus the corresponding CCI `ConnectionFactory`.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface InteractionCallback {
+
+		Object doInInteraction(Interaction interaction, ConnectionFactory connectionFactory)
+			throws ResourceException, SQLException, DataAccessException;
+
+	}
+----
+
+[NOTE]
+====
+`InteractionSpec` objects can either be shared across multiple template calls or newly
+created inside every callback method. This is completely up to the DAO implementation.
+====
+
+
+

@@ -1,0 +1,152 @@
+[[testcontext-ctx-management-web]]
+====== Loading a WebApplicationContext
+Spring 3.2 introduced support for loading a `WebApplicationContext` in integration
+tests. To instruct the TestContext framework to load a `WebApplicationContext` instead
+of a standard `ApplicationContext`, simply annotate the respective test class with
+`@WebAppConfiguration`.
+
+The presence of `@WebAppConfiguration` on your test class instructs the TestContext
+framework (TCF) that a `WebApplicationContext` (WAC) should be loaded for your
+integration tests. In the background the TCF makes sure that a `MockServletContext` is
+created and supplied to your test's WAC. By default the base resource path for your
+`MockServletContext` will be set to __"src/main/webapp"__. This is interpreted as a path
+relative to the root of your JVM (i.e., normally the path to your project). If you're
+familiar with the directory structure of a web application in a Maven project, you'll
+know that __"src/main/webapp"__ is the default location for the root of your WAR. If you
+need to override this default, simply provide an alternate path to the
+`@WebAppConfiguration` annotation (e.g., `@WebAppConfiguration("src/test/webapp")`). If
+you wish to reference a base resource path from the classpath instead of the file
+system, just use Spring's __classpath:__ prefix.
+
+Please note that Spring's testing support for `WebApplicationContexts` is on par with
+its support for standard `ApplicationContexts`. When testing with a
+`WebApplicationContext` you are free to declare either XML configuration files or
+`@Configuration` classes via `@ContextConfiguration`. You are of course also free to use
+any other test annotations such as `@TestExecutionListeners`,
+`@TransactionConfiguration`, `@ActiveProfiles`, etc.
+
+The following examples demonstrate some of the various configuration options for loading
+a `WebApplicationContext`.
+
+.Conventions
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RunWith(SpringJUnit4ClassRunner.class)
+
+	// defaults to "file:src/main/webapp"
+	@WebAppConfiguration
+
+	// detects "WacTests-context.xml" in same package
+	// or static nested @Configuration class
+	@ContextConfiguration
+
+	public class WacTests {
+		//...
+	}
+----
+
+The above example demonstrates the TestContext framework's support for __convention over
+configuration__. If you annotate a test class with `@WebAppConfiguration` without
+specifying a resource base path, the resource path will effectively default
+to __"file:src/main/webapp"__. Similarly, if you declare `@ContextConfiguration` without
+specifying resource `locations`, annotated `classes`, or context `initializers`, Spring
+will attempt to detect the presence of your configuration using conventions
+(i.e., __"WacTests-context.xml"__ in the same package as the `WacTests` class or static
+nested `@Configuration` classes).
+
+.Default resource semantics
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RunWith(SpringJUnit4ClassRunner.class)
+
+	// file system resource
+	@WebAppConfiguration("webapp")
+
+	// classpath resource
+	@ContextConfiguration("/spring/test-servlet-config.xml")
+
+	public class WacTests {
+		//...
+	}
+----
+
+This example demonstrates how to explicitly declare a resource base path with
+`@WebAppConfiguration` and an XML resource location with `@ContextConfiguration`. The
+important thing to note here is the different semantics for paths with these two
+annotations. By default, `@WebAppConfiguration` resource paths are file system based;
+whereas, `@ContextConfiguration` resource locations are classpath based.
+
+.Explicit resource semantics
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RunWith(SpringJUnit4ClassRunner.class)
+
+	// classpath resource
+	@WebAppConfiguration("classpath:test-web-resources")
+
+	// file system resource
+	@ContextConfiguration("file:src/main/webapp/WEB-INF/servlet-config.xml")
+
+	public class WacTests {
+		//...
+	}
+----
+
+In this third example, we see that we can override the default resource semantics for
+both annotations by specifying a Spring resource prefix. Contrast the comments in this
+example with the previous example.
+
+.[[testcontext-ctx-management-web-mocks]]Working with Web Mocks
+--
+To provide comprehensive web testing support, Spring 3.2 introduced a
+`ServletTestExecutionListener` that is enabled by default. When testing against a
+`WebApplicationContext` this <<testcontext-key-abstractions,TestExecutionListener>> sets
+up default thread-local state via Spring Web's `RequestContextHolder` before each test
+method and creates a `MockHttpServletRequest`, `MockHttpServletResponse`, and
+`ServletWebRequest` based on the base resource path configured via
+`@WebAppConfiguration`. `ServletTestExecutionListener` also ensures that the
+`MockHttpServletResponse` and `ServletWebRequest` can be injected into the test
+instance, and once the test is complete it cleans up thread-local state.
+
+Once you have a `WebApplicationContext` loaded for your test you might find that you
+need to interact with the web mocks -- for example, to set up your test fixture or to
+perform assertions after invoking your web component. The following example demonstrates
+which mocks can be autowired into your test instance. Note that the
+`WebApplicationContext` and `MockServletContext` are both cached across the test suite;
+whereas, the other mocks are managed per test method by the
+`ServletTestExecutionListener`.
+
+.Injecting mocks
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@WebAppConfiguration
+	@ContextConfiguration
+	public class WacTests {
+
+		@Autowired
+		WebApplicationContext wac; // cached
+
+		@Autowired
+		MockServletContext servletContext; // cached
+
+		@Autowired
+		MockHttpSession session;
+
+		@Autowired
+		MockHttpServletRequest request;
+
+		@Autowired
+		MockHttpServletResponse response;
+
+		@Autowired
+		ServletWebRequest webRequest;
+
+		//...
+	}
+----
+--
+

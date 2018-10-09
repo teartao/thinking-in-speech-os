@@ -1,0 +1,160 @@
+[[xsd-config-body-schemas-lang]]
+==== the lang schema
+
+The `lang` tags deal with exposing objects that have been written in a dynamic language
+such as JRuby or Groovy as beans in the Spring container.
+
+These tags (and the dynamic language support) are comprehensively covered in the chapter
+entitled <<dynamic-language>>. Please do consult that chapter for full details on this
+support and the `lang` tags themselves.
+
+In the interest of completeness, to use the tags in the `lang` schema, you need to have
+the following preamble at the top of your Spring XML configuration file; the text in the
+following snippet references the correct schema so that the tags in the `lang` namespace
+are available to you.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		__xmlns:lang="http://www.springframework.org/schema/lang"__ xsi:schemaLocation="
+			http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+			__http://www.springframework.org/schema/lang http://www.springframework.org/schema/lang/spring-lang.xsd"__> <!-- bean definitions here -->
+
+	</beans>
+----
+
+
+
+[[xsd-config-body-schemas-jms]]
+==== the jms schema
+
+The `jms` tags deal with configuring JMS-related beans such as Spring's
+<<jms-mdp,MessageListenerContainers>>. These tags are detailed in the section of the
+<<jms,JMS chapter>> entitled <<jms-namespace>>. Please do consult that chapter for full
+details on this support and the `jms` tags themselves.
+
+In the interest of completeness, to use the tags in the `jms` schema, you need to have
+the following preamble at the top of your Spring XML configuration file; the text in the
+following snippet references the correct schema so that the tags in the `jms` namespace
+are available to you.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		__xmlns:jms="http://www.springframework.org/schema/jms"__ xsi:schemaLocation="
+			http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+			__http://www.springframework.org/schema/jms http://www.springframework.org/schema/jms/spring-jms.xsd"__> <!-- bean definitions here -->
+
+	</beans>
+----
+
+
+
+[[xsd-config-body-schemas-tx]]
+==== the tx (transaction) schema
+
+The `tx` tags deal with configuring all of those beans in Spring's comprehensive support
+for transactions. These tags are covered in the chapter entitled <<transaction>>.
+
+[TIP]
+====
+
+You are strongly encouraged to look at the `'spring-tx.xsd'` file that ships with the
+Spring distribution. This file is (of course), the XML Schema for Spring's transaction
+configuration, and covers all of the various tags in the `tx` namespace, including
+attribute defaults and suchlike. This file is documented inline, and thus the
+information is not repeated here in the interests of adhering to the DRY (Don't Repeat
+Yourself) principle.
+====
+
+In the interest of completeness, to use the tags in the `tx` schema, you need to have
+the following preamble at the top of your Spring XML configuration file; the text in the
+following snippet references the correct schema so that the tags in the `tx` namespace
+are available to you.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+			xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+			xmlns:aop="http://www.springframework.org/schema/aop"
+			__xmlns:tx="http://www.springframework.org/schema/tx"__ xsi:schemaLocation="
+			http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+			__http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd__
+			http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd"> <!-- bean definitions here -->
+
+	</beans>
+----
+
+[NOTE]
+====
+Often when using the tags in the `tx` namespace you will also be using the tags from the
+`aop` namespace (since the declarative transaction support in Spring is implemented
+using AOP). The above XML snippet contains the relevant lines needed to reference the
+`aop` schema so that the tags in the `aop` namespace are available to you.
+====
+
+
+
+[[xsd-config-body-schemas-aop]]
+==== the aop schema
+
+The `aop` tags deal with configuring all things AOP in Spring: this includes Spring's
+own proxy-based AOP framework and Spring's integration with the AspectJ AOP framework.
+These tags are comprehensively covered in the chapter entitled <<aop>>.
+
+In the interest of completeness, to use the tags in the `aop` schema, you need to have
+the following preamble at the top of your Spring XML configuration file; the text in the
+following snippet references the correct schema so that the tags in the `aop` namespace
+are available to you.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		__xmlns:aop="http://www.springframework.org/schema/aop"__ xsi:schemaLocation="
+			http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+			__http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd"__> <!-- bean definitions here -->
+
+	</beans>
+----
+
+
+
+[[xsd-config-body-schemas-context]]
+==== the context schema
+
+The `context` tags deal with `ApplicationContext` configuration that relates to plumbing
+- that is, not usually beans that are important to an end-user but rather beans that do
+a lot of grunt work in Spring, such as `BeanfactoryPostProcessors`. The following
+snippet references the correct schema so that the tags in the `context` namespace are
+available to you.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		__xmlns:context="http://www.springframework.org/schema/context"__ xsi:schemaLocation="
+			http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+			__http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd"__> <!-- bean definitions here -->
+
+	</beans>
+----
+
+[NOTE]
+====
+The `context` schema was only introduced in Spring 2.5.
+====
+
+

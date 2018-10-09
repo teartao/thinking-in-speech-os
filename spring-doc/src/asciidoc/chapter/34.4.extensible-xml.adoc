@@ -1,0 +1,175 @@
+[[extensible-xml-custom-just-attributes]]
+==== Custom attributes on 'normal' elements
+Writing your own custom parser and the associated artifacts isn't hard, but sometimes it
+is not the right thing to do. Consider the scenario where you need to add metadata to
+already existing bean definitions. In this case you certainly don't want to have to go
+off and write your own entire custom extension; rather you just want to add an
+additional attribute to the existing bean definition element.
+
+By way of another example, let's say that the service class that you are defining a bean
+definition for a service object that will (unknown to it) be accessing a clustered
+http://jcp.org/en/jsr/detail?id=107[JCache], and you want to ensure that the named
+JCache instance is eagerly started within the surrounding cluster:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="checkingAccountService" class="com.foo.DefaultCheckingAccountService"
+			jcache:cache-name="checking.account">
+		<!-- other dependencies here... -->
+	</bean>
+----
+
+What we are going to do here is create another `BeanDefinition` when the
+`'jcache:cache-name'` attribute is parsed; this `BeanDefinition` will then initialize
+the named JCache for us. We will also modify the existing `BeanDefinition` for the
+`'checkingAccountService'` so that it will have a dependency on this new
+JCache-initializing `BeanDefinition`.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package com.foo;
+
+	public class JCacheInitializer {
+
+		private String name;
+
+		public JCacheInitializer(String name) {
+			this.name = name;
+		}
+
+		public void initialize() {
+			// lots of JCache API calls to initialize the named cache...
+		}
+
+	}
+----
+
+Now onto the custom extension. Firstly, the authoring of the XSD schema describing the
+custom attribute (quite easy in this case).
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+	<xsd:schema xmlns="http://www.foo.com/schema/jcache"
+			xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+			targetNamespace="http://www.foo.com/schema/jcache"
+			elementFormDefault="qualified">
+
+		<xsd:attribute name="cache-name" type="xsd:string"/>
+
+	</xsd:schema>
+----
+
+Next, the associated `NamespaceHandler`.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package com.foo;
+
+	import org.springframework.beans.factory.xml.NamespaceHandlerSupport;
+
+	public class JCacheNamespaceHandler extends NamespaceHandlerSupport {
+
+		public void init() {
+			super.registerBeanDefinitionDecoratorForAttribute("cache-name",
+				new JCacheInitializingBeanDefinitionDecorator());
+		}
+
+	}
+----
+
+Next, the parser. Note that in this case, because we are going to be parsing an XML
+attribute, we write a `BeanDefinitionDecorator` rather than a `BeanDefinitionParser`.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package com.foo;
+
+	import org.springframework.beans.factory.config.BeanDefinitionHolder;
+	import org.springframework.beans.factory.support.AbstractBeanDefinition;
+	import org.springframework.beans.factory.support.BeanDefinitionBuilder;
+	import org.springframework.beans.factory.xml.BeanDefinitionDecorator;
+	import org.springframework.beans.factory.xml.ParserContext;
+	import org.w3c.dom.Attr;
+	import org.w3c.dom.Node;
+
+	import java.util.ArrayList;
+	import java.util.Arrays;
+	import java.util.List;
+
+	public class JCacheInitializingBeanDefinitionDecorator implements BeanDefinitionDecorator {
+
+		private static final String[] EMPTY_STRING_ARRAY = new String[0];
+
+		public BeanDefinitionHolder decorate(Node source, BeanDefinitionHolder holder,
+				ParserContext ctx) {
+			String initializerBeanName = registerJCacheInitializer(source, ctx);
+			createDependencyOnJCacheInitializer(holder, initializerBeanName);
+			return holder;
+		}
+
+		private void createDependencyOnJCacheInitializer(BeanDefinitionHolder holder,
+				String initializerBeanName) {
+			AbstractBeanDefinition definition = ((AbstractBeanDefinition) holder.getBeanDefinition());
+			String[] dependsOn = definition.getDependsOn();
+			if (dependsOn == null) {
+				dependsOn = new String[]{initializerBeanName};
+			} else {
+				List dependencies = new ArrayList(Arrays.asList(dependsOn));
+				dependencies.add(initializerBeanName);
+				dependsOn = (String[]) dependencies.toArray(EMPTY_STRING_ARRAY);
+			}
+			definition.setDependsOn(dependsOn);
+		}
+
+		private String registerJCacheInitializer(Node source, ParserContext ctx) {
+			String cacheName = ((Attr) source).getValue();
+			String beanName = cacheName + "-initializer";
+			if (!ctx.getRegistry().containsBeanDefinition(beanName)) {
+				BeanDefinitionBuilder initializer = BeanDefinitionBuilder.rootBeanDefinition(JCacheInitializer.class);
+				initializer.addConstructorArg(cacheName);
+				ctx.getRegistry().registerBeanDefinition(beanName, initializer.getBeanDefinition());
+			}
+			return beanName;
+		}
+
+	}
+----
+
+Lastly, the various artifacts need to be registered with the Spring XML infrastructure.
+
+[literal]
+[subs="verbatim,quotes"]
+----
+# in 'META-INF/spring.handlers'
+http\://www.foo.com/schema/jcache=com.foo.JCacheNamespaceHandler
+----
+
+[literal]
+[subs="verbatim,quotes"]
+----
+# in 'META-INF/spring.schemas'
+http\://www.foo.com/schema/jcache/jcache.xsd=com/foo/jcache.xsd
+----
+
+
+
+
+[[extensible-xml-resources]]
+=== Further Resources
+Find below links to further resources concerning XML Schema and the extensible XML
+support described in this chapter.
+
+* The http://www.w3.org/TR/2004/REC-xmlschema-1-20041028/[XML Schema Part 1: Structures
+  Second Edition]
+* The http://www.w3.org/TR/2004/REC-xmlschema-2-20041028/[XML Schema Part 2: Datatypes
+  Second Edition]
+
+
+

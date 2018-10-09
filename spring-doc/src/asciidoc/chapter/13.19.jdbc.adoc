@@ -1,0 +1,91 @@
+[[jdbc-MappingSqlQuery]]
+==== MappingSqlQuery
+
+`MappingSqlQuery`是一个可重用的查询类，它的子类必须实现抽象方法`mapRow(..)`，来将`ResultSet`结果集的每一行数据记录转化对应的java对象，下面的例子展示了一个自定义的查询类是如何将`t_actor`数据记录映射为`Actor`类的。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+    public class ActorMappingQuery extends MappingSqlQuery<Actor> {
+
+		public ActorMappingQuery(DataSource ds) {
+			super(ds, "select id, first_name, last_name from t_actor where id = ?");
+			super.declareParameter(new SqlParameter("id", Types.INTEGER));
+			compile();
+		}
+
+		@Override
+		protected Actor mapRow(ResultSet rs, int rowNumber) throws SQLException {
+			Actor actor = new Actor();
+			actor.setId(rs.getLong("id"));
+			actor.setFirstName(rs.getString("first_name"));
+			actor.setLastName(rs.getString("last_name"));
+			return actor;
+		}
+
+	}
+----
+
+这个类继承于`MappingSqlQuery`，同时被参数化为`Actor`类型。该自定义查询类的构造器只有一个`DataSource`参数。在此构造器中，你可以使用`DataSource`和你想要执行的SQL来作为参数调用父类的构造器。这个SQL将会被封装为`PreparedStatement`，方便处理传递进来的所有参数。你必须使用`SqlParameter`来封装你的参数，然后将其传递给方法`declareParameter`，其中，使用名称和`java.sql.Types`定义的JDBC类型即可构造`SqlParameter`。定义完所有的参数之后，你需要调用方法`compile()`，确保语句可以被预编译和被执行。编译之后，这个类是线程安全的。所以只要当DAO初始化后，这些创建的实例就可以作为实例变量被引用以及重用。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	private ActorMappingQuery actorMappingQuery;
+
+	@Autowired
+	public void setDataSource(DataSource dataSource) {
+		this.actorMappingQuery = new ActorMappingQuery(dataSource);
+	}
+
+	public Customer getCustomer(Long id) {
+		return actorMappingQuery.findObject(id);
+	}
+----
+
+这个例子中，`getCustomer(..)`方法会通过唯一传递进来的参数id检索消费者，由于我们只想获得一个对象，所以方便起见，只使用参数id，调用了方法`findObject`。如果我们有一些需要返回一个结果集的，而且需要多个参数的查询需求，那么就需要使用某个允许使用多个参数的execute方法。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public List<Actor> searchForActors(int age, String namePattern) {
+		List<Actor> actors = actorSearchMappingQuery.execute(age, namePattern);
+		return actors;
+	}
+----
+
+[[jdbc-SqlUpdate]]
+==== SqlUpdate
+
+`SqlUpdate`类封装了SQL更新的方法。和查询一样，一个更新对象也是可重用的。像所有其他的`RdbmsOperation`类，更新类也可以使用SQL直接定义，它也有参数。这个类提供了大量的`update(..)`方法，类似于查询对象提供的`execute(..)`方法。`SQLUpdate`是具象类，它可以被继承。举个例子，添加一个自定义的update方法，就像下面组件中的`execute`。然而，你没有必要去子类化`SqlUpdate`，因为它可以很容易的通过SQL和声明参数来参数化。
+
+[source,java,indent=0]
+[subs="verbatim"]
+----
+	import java.sql.Types;
+
+	import javax.sql.DataSource;
+
+	import org.springframework.jdbc.core.SqlParameter;
+	import org.springframework.jdbc.object.SqlUpdate;
+
+	public class UpdateCreditRating extends SqlUpdate {
+
+		public UpdateCreditRating(DataSource ds) {
+			setDataSource(ds);
+			setSql("update customer set credit_rating = ? where id = ?");
+			declareParameter(new SqlParameter("creditRating", Types.NUMERIC));
+			declareParameter(new SqlParameter("id", Types.NUMERIC));
+			compile();
+		}
+
+		/**
+		 * @param id for the Customer to be updated
+		 * @param rating the new value for credit rating
+		 * @return number of rows updated
+		 */
+		public int execute(int id, int rating) {
+			return update(rating, id);
+		}
+	}
+----

@@ -1,0 +1,101 @@
+[[jmx-exporting-mbeanserver]]
+==== Creating an MBeanServer
+
+The above configuration assumes that the application is running in an environment that
+has one (and only one) `MBeanServer` already running. In this case, Spring will attempt
+to locate the running `MBeanServer` and register your beans with that server (if any).
+This behavior is useful when your application is running inside a container such as
+Tomcat or IBM WebSphere that has its own `MBeanServer`.
+
+However, this approach is of no use in a standalone environment, or when running inside
+a container that does not provide an `MBeanServer`. To address this you can create an
+`MBeanServer` instance declaratively by adding an instance of the
+`org.springframework.jmx.support.MBeanServerFactoryBean` class to your configuration.
+You can also ensure that a specific `MBeanServer` is used by setting the value of the
+`MBeanExporter`'s `server` property to the `MBeanServer` value returned by an
+`MBeanServerFactoryBean`; for example:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<beans>
+
+		<bean id="mbeanServer" class="org.springframework.jmx.support.MBeanServerFactoryBean"/>
+
+		<!--
+		this bean needs to be eagerly pre-instantiated in order for the exporting to occur;
+		this means that it must not be marked as lazily initialized
+		-->
+		<bean id="exporter" class="org.springframework.jmx.export.MBeanExporter">
+			<property name="beans">
+				<map>
+					<entry key="bean:name=testBean1" value-ref="testBean"/>
+				</map>
+			</property>
+			<property name="server" ref="mbeanServer"/>
+		</bean>
+
+		<bean id="testBean" class="org.springframework.jmx.JmxTestBean">
+			<property name="name" value="TEST"/>
+			<property name="age" value="100"/>
+		</bean>
+
+	</beans>
+----
+
+Here an instance of `MBeanServer` is created by the `MBeanServerFactoryBean` and is
+supplied to the `MBeanExporter` via the server property. When you supply your own
+`MBeanServer` instance, the `MBeanExporter` will not attempt to locate a running
+`MBeanServer` and will use the supplied `MBeanServer` instance. For this to work
+correctly, you must (of course) have a JMX implementation on your classpath.
+
+
+
+[[jmx-mbean-server]]
+==== Reusing an existing MBeanServer
+
+If no server is specified, the `MBeanExporter` tries to automatically detect a running
+`MBeanServer`. This works in most environment where only one `MBeanServer` instance is
+used, however when multiple instances exist, the exporter might pick the wrong server.
+In such cases, one should use the `MBeanServer` `agentId` to indicate which instance to
+be used:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<beans>
+		<bean id="mbeanServer" class="org.springframework.jmx.support.MBeanServerFactoryBean">
+			<!-- indicate to first look for a server -->
+			<property name="locateExistingServerIfPossible" value="true"/>
+			<!-- search for the MBeanServer instance with the given agentId -->
+			<property name="agentId" value="MBeanServer_instance_agentId>"/>
+		</bean>
+		<bean id="exporter" class="org.springframework.jmx.export.MBeanExporter">
+			<property name="server" ref="mbeanServer"/>
+			...
+		</bean>
+	</beans>
+----
+
+For platforms/cases where the existing `MBeanServer` has a dynamic (or unknown)
+`agentId` which is retrieved through lookup methods, one should use
+<<beans-factory-class-static-factory-method,factory-method>>:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<beans>
+		<bean id="exporter" class="org.springframework.jmx.export.MBeanExporter">
+			<property name="server">
+				<!-- Custom MBeanServerLocator -->
+				<bean class="platform.package.MBeanServerLocator" factory-method="locateMBeanServer"/>
+			</property>
+		</bean>
+
+		<!-- other beans here -->
+
+	</beans>
+----
+
+
+

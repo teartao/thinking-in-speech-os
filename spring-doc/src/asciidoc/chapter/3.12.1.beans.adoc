@@ -1,0 +1,141 @@
+[[beans-property-source-abstraction]]
+==== PropertySource的抽象
+
+Spring的抽象环境提供了一个可配置的属性源的层次结构的搜索操作。为了充分说明，考虑下面的情况：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+ApplicationContext ctx = new GenericApplicationContext();
+Environment env = ctx.getEnvironment();
+boolean containsFoo = env.containsProperty("foo");
+System.out.println("Does my environment contain the ''foo'' property? " + containsFoo);
+----
+
+在上面的代码片段中，我们看到了一种高层次的方式来询问Spring当前的环境中是否定义了`foo`属性。
+为了解答这个问题，`Environment`对象执行了一组{javadoc-baseurl}/org/springframework/core/env/PropertySource.html[`PropertySource`]对象上的搜索。
+`PropertySource`是一个简单的抽象在任何源上的键值对，Spring的{javadoc-baseurl}/org/springframework/core/env/StandardEnvironment.html[`StandardEnvironment`]
+配置了两个属性源对象 -- 一组是JVM系统属性(_a la_ `System.getProperties()`)，另一组是系统环境变量(_a la_ `System.getenv()`)。
+
+[注意]
+====
+These default property sources are present for `StandardEnvironment`, for use in standalone
+applications. {javadoc-baseurl}/org/springframework/web/context/support/StandardServletEnvironment.html[`StandardServletEnvironment`]
+is populated with additional default property sources including servlet config and servlet
+context parameters. {javadoc-baseurl}/org/springframework/web/portlet/context/StandardPortletEnvironment.html[`StandardPortletEnvironment`]
+similarly has access to portlet config and portlet context parameters as property sources.
+Both can optionally enable a {javadoc-baseurl}/org/springframework/jndi/JndiPropertySource.html[`JndiPropertySource`].
+See Javadoc for details.
+====
+
+Concretely, when using the `StandardEnvironment`, the call to `env.containsProperty("foo")`
+will return true if a `foo` system property or `foo` environment variable is present at
+runtime.
+
+[TIP]
+====
+The search performed is hierarchical. By default, system properties have precedence over
+environment variables, so if the `foo` property happens to be set in both places during
+a call to `env.getProperty("foo")`, the system property value will 'win' and be returned
+preferentially over the environment variable.
+====
+
+Most importantly, the entire mechanism is configurable. Perhaps you have a custom source
+of properties that you'd like to integrate into this search. No problem -- simply implement
+and instantiate your own `PropertySource` and add it to the set of `PropertySources` for the
+current `Environment`:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+ConfigurableApplicationContext ctx = new GenericApplicationContext();
+MutablePropertySources sources = ctx.getEnvironment().getPropertySources();
+sources.addFirst(new MyPropertySource());
+----
+
+In the code above, `MyPropertySource` has been added with highest precedence in the
+search. If it contains a  `foo` property, it will be detected and returned ahead of
+any `foo` property in any other `PropertySource`. The
+{javadoc-baseurl}/org/springframework/core/env/MutablePropertySources.html[`MutablePropertySources`]
+API exposes a number of methods that allow for precise manipulation of the set of
+property sources.
+
+==== @PropertySource
+
+The {javadoc-baseurl}/org/springframework/context/annotation/PropertySource.html[`@PropertySource`]
+annotation provides a convenient and declarative mechanism for adding a `PropertySource`
+to Spring's `Environment`.
+
+Given a file "app.properties" containing the key/value pair `testbean.name=myTestBean`,
+the following `@Configuration` class uses `@PropertySource` in such a way that
+a call to `testBean.getName()` will return "myTestBean".
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+   @Configuration
+   **@PropertySource("classpath:/com/myco/app.properties")**
+   public class AppConfig {
+	   @Autowired
+	   Environment env;
+
+	   @Bean
+	   public TestBean testBean() {
+		   TestBean testBean = new TestBean();
+		   testBean.setName(env.getProperty("testbean.name"));
+		   return testBean;
+	   }
+   }
+----
+
+Any `${...}` placeholders present in a `@PropertySource` resource location will
+be resolved against the set of property sources already registered against the
+environment. For example:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+   @Configuration
+   @PropertySource("classpath:/com/${my.placeholder:default/path}/app.properties")
+   public class AppConfig {
+	   @Autowired
+	   Environment env;
+
+	   @Bean
+	   public TestBean testBean() {
+		   TestBean testBean = new TestBean();
+		   testBean.setName(env.getProperty("testbean.name"));
+		   return testBean;
+	   }
+   }
+----
+
+Assuming that "my.placeholder" is present in one of the property sources already
+registered, e.g. system properties or environment variables, the placeholder will
+be resolved to the corresponding value. If not, then "default/path" will be used
+as a default. If no default is specified and a property cannot be resolved, an
+`IllegalArgumentException` will be thrown.
+
+
+==== Placeholder resolution in statements
+
+Historically, the value of placeholders in elements could be resolved only against
+JVM system properties or environment variables. No longer is this the case. Because
+the Environment abstraction is integrated throughout the container, it's easy to
+route resolution of placeholders through it. This means that you may configure the
+resolution process in any way you like: change the precedence of searching through
+system properties and environment variables, or remove them entirely; add your
+own property sources to the mix as appropriate.
+
+Concretely, the following statement works regardless of where the `customer`
+property is defined, as long as it is available in the `Environment`:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<beans>
+		<import resource="com/bank/service/${customer}-config.xml"/>
+	</beans>
+----
+
+

@@ -1,0 +1,103 @@
+[[views-form-macros]]
+===== Form input generation macros
+Additional convenience macros for both languages simplify both binding and form
+generation (including validation error display). It is never necessary to use these
+macros to generate form input fields, and they can be mixed and matched with simple HTML
+or calls direct to the spring bind macros highlighted previously.
+
+The following table of available macros show the VTL and FTL definitions and the
+parameter list that each takes.
+
+[[views-macros-defs-tbl]]
+.Table of macro definitions
+[cols="3,1,1"]
+|===
+| macro| VTL definition| FTL definition
+
+| **message** (output a string from a resource bundle based on the code parameter)
+| #springMessage($code)
+| <@spring.message code/>
+
+| **messageText** (output a string from a resource bundle based on the code parameter,
+  falling back to the value of the default parameter)
+| #springMessageText($code $text)
+| <@spring.messageText code, text/>
+
+| **url** (prefix a relative URL with the application's context root)
+| #springUrl($relativeUrl)
+| <@spring.url relativeUrl/>
+
+| **formInput** (standard input field for gathering user input)
+| #springFormInput($path $attributes)
+| <@spring.formInput path, attributes, fieldType/>
+
+| **formHiddenInput *** (hidden input field for submitting non-user input)
+| #springFormHiddenInput($path $attributes)
+| <@spring.formHiddenInput path, attributes/>
+
+| **formPasswordInput** * (standard input field for gathering passwords. Note that no
+  value will ever be populated in fields of this type)
+| #springFormPasswordInput($path $attributes)
+| <@spring.formPasswordInput path, attributes/>
+
+| **formTextarea** (large text field for gathering long, freeform text input)
+| #springFormTextarea($path $attributes)
+| <@spring.formTextarea path, attributes/>
+
+| **formSingleSelect** (drop down box of options allowing a single required value to be
+  selected)
+| #springFormSingleSelect( $path $options $attributes)
+| <@spring.formSingleSelect path, options, attributes/>
+
+| **formMultiSelect** (a list box of options allowing the user to select 0 or more values)
+| #springFormMultiSelect($path $options $attributes)
+| <@spring.formMultiSelect path, options, attributes/>
+
+| **formRadioButtons** (a set of radio buttons allowing a single selection to be made
+  from the available choices)
+| #springFormRadioButtons($path $options $separator $attributes)
+| <@spring.formRadioButtons path, options separator, attributes/>
+
+| **formCheckboxes** (a set of checkboxes allowing 0 or more values to be selected)
+| #springFormCheckboxes($path $options $separator $attributes)
+| <@spring.formCheckboxes path, options, separator, attributes/>
+
+| **formCheckbox** (a single checkbox)
+| #springFormCheckbox($path $attributes)
+| <@spring.formCheckbox path, attributes/>
+
+| **showErrors** (simplify display of validation errors for the bound field)
+| #springShowErrors($separator $classOrStyle)
+| <@spring.showErrors separator, classOrStyle/>
+|===
+
+* In FTL (FreeMarker), these two macros are not actually required as you can use the
+  normal `formInput` macro, specifying ' `hidden`' or ' `password`' as the value for the
+  `fieldType` parameter.
+
+The parameters to any of the above macros have consistent meanings:
+
+* path: the name of the field to bind to (ie "command.name")
+* options: a Map of all the available values that can be selected from in the input
+  field. The keys to the map represent the values that will be POSTed back from the form
+  and bound to the command object. Map objects stored against the keys are the labels
+  displayed on the form to the user and may be different from the corresponding values
+  posted back by the form. Usually such a map is supplied as reference data by the
+  controller. Any Map implementation can be used depending on required behavior. For
+  strictly sorted maps, a `SortedMap` such as a `TreeMap` with a suitable Comparator may
+  be used and for arbitrary Maps that should return values in insertion order, use a
+  `LinkedHashMap` or a `LinkedMap` from commons-collections.
+* separator: where multiple options are available as discreet elements (radio buttons or
+  checkboxes), the sequence of characters used to separate each one in the list (ie
+  "<br>").
+* attributes: an additional string of arbitrary tags or text to be included within the
+  HTML tag itself. This string is echoed literally by the macro. For example, in a
+  textarea field you may supply attributes as 'rows="5" cols="60"' or you could pass
+  style information such as 'style="border:1px solid silver"'.
+* classOrStyle: for the showErrors macro, the name of the CSS class that the span tag
+  wrapping each error will use. If no information is supplied (or the value is empty)
+  then the errors will be wrapped in <b></b> tags.
+
+Examples of the macros are outlined below some in FTL and some in VTL. Where usage
+differences exist between the two languages, they are explained in the notes.
+

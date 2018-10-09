@@ -1,0 +1,91 @@
+[[portlet-controller-abstractcontroller]]
+==== AbstractController and PortletContentGenerator
+
+Of course, just a `Controller` interface isn't enough. To provide a basic
+infrastructure, all of Spring Portlet MVC's ++Controller++s inherit from
+`AbstractController`, a class offering access to Spring's `ApplicationContext` and
+control over caching.
+
+[[portlet-ac-features]]
+.Features offered by the AbstractController
+[cols="1,4"]
+|===
+| Parameter| Explanation
+
+| `requireSession`
+| Indicates whether or not this `Controller` requires a session to do its work. This
+  feature is offered to all controllers. If a session is not present when such a
+  controller receives a request, the user is informed using a `SessionRequiredException`.
+
+| `synchronizeSession`
+| Use this if you want handling by this controller to be synchronized on the user's
+  session. To be more specific, the extending controller will override the
+  `handleRenderRequestInternal(..)` and `handleActionRequestInternal(..)` methods, which
+  will be synchronized on the user's session if you specify this variable.
+
+| `renderWhenMinimized`
+| If you want your controller to actually render the view when the portlet is in a
+  minimized state, set this to true. By default, this is set to false so that portlets
+  that are in a minimized state don't display any content.
+
+| `cacheSeconds`
+| When you want a controller to override the default cache expiration defined for the
+  portlet, specify a positive integer here. By default it is set to `-1`, which does not
+  change the default caching. Setting it to `0` will ensure the result is never cached.
+|===
+
+The `requireSession` and `cacheSeconds` properties are declared on the
+`PortletContentGenerator` class, which is the superclass of `AbstractController`) but
+are included here for completeness.
+
+When using the `AbstractController` as a base class for your controllers (which is not
+recommended since there are a lot of other controllers that might already do the job for
+you) you only have to override either the `handleActionRequestInternal(ActionRequest,
+ActionResponse)` method or the `handleRenderRequestInternal(RenderRequest,
+RenderResponse)` method (or both), implement your logic, and return a `ModelAndView`
+object (in the case of `handleRenderRequestInternal`).
+
+The default implementations of both `handleActionRequestInternal(..)` and
+`handleRenderRequestInternal(..)` throw a `PortletException`. This is consistent with
+the behavior of `GenericPortlet` from the JSR- 168 Specification API. So you only need
+to override the method that your controller is intended to handle.
+
+Here is short example consisting of a class and a declaration in the web application
+context.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package samples;
+
+	import javax.portlet.RenderRequest;
+	import javax.portlet.RenderResponse;
+
+	import org.springframework.web.portlet.mvc.AbstractController;
+	import org.springframework.web.portlet.ModelAndView;
+
+	public class SampleController extends AbstractController {
+
+		public ModelAndView handleRenderRequestInternal(RenderRequest request, RenderResponse response) {
+			ModelAndView mav = new ModelAndView("foo");
+			mav.addObject("message", "Hello World!");
+			return mav;
+		}
+
+	}
+----
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="sampleController" class="samples.SampleController">
+		<property name="cacheSeconds" value="120"/>
+	</bean>
+----
+
+The class above and the declaration in the web application context is all you need
+besides setting up a handler mapping (see <<portlet-handlermapping>>) to get this very
+simple controller working.
+
+
+

@@ -1,0 +1,120 @@
+[[scheduling-task-namespace]]
+=== 任务命名空间
+Beginning with Spring 3.0, there is an XML namespace for configuring `TaskExecutor` and
+`TaskScheduler` instances. It also provides a convenient way to configure tasks to be
+scheduled with a trigger.
+
+
+
+[[scheduling-task-namespace-scheduler]]
+==== 关于'scheduler'元素
+The following element will create a `ThreadPoolTaskScheduler` instance with the
+specified thread pool size.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<task:scheduler id="scheduler" pool-size="10"/>
+----
+
+The value provided for the 'id' attribute will be used as the prefix for thread names
+within the pool. The 'scheduler' element is relatively straightforward. If you do not
+provide a 'pool-size' attribute, the default thread pool will only have a single thread.
+There are no other configuration options for the scheduler.
+
+
+
+[[scheduling-task-namespace-executor]]
+==== 关于'executor'元素
+The following will create a `ThreadPoolTaskExecutor` instance:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<task:executor id="executor" pool-size="10"/>
+----
+
+As with the scheduler above, the value provided for the 'id' attribute will be used as
+the prefix for thread names within the pool. As far as the pool size is concerned, the
+'executor' element supports more configuration options than the 'scheduler' element. For
+one thing, the thread pool for a `ThreadPoolTaskExecutor` is itself more configurable.
+Rather than just a single size, an executor's thread pool may have different values for
+the __core__ and the __max__ size. If a single value is provided then the executor will
+have a fixed-size thread pool (the core and max sizes are the same). However, the
+'executor' element's 'pool-size' attribute also accepts a range in the form of "min-max".
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<task:executor
+			id="executorWithPoolSizeRange"
+			pool-size="5-25"
+			queue-capacity="100"/>
+----
+
+As you can see from that configuration, a 'queue-capacity' value has also been provided.
+The configuration of the thread pool should also be considered in light of the
+executor's queue capacity. For the full description of the relationship between pool
+size and queue capacity, consult the documentation for
+http://docs.oracle.com/javase/6/docs/api/java/util/concurrent/ThreadPoolExecutor.html[ThreadPoolExecutor].
+The main idea is that when a task is submitted, the executor will first try to use a
+free thread if the number of active threads is currently less than the core size. If the
+core size has been reached, then the task will be added to the queue as long as its
+capacity has not yet been reached. Only then, if the queue's capacity __has__ been
+reached, will the executor create a new thread beyond the core size. If the max size has
+also been reached, then the executor will reject the task.
+
+By default, the queue is __unbounded__, but this is rarely the desired configuration,
+because it can lead to `OutOfMemoryErrors` if enough tasks are added to that queue while
+all pool threads are busy. Furthermore, if the queue is unbounded, then the max size has
+no effect at all. Since the executor will always try the queue before creating a new
+thread beyond the core size, a queue must have a finite capacity for the thread pool to
+grow beyond the core size (this is why a __fixed size__ pool is the only sensible case
+when using an unbounded queue).
+
+In a moment, we will review the effects of the keep-alive setting which adds yet another
+factor to consider when providing a pool size configuration. First, let's consider the
+case, as mentioned above, when a task is rejected. By default, when a task is rejected,
+a thread pool executor will throw a `TaskRejectedException`. However, the rejection
+policy is actually configurable. The exception is thrown when using the default
+rejection policy which is the `AbortPolicy` implementation. For applications where some
+tasks can be skipped under heavy load, either the `DiscardPolicy` or
+`DiscardOldestPolicy` may be configured instead. Another option that works well for
+applications that need to throttle the submitted tasks under heavy load is the
+`CallerRunsPolicy`. Instead of throwing an exception or discarding tasks, that policy
+will simply force the thread that is calling the submit method to run the task itself.
+The idea is that such a caller will be busy while running that task and not able to
+submit other tasks immediately. Therefore it provides a simple way to throttle the
+incoming load while maintaining the limits of the thread pool and queue. Typically this
+allows the executor to "catch up" on the tasks it is handling and thereby frees up some
+capacity on the queue, in the pool, or both. Any of these options can be chosen from an
+enumeration of values available for the 'rejection-policy' attribute on the 'executor'
+element.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<task:executor
+			id="executorWithCallerRunsPolicy"
+			pool-size="5-25"
+			queue-capacity="100"
+			rejection-policy="CALLER_RUNS"/>
+----
+
+Finally, the `keep-alive` setting determines the time limit (in seconds) for which threads
+may remain idle before being terminated. If there are more than the core number of threads
+currently in the pool, after waiting this amount of time without processing a task, excess
+threads will get terminated. A time value of zero will cause excess threads to terminate
+immediately after executing a task without remaining follow-up work in the task queue.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<task:executor
+			id="executorWithKeepAlive"
+			pool-size="5-25"
+			keep-alive="120"/>
+----
+
+
+

@@ -1,0 +1,133 @@
+[[validation-mvc]]
+==== Spring MVC 3 Validation
+Beginning with Spring 3, Spring MVC has the ability to automatically validate
+`@Controller` inputs. In previous versions it was up to the developer to manually invoke
+validation logic.
+
+
+[[validation-mvc-triggering]]
+===== Triggering @Controller Input Validation
+To trigger validation of a `@Controller` input, simply annotate the input argument as
+++@Valid++:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Controller
+	public class MyController {
+
+		@RequestMapping("/foo", method=RequestMethod.POST)
+		public void processFoo(**@Valid** Foo foo) { /* ... */ }
+----
+
+Spring MVC will validate a @Valid object after binding so-long as an appropriate
+Validator has been configured.
+
+[NOTE]
+====
+The @Valid annotation is part of the standard JSR-303 Bean Validation API, and is not a
+Spring-specific construct.
+====
+
+
+[[validation-mvc-configuring]]
+===== Configuring a Validator for use by Spring MVC
+The `Validator` instance invoked when a `@Valid` method argument is encountered may be
+configured in two ways. First, you may call `binder.setValidator(Validator)` within a
+++@Controller++'s `@InitBinder` callback. This allows you to configure a `Validator`
+instance per `@Controller` class:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Controller
+	public class MyController {
+
+		@InitBinder
+		protected void initBinder(WebDataBinder binder) {
+			binder.setValidator(new FooValidator());
+		}
+
+		@RequestMapping("/foo", method=RequestMethod.POST)
+		public void processFoo(@Valid Foo foo) { ... }
+
+	}
+----
+
+Second, you may call `setValidator(Validator)` on the global `WebBindingInitializer`. This
+allows you to configure a `Validator` instance across all `@Controller` classes. This can be
+achieved easily by using the Spring MVC namespace:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:mvc="http://www.springframework.org/schema/mvc"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="
+			http://www.springframework.org/schema/beans
+			http://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.springframework.org/schema/mvc
+			http://www.springframework.org/schema/mvc/spring-mvc.xsd">
+
+		<mvc:annotation-driven validator="globalValidator"/>
+
+	</beans>
+----
+
+To combine a global and a local validator, configure the global validator as shown above
+and then add a local validator:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Controller
+	public class MyController {
+
+		@InitBinder
+		protected void initBinder(WebDataBinder binder) {
+			binder.addValidators(new FooValidator());
+		}
+
+	}
+----
+
+
+[[validation-mvc-jsr303]]
+===== Configuring a JSR-303/JSR-349 Validator for use by Spring MVC
+With Bean Validation, a single `javax.validation.Validator` instance typically validates
+__all__ model objects that declare validation constraints. To configure such a JSR-303
+backed Validator with Spring MVC, simply add a Bean Validation provider, such as
+Hibernate Validator, to your classpath. Spring MVC will detect it and automatically
+enable Bean Validation support across all Controllers.
+
+The Spring MVC configuration required to enable Bean Validation support is shown below:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:mvc="http://www.springframework.org/schema/mvc"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="
+			http://www.springframework.org/schema/beans
+			http://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.springframework.org/schema/mvc
+			http://www.springframework.org/schema/mvc/spring-mvc.xsd">
+
+		<!-- JSR-303/JSR-349 support will be detected on classpath and enabled automatically -->
+		<mvc:annotation-driven/>
+
+	</beans>
+----
+
+With this minimal configuration, anytime a `@Valid` `@Controller` input is encountered, it
+will be validated by the Bean Validation provider. That provider, in turn, will enforce
+any constraints declared against the input. Any ++ConstraintViolation++s will automatically
+be exposed as errors in the `BindingResult` renderable by standard Spring MVC form tags.
+
+
+
+

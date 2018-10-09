@@ -1,0 +1,52 @@
+[[classic-aop-pfb-proxy-types]]
+==== JDK- and CGLIB-based proxies
+This section serves as the definitive documentation on how the `ProxyFactoryBean`
+chooses to create one of either a JDK- and CGLIB-based proxy for a particular target
+object (that is to be proxied).
+
+[NOTE]
+====
+The behavior of the `ProxyFactoryBean` with regard to creating JDK- or CGLIB-based
+proxies changed between versions 1.2.x and 2.0 of Spring. The `ProxyFactoryBean` now
+exhibits similar semantics with regard to auto-detecting interfaces as those of the
+`TransactionProxyFactoryBean` class.
+====
+
+If the class of a target object that is to be proxied (hereafter simply referred to as
+the target class) doesn't implement any interfaces, then a CGLIB-based proxy will be
+created. This is the easiest scenario, because JDK proxies are interface based, and no
+interfaces means JDK proxying isn't even possible. One simply plugs in the target bean,
+and specifies the list of interceptors via the `interceptorNames` property. Note that a
+CGLIB-based proxy will be created even if the `proxyTargetClass` property of the
+`ProxyFactoryBean` has been set to `false`. (Obviously this makes no sense, and is best
+removed from the bean definition because it is at best redundant, and at worst
+confusing.)
+
+If the target class implements one (or more) interfaces, then the type of proxy that is
+created depends on the configuration of the `ProxyFactoryBean`.
+
+If the `proxyTargetClass` property of the `ProxyFactoryBean` has been set to `true`,
+then a CGLIB-based proxy will be created. This makes sense, and is in keeping with the
+principle of least surprise. Even if the `proxyInterfaces` property of the
+`ProxyFactoryBean` has been set to one or more fully qualified interface names, the fact
+that the `proxyTargetClass` property is set to `true` __will__ cause CGLIB-based
+proxying to be in effect.
+
+If the `proxyInterfaces` property of the `ProxyFactoryBean` has been set to one or more
+fully qualified interface names, then a JDK-based proxy will be created. The created
+proxy will implement all of the interfaces that were specified in the `proxyInterfaces`
+property; if the target class happens to implement a whole lot more interfaces than
+those specified in the `proxyInterfaces` property, that is all well and good but those
+additional interfaces will not be implemented by the returned proxy.
+
+If the `proxyInterfaces` property of the `ProxyFactoryBean` has __not__ been set, but
+the target class __does implement one (or more)__ interfaces, then the
+`ProxyFactoryBean` will auto-detect the fact that the target class does actually
+implement at least one interface, and a JDK-based proxy will be created. The interfaces
+that are actually proxied will be __all__ of the interfaces that the target class
+implements; in effect, this is the same as simply supplying a list of each and every
+interface that the target class implements to the `proxyInterfaces` property. However,
+it is significantly less work, and less prone to typos.
+
+
+

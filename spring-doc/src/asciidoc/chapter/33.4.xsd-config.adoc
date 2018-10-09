@@ -1,0 +1,203 @@
+[[xsd-config-body-schemas-util-map]]
+===== <util:map/>
+
+Before...
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<!-- creates a java.util.Map instance with values loaded from the supplied 'sourceMap' -->
+	<bean id="emails" class="org.springframework.beans.factory.config.MapFactoryBean">
+		<property name="sourceMap">
+			<map>
+				<entry key="pechorin" value="pechorin@hero.org"/>
+				<entry key="raskolnikov" value="raskolnikov@slums.org"/>
+				<entry key="stavrogin" value="stavrogin@gov.org"/>
+				<entry key="porfiry" value="porfiry@gov.org"/>
+			</map>
+		</property>
+	</bean>
+----
+
+The above configuration uses a Spring `FactoryBean` implementation, the
+`MapFactoryBean`, to create a `java.util.Map` instance initialized with key-value pairs
+taken from the supplied `'sourceMap'`.
+
+After...
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<!-- creates a java.util.Map instance with the supplied key-value pairs -->
+	<util:map id="emails">
+		<entry key="pechorin" value="pechorin@hero.org"/>
+		<entry key="raskolnikov" value="raskolnikov@slums.org"/>
+		<entry key="stavrogin" value="stavrogin@gov.org"/>
+		<entry key="porfiry" value="porfiry@gov.org"/>
+	</util:map>
+----
+
+You can also explicitly control the exact type of `Map` that will be instantiated and
+populated via the use of the `'map-class'` attribute on the `<util:map/>` element. For
+example, if we really need a `java.util.TreeMap` to be instantiated, we could use the
+following configuration:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<util:map id="emails" map-class="java.util.TreeMap">
+		<entry key="pechorin" value="pechorin@hero.org"/>
+		<entry key="raskolnikov" value="raskolnikov@slums.org"/>
+		<entry key="stavrogin" value="stavrogin@gov.org"/>
+		<entry key="porfiry" value="porfiry@gov.org"/>
+	</util:map>
+----
+
+If no `'map-class'` attribute is supplied, a `Map` implementation will be chosen by the
+container.
+
+
+[[xsd-config-body-schemas-util-set]]
+===== <util:set/>
+
+Before...
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<!-- creates a java.util.Set instance with values loaded from the supplied 'sourceSet' -->
+	<bean id="emails" class="org.springframework.beans.factory.config.SetFactoryBean">
+		<property name="sourceSet">
+			<set>
+				<value>pechorin@hero.org</value>
+				<value>raskolnikov@slums.org</value>
+				<value>stavrogin@gov.org</value>
+				<value>porfiry@gov.org</value>
+			</set>
+		</property>
+	</bean>
+----
+
+The above configuration uses a Spring `FactoryBean` implementation, the
+`SetFactoryBean`, to create a `java.util.Set` instance initialized with values taken
+from the supplied `'sourceSet'`.
+
+After...
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<!-- creates a java.util.Set instance with the supplied values -->
+	<util:set id="emails">
+		<value>pechorin@hero.org</value>
+		<value>raskolnikov@slums.org</value>
+		<value>stavrogin@gov.org</value>
+		<value>porfiry@gov.org</value>
+	</util:set>
+----
+
+You can also explicitly control the exact type of `Set` that will be instantiated and
+populated via the use of the `'set-class'` attribute on the `<util:set/>` element. For
+example, if we really need a `java.util.TreeSet` to be instantiated, we could use the
+following configuration:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<util:set id="emails" set-class="java.util.TreeSet">
+		<value>pechorin@hero.org</value>
+		<value>raskolnikov@slums.org</value>
+		<value>stavrogin@gov.org</value>
+		<value>porfiry@gov.org</value>
+	</util:set>
+----
+
+If no `'set-class'` attribute is supplied, a `Set` implementation will be chosen by the
+container.
+
+
+
+[[xsd-config-body-schemas-jee]]
+==== the jee schema
+
+The `jee` tags deal with Java EE (Java Enterprise Edition)-related configuration issues,
+such as looking up a JNDI object and defining EJB references.
+
+To use the tags in the `jee` schema, you need to have the following preamble at the top
+of your Spring XML configuration file; the text in the following snippet references the
+correct schema so that the tags in the `jee` namespace are available to you.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		__xmlns:jee="http://www.springframework.org/schema/jee"__ xsi:schemaLocation="
+			http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+			__http://www.springframework.org/schema/jee http://www.springframework.org/schema/jee/spring-jee.xsd"__> <!-- bean definitions here -->
+
+	</beans>
+----
+
+
+[[xsd-config-body-schemas-jee-jndi-lookup]]
+===== <jee:jndi-lookup/> (simple)
+
+Before...
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="**dataSource**" class="org.springframework.jndi.JndiObjectFactoryBean">
+		<property name="jndiName" value="jdbc/MyDataSource"/>
+	</bean>
+	<bean id="userDao" class="com.foo.JdbcUserDao">
+		<!-- Spring will do the cast automatically (as usual) -->
+		<property name="dataSource" ref="**dataSource**"/>
+	</bean>
+----
+
+After...
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<jee:jndi-lookup id="**dataSource**" jndi-name="jdbc/MyDataSource"/>
+
+	<bean id="userDao" class="com.foo.JdbcUserDao">
+		<!-- Spring will do the cast automatically (as usual) -->
+		<property name="dataSource" ref="**dataSource**"/>
+	</bean>
+----
+
+
+[[xsd-config-body-schemas-jee-jndi-lookup-environment-single]]
+===== <jee:jndi-lookup/> (with single JNDI environment setting)
+
+Before...
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="simple" class="org.springframework.jndi.JndiObjectFactoryBean">
+		<property name="jndiName" value="jdbc/MyDataSource"/>
+		<property name="jndiEnvironment">
+			<props>
+				<prop key="foo">bar</prop>
+			</props>
+		</property>
+	</bean>
+----
+
+After...
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<jee:jndi-lookup id="simple" jndi-name="jdbc/MyDataSource">
+		<jee:environment>foo=bar</jee:environment>
+	</jee:jndi-lookup>
+----
+
+

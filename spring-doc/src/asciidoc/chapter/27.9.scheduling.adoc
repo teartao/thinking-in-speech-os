@@ -1,0 +1,53 @@
+[[scheduling-quartz-method-invoking-job]]
+==== 使用MethodInvokingJobDetailFactoryBean
+
+通常你只需要在特定对象上调用方法就行。使用`MethodInvokingJobDetailFactoryBean`你可以这么做：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="jobDetail" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject" ref="exampleBusinessObject"/>
+		<property name="targetMethod" value="doIt"/>
+	</bean>
+----
+
+上面的例子会在`exampleBusinessObject`对象上调用`doIt`方法（如下）：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class ExampleBusinessObject {
+
+		// properties and collaborators
+
+		public void doIt() {
+			// do the actual work
+		}
+	}
+----
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="exampleBusinessObject" class="examples.ExampleBusinessObject"/>
+----
+
+使用`MethodInvokingJobDetailFactoryBean`，你不需要创建一个在线的job，只是调用一个方法，而且你只需要创建具体的业务对象，封装对象的细节就行。
+
+默认情况下，Quartz Jobs是没有状态的，这就导致jobs可能会互相干扰。如果你对同一个`JobDetail`指定了两个触发器，有可能在第一个job还没完成的时候，第二个就启动了。如果`JobDetail`实现了`Stateful`接口，这种情况就不会出现。第二个job在第一个没有完成前就不会启动。为了让从`MethodInvokingJobDetailFactoryBean`产生的job不会并发，设置`concurrent`标志为`false`。
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="jobDetail" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject" ref="exampleBusinessObject"/>
+		<property name="targetMethod" value="doIt"/>
+		<property name="concurrent" value="false"/>
+	</bean>
+----
+
+[NOTE]
+====
+默认情况下，job在并发的模式下运行。
+====

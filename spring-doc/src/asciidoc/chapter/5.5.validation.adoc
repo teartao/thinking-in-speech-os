@@ -1,0 +1,155 @@
+[[core-convert-GenericConverter-SPI]]
+==== GenericConverter
+When you require a sophisticated Converter implementation, consider the GenericConverter
+interface. With a more flexible but less strongly typed signature, a GenericConverter
+supports converting between multiple source and target types. In addition, a
+GenericConverter makes available source and target field context you can use when
+implementing your conversion logic. Such context allows a type conversion to be driven
+by a field annotation, or generic information declared on a field signature.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package org.springframework.core.convert.converter;
+
+	public interface GenericConverter {
+
+		public Set<ConvertiblePair> getConvertibleTypes();
+
+		Object convert(Object source, TypeDescriptor sourceType, TypeDescriptor targetType);
+
+	}
+----
+
+To implement a GenericConverter, have getConvertibleTypes() return the supported
+source->target type pairs. Then implement convert(Object, TypeDescriptor,
+TypeDescriptor) to implement your conversion logic. The source TypeDescriptor provides
+access to the source field holding the value being converted. The target TypeDescriptor
+provides access to the target field where the converted value will be set.
+
+A good example of a GenericConverter is a converter that converts between a Java Array
+and a Collection. Such an ArrayToCollectionConverter introspects the field that declares
+the target Collection type to resolve the Collection's element type. This allows each
+element in the source array to be converted to the Collection element type before the
+Collection is set on the target field.
+
+[NOTE]
+====
+Because GenericConverter is a more complex SPI interface, only use it when you need it.
+Favor Converter or ConverterFactory for basic type conversion needs.
+====
+
+
+[[core-convert-ConditionalGenericConverter-SPI]]
+===== ConditionalGenericConverter
+Sometimes you only want a Converter to execute if a specific condition holds true. For
+example, you might only want to execute a Converter if a specific annotation is present
+on the target field. Or you might only want to execute a Converter if a specific method,
+such as static valueOf method, is defined on the target class.
+ConditionalGenericConverter is an subinterface of GenericConverter that allows you to
+define such custom matching criteria:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface ConditionalGenericConverter extends GenericConverter {
+
+		boolean matches(TypeDescriptor sourceType, TypeDescriptor targetType);
+
+	}
+----
+
+A good example of a ConditionalGenericConverter is an EntityConverter that converts
+between an persistent entity identifier and an entity reference. Such a EntityConverter
+might only match if the target entity type declares a static finder method e.g.
+findAccount(Long). You would perform such a finder method check in the implementation of
+matches(TypeDescriptor, TypeDescriptor).
+
+
+
+[[core-convert-ConversionService-API]]
+==== ConversionService API
+The ConversionService defines a unified API for executing type conversion logic at
+runtime. Converters are often executed behind this facade interface:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package org.springframework.core.convert;
+
+	public interface ConversionService {
+
+		boolean canConvert(Class<?> sourceType, Class<?> targetType);
+
+		<T> T convert(Object source, Class<T> targetType);
+
+		boolean canConvert(TypeDescriptor sourceType, TypeDescriptor targetType);
+
+		Object convert(Object source, TypeDescriptor sourceType, TypeDescriptor targetType);
+
+	}
+----
+
+Most ConversionService implementations also implement `ConverterRegistry`, which
+provides an SPI for registering converters. Internally, a ConversionService
+implementation delegates to its registered converters to carry out type conversion logic.
+
+A robust ConversionService implementation is provided in the `core.convert.support`
+package. `GenericConversionService` is the general-purpose implementation suitable for
+use in most environments. `ConversionServiceFactory` provides a convenient factory for
+creating common ConversionService configurations.
+
+
+
+[[core-convert-Spring-config]]
+==== Configuring a ConversionService
+A ConversionService is a stateless object designed to be instantiated at application
+startup, then shared between multiple threads. In a Spring application, you typically
+configure a ConversionService instance per Spring container (or ApplicationContext).
+That ConversionService will be picked up by Spring and then used whenever a type
+conversion needs to be performed by the framework. You may also inject this
+ConversionService into any of your beans and invoke it directly.
+
+[NOTE]
+====
+If no ConversionService is registered with Spring, the original PropertyEditor-based
+system is used.
+====
+
+To register a default ConversionService with Spring, add the following bean definition
+with id `conversionService`:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="conversionService"
+		class="org.springframework.context.support.ConversionServiceFactoryBean"/>
+----
+
+A default ConversionService can convert between strings, numbers, enums, collections,
+maps, and other common types. To supplement or override the default converters with your
+own custom converter(s), set the `converters` property. Property values may implement
+either of the Converter, ConverterFactory, or GenericConverter interfaces.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="conversionService"
+			class="org.springframework.context.support.ConversionServiceFactoryBean">
+		<property name="converters">
+			<set>
+				<bean class="example.MyCustomConverter"/>
+			</set>
+		</property>
+	</bean>
+----
+
+It is also common to use a ConversionService within a Spring MVC application. See
+<<format-configuring-formatting-mvc>> for details on use with `<mvc:annotation-driven/>`.
+
+In certain situations you may wish to apply formatting during conversion. See
+<<format-FormatterRegistry-SPI>> for details on using
+`FormattingConversionServiceFactoryBean`.
+
+
+

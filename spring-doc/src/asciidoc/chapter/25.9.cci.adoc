@@ -1,0 +1,145 @@
+[[cci-template-example]]
+==== Example for CciTemplate usage
+
+In this section, the usage of the `CciTemplate` will be shown to acces to a CICS with
+ECI mode, with the IBM CICS ECI connector.
+
+Firstly, some initializations on the CCI `InteractionSpec` must be done to specify which
+CICS program to access and how to interact with it.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	ECIInteractionSpec interactionSpec = new ECIInteractionSpec();
+	interactionSpec.setFunctionName("MYPROG");
+	interactionSpec.setInteractionVerb(ECIInteractionSpec.SYNC_SEND_RECEIVE);
+----
+
+Then the program can use CCI via Spring's template and specify mappings between custom
+objects and CCI `Records`.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class MyDaoImpl extends CciDaoSupport implements MyDao {
+
+		public OutputObject getData(InputObject input) {
+			ECIInteractionSpec interactionSpec = ...;
+
+		OutputObject output = (ObjectOutput) getCciTemplate().execute(interactionSpec,
+			new RecordCreator() {
+				public Record createRecord(RecordFactory recordFactory) throws ResourceException {
+					return new CommAreaRecord(input.toString().getBytes());
+				}
+			},
+			new RecordExtractor() {
+				public Object extractData(Record record) throws ResourceException {
+					CommAreaRecord commAreaRecord = (CommAreaRecord)record;
+					String str = new String(commAreaRecord.toByteArray());
+					String field1 = string.substring(0,6);
+					String field2 = string.substring(6,1);
+					return new OutputObject(Long.parseLong(field1), field2);
+				}
+			});
+
+			return output;
+		}
+	}
+----
+
+As discussed previously, callbacks can be used to work directly on CCI connections or
+interactions.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class MyDaoImpl extends CciDaoSupport implements MyDao {
+
+		public OutputObject getData(InputObject input) {
+			ObjectOutput output = (ObjectOutput) getCciTemplate().execute(
+				new ConnectionCallback() {
+					public Object doInConnection(Connection connection,
+							ConnectionFactory factory) throws ResourceException {
+
+						// do something...
+
+					}
+				});
+			}
+			return output;
+		}
+
+	}
+----
+
+[NOTE]
+====
+With a `ConnectionCallback`, the `Connection` used will be managed and closed by the
+`CciTemplate`, but any interactions created on the connection must be managed by the
+callback implementation.
+====
+
+For a more specific callback, you can implement an `InteractionCallback`. The passed-in
+`Interaction` will be managed and closed by the `CciTemplate` in this case.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class MyDaoImpl extends CciDaoSupport implements MyDao {
+
+		public String getData(String input) {
+			ECIInteractionSpec interactionSpec = ...;
+			String output = (String) getCciTemplate().execute(interactionSpec,
+				new InteractionCallback() {
+					public Object doInInteraction(Interaction interaction,
+							ConnectionFactory factory) throws ResourceException {
+						Record input = new CommAreaRecord(inputString.getBytes());
+						Record output = new CommAreaRecord();
+						interaction.execute(holder.getInteractionSpec(), input, output);
+						return new String(output.toByteArray());
+					}
+				});
+			return output;
+		}
+
+	}
+----
+
+For the examples above, the corresponding configuration of the involved Spring beans
+could look like this in non-managed mode:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="managedConnectionFactory" class="com.ibm.connector2.cics.ECIManagedConnectionFactory">
+		<property name="serverName" value="TXSERIES"/>
+		<property name="connectionURL" value="local:"/>
+		<property name="userName" value="CICSUSER"/>
+		<property name="password" value="CICS"/>
+	</bean>
+
+	<bean id="connectionFactory" class="org.springframework.jca.support.LocalConnectionFactoryBean">
+		<property name="managedConnectionFactory" ref="managedConnectionFactory"/>
+	</bean>
+
+	<bean id="component" class="mypackage.MyDaoImpl">
+		<property name="connectionFactory" ref="connectionFactory"/>
+	</bean>
+----
+
+In managed mode (that is, in a Java EE environment), the configuration could look as
+follows:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<jee:jndi-lookup id="connectionFactory" jndi-name="eis/cicseci"/>
+
+	<bean id="component" class="MyDaoImpl">
+		<property name="connectionFactory" ref="connectionFactory"/>
+	</bean>
+----
+
+
+
+

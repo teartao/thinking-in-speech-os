@@ -1,0 +1,144 @@
+[[orm-hibernate-template]]
+===== the HibernateTemplate
+
+The basic programming model for templating looks as follows, for methods that can be
+part of any custom data access object or business service. There are no restrictions on
+the implementation of the surrounding object at all, it just needs to provide a
+Hibernate `SessionFactory`. It can get the latter from anywhere, but preferably as bean
+reference from a Spring IoC container - via a simple `setSessionFactory(..)` bean
+property setter. The following snippets show a DAO definition in a Spring container,
+referencing the above defined `SessionFactory`, and an example for a DAO method
+implementation.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<beans>
+
+		<bean id="myProductDao" class="product.ProductDaoImpl">
+			<property name="sessionFactory" ref="mySessionFactory"/>
+		</bean>
+
+	</beans>
+----
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class ProductDaoImpl implements ProductDao {
+
+		private HibernateTemplate hibernateTemplate;
+
+		public void setSessionFactory(SessionFactory sessionFactory) {
+			this.hibernateTemplate = new HibernateTemplate(sessionFactory);
+		}
+
+		public Collection loadProductsByCategory(String category) throws DataAccessException {
+			return this.hibernateTemplate.find("from test.Product product where product.category=?", category);
+		}
+	}
+----
+
+The `HibernateTemplate` class provides many methods that mirror the methods exposed on
+the Hibernate `Session` interface, in addition to a number of convenience methods such
+as the one shown above. If you need access to the `Session` to invoke methods that are
+not exposed on the `HibernateTemplate`, you can always drop down to a callback-based
+approach like so.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class ProductDaoImpl implements ProductDao {
+
+		private HibernateTemplate hibernateTemplate;
+
+		public void setSessionFactory(SessionFactory sessionFactory) {
+			this.hibernateTemplate = new HibernateTemplate(sessionFactory);
+		}
+
+		public Collection loadProductsByCategory(final String category) throws DataAccessException {
+			return this.hibernateTemplate.execute(new HibernateCallback() {
+				public Object doInHibernate(Session session) {
+					Criteria criteria = session.createCriteria(Product.class);
+					criteria.add(Expression.eq("category", category));
+					criteria.setMaxResults(6);
+					return criteria.list();
+				}
+			};
+		}
+
+	}
+----
+
+A callback implementation effectively can be used for any Hibernate data access.
+`HibernateTemplate` will ensure that `Session` instances are properly opened and closed,
+and automatically participate in transactions. The template instances are thread-safe
+and reusable, they can thus be kept as instance variables of the surrounding class. For
+simple single step actions like a single find, load, saveOrUpdate, or delete call,
+`HibernateTemplate` offers alternative convenience methods that can replace such one
+line callback implementations. Furthermore, Spring provides a convenient
+`HibernateDaoSupport` base class that provides a `setSessionFactory(..)` method for
+receiving a `SessionFactory`, and `getSessionFactory()` and `getHibernateTemplate()` for
+use by subclasses. In combination, this allows for very simple DAO implementations for
+typical requirements:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class ProductDaoImpl extends HibernateDaoSupport implements ProductDao {
+
+		public Collection loadProductsByCategory(String category) throws DataAccessException {
+			return this.getHibernateTemplate().find(
+				"from test.Product product where product.category=?", category);
+		}
+
+	}
+----
+
+
+[[orm-hibernate-daos]]
+===== Implementing Spring-based DAOs without callbacks
+As alternative to using Spring's `HibernateTemplate` to implement DAOs, data access code
+can also be written in a more traditional fashion, without wrapping the Hibernate access
+code in a callback, while still respecting and participating in Spring's generic
+`DataAccessException` hierarchy. The `HibernateDaoSupport` base class offers methods to
+access the current transactional `Session` and to convert exceptions in such a scenario;
+similar methods are also available as static helpers on the `SessionFactoryUtils` class.
+Note that such code will usually pass `false` as the value of the `getSession(..)`
+methods `allowCreate` argument, to enforce running within a transaction (which avoids
+the need to close the returned `Session`, as its lifecycle is managed by the
+transaction).
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class HibernateProductDao extends HibernateDaoSupport implements ProductDao {
+
+		public Collection loadProductsByCategory(String category) throws DataAccessException, MyException {
+			Session session = getSession(false);
+			try {
+				Query query = session.createQuery("from test.Product product where product.category=?");
+				query.setString(0, category);
+				List result = query.list();
+				if (result == null) {
+					throw new MyException("No search results.");
+				}
+				return result;
+			}
+			catch (HibernateException ex) {
+				throw convertHibernateAccessException(ex);
+			}
+		}
+	}
+----
+
+The advantage of such direct Hibernate access code is that it allows __any__ checked
+application exception to be thrown within the data access code; contrast this to the
+`HibernateTemplate` class which is restricted to throwing only unchecked exceptions
+within the callback. Note that you can often defer the corresponding checks and the
+throwing of application exceptions to after the callback, which still allows working
+with `HibernateTemplate`. In general, the `HibernateTemplate` class' convenience methods
+are simpler and more convenient for many scenarios.
+
+
+

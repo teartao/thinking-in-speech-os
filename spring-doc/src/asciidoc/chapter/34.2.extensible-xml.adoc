@@ -1,0 +1,151 @@
+[[extensible-xml-parser]]
+=== BeanDefinitionParser
+
+A `BeanDefinitionParser` will be used if the `NamespaceHandler` encounters an XML
+element of the type that has been mapped to the specific bean definition parser (which
+is `'dateformat'` in this case). In other words, the `BeanDefinitionParser` is
+responsible for parsing __one__ distinct top-level XML element defined in the schema. In
+the parser, we'll have access to the XML element (and thus its subelements too) so that
+we can parse our custom XML content, as can be seen in the following example:
+
+[source,java,indent=0]
+----
+	package org.springframework.samples.xml;
+
+	import org.springframework.beans.factory.support.BeanDefinitionBuilder;
+	import org.springframework.beans.factory.xml.AbstractSingleBeanDefinitionParser;
+	import org.springframework.util.StringUtils;
+	import org.w3c.dom.Element;
+
+	import java.text.SimpleDateFormat;
+
+	public class SimpleDateFormatBeanDefinitionParser extends AbstractSingleBeanDefinitionParser { // <1>
+
+		protected Class getBeanClass(Element element) {
+			return SimpleDateFormat.class; // <2>
+		}
+
+		protected void doParse(Element element, BeanDefinitionBuilder bean) {
+			// this will never be null since the schema explicitly requires that a value be supplied
+			String pattern = element.getAttribute("pattern");
+			bean.addConstructorArg(pattern);
+
+			// this however is an optional property
+			String lenient = element.getAttribute("lenient");
+			if (StringUtils.hasText(lenient)) {
+				bean.addPropertyValue("lenient", Boolean.valueOf(lenient));
+			}
+		}
+
+	}
+----
+
+<1> We use the Spring-provided `AbstractSingleBeanDefinitionParser` to handle a lot of
+the basic grunt work of creating a __single__ `BeanDefinition`.
+
+<2> We supply the `AbstractSingleBeanDefinitionParser` superclass with the type that our
+single `BeanDefinition` will represent.
+
+In this simple case, this is all that we need to do. The creation of our single
+`BeanDefinition` is handled by the `AbstractSingleBeanDefinitionParser` superclass, as
+is the extraction and setting of the bean definition's unique identifier.
+
+
+
+
+[[extensible-xml-registration]]
+=== Registering the handler and the schema
+The coding is finished! All that remains to be done is to somehow make the Spring XML
+parsing infrastructure aware of our custom element; we do this by registering our custom
+`namespaceHandler` and custom XSD file in two special purpose properties files. These
+properties files are both placed in a `'META-INF'` directory in your application, and
+can, for example, be distributed alongside your binary classes in a JAR file. The Spring
+XML parsing infrastructure will automatically pick up your new extension by consuming
+these special properties files, the formats of which are detailed below.
+
+
+
+[[extensible-xml-registration-spring-handlers]]
+==== 'META-INF/spring.handlers'
+
+The properties file called `'spring.handlers'` contains a mapping of XML Schema URIs to
+namespace handler classes. So for our example, we need to write the following:
+
+[literal]
+[subs="verbatim,quotes"]
+----
+http\://www.mycompany.com/schema/myns=org.springframework.samples.xml.MyNamespaceHandler
+----
+
+__(The `':'` character is a valid delimiter in the Java properties format, and so the
+`':'` character in the URI needs to be escaped with a backslash.)__
+
+The first part (the key) of the key-value pair is the URI associated with your custom
+namespace extension, and needs to __match exactly__ the value of the `'targetNamespace'`
+attribute as specified in your custom XSD schema.
+
+
+
+[[extensible-xml-registration-spring-schemas]]
+==== 'META-INF/spring.schemas'
+
+The properties file called `'spring.schemas'` contains a mapping of XML Schema locations
+(referred to along with the schema declaration in XML files that use the schema as part
+of the `'xsi:schemaLocation'` attribute) to __classpath__ resources. This file is needed
+to prevent Spring from absolutely having to use a default `EntityResolver` that requires
+Internet access to retrieve the schema file. If you specify the mapping in this
+properties file, Spring will search for the schema on the classpath (in this case
+`'myns.xsd'` in the `'org.springframework.samples.xml'` package):
+
+[literal]
+[subs="verbatim,quotes"]
+----
+http\://www.mycompany.com/schema/myns/myns.xsd=org/springframework/samples/xml/myns.xsd
+----
+
+The upshot of this is that you are encouraged to deploy your XSD file(s) right alongside
+the `NamespaceHandler` and `BeanDefinitionParser` classes on the classpath.
+
+
+
+
+[[extensible-xml-using]]
+=== Using a custom extension in your Spring XML configuration
+Using a custom extension that you yourself have implemented is no different from using
+one of the 'custom' extensions that Spring provides straight out of the box. Find below
+an example of using the custom `<dateformat/>` element developed in the previous steps
+in a Spring XML configuration file.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns:myns="http://www.mycompany.com/schema/myns"
+		xsi:schemaLocation="
+			http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.mycompany.com/schema/myns http://www.mycompany.com/schema/myns/myns.xsd">
+
+		<!-- as a top-level bean -->
+		<myns:dateformat id="defaultDateFormat" pattern="yyyy-MM-dd HH:mm" lenient="true"/>
+
+		<bean id="jobDetailTemplate" abstract="true">
+			<property name="dateFormat">
+				<!-- as an inner bean -->
+				<myns:dateformat pattern="HH:mm MM-dd-yyyy"/>
+			</property>
+		</bean>
+
+	</beans>
+----
+
+
+
+
+[[extensible-xml-meat]]
+=== Meatier examples
+Find below some much meatier examples of custom XML extensions.
+
+
+

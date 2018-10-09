@@ -1,0 +1,126 @@
+[[aop-schema-example]]
+==== Example
+Let's see how the concurrent locking failure retry example from
+<<aop-ataspectj-example>> looks when rewritten using the schema support.
+
+The execution of business services can sometimes fail due to concurrency issues (for
+example, deadlock loser). If the operation is retried, it is quite likely it will
+succeed next time round. For business services where it is appropriate to retry in such
+conditions (idempotent operations that don't need to go back to the user for conflict
+resolution), we'd like to transparently retry the operation to avoid the client seeing a
+`PessimisticLockingFailureException`. This is a requirement that clearly cuts across
+multiple services in the service layer, and hence is ideal for implementing via an
+aspect.
+
+Because we want to retry the operation, we'll need to use around advice so that we can
+call proceed multiple times. Here's how the basic aspect implementation looks (it's just
+a regular Java class using the schema support):
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class ConcurrentOperationExecutor implements Ordered {
+
+		private static final int DEFAULT_MAX_RETRIES = 2;
+
+		private int maxRetries = DEFAULT_MAX_RETRIES;
+		private int order = 1;
+
+		public void setMaxRetries(int maxRetries) {
+			this.maxRetries = maxRetries;
+		}
+
+		public int getOrder() {
+			return this.order;
+		}
+
+		public void setOrder(int order) {
+			this.order = order;
+		}
+
+		public Object doConcurrentOperation(ProceedingJoinPoint pjp) throws Throwable {
+			int numAttempts = 0;
+			PessimisticLockingFailureException lockFailureException;
+			do {
+				numAttempts++;
+				try {
+					return pjp.proceed();
+				}
+				catch(PessimisticLockingFailureException ex) {
+					lockFailureException = ex;
+				}
+			} while(numAttempts <= this.maxRetries);
+			throw lockFailureException;
+		}
+
+	}
+----
+
+Note that the aspect implements the `Ordered` interface so we can set the precedence of
+the aspect higher than the transaction advice (we want a fresh transaction each time we
+retry). The `maxRetries` and `order` properties will both be configured by Spring. The
+main action happens in the `doConcurrentOperation` around advice method. We try to
+proceed, and if we fail with a `PessimisticLockingFailureException` we simply try again
+unless we have exhausted all of our retry attempts.
+
+[NOTE]
+====
+This class is identical to the one used in the @AspectJ example, but with the
+annotations removed.
+====
+
+The corresponding Spring configuration is:
+
+[source,xml,indent=0]
+[subs="verbatim"]
+----
+	<aop:config>
+
+		<aop:aspect id="concurrentOperationRetry" ref="concurrentOperationExecutor">
+
+			<aop:pointcut id="idempotentOperation"
+				expression="execution(* com.xyz.myapp.service.*.*(..))"/>
+
+			<aop:around
+				pointcut-ref="idempotentOperation"
+				method="doConcurrentOperation"/>
+
+		</aop:aspect>
+
+	</aop:config>
+
+	<bean id="concurrentOperationExecutor"
+		class="com.xyz.myapp.service.impl.ConcurrentOperationExecutor">
+			<property name="maxRetries" value="3"/>
+			<property name="order" value="100"/>
+	</bean>
+----
+
+Notice that for the time being we assume that all business services are idempotent. If
+this is not the case we can refine the aspect so that it only retries genuinely
+idempotent operations, by introducing an `Idempotent` annotation:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Retention(RetentionPolicy.RUNTIME)
+	public @interface Idempotent {
+		// marker annotation
+	}
+----
+
+and using the annotation to annotate the implementation of service operations. The
+change to the aspect to retry only idempotent operations simply involves refining the
+pointcut expression so that only `@Idempotent` operations match:
+
+[source,xml,indent=0]
+[subs="verbatim"]
+----
+	<aop:pointcut id="idempotentOperation"
+			expression="execution(* com.xyz.myapp.service.*.*(..)) and
+			@annotation(com.xyz.myapp.service.Idempotent)"/>
+----
+
+
+
+

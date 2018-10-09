@@ -1,0 +1,54 @@
+[[cci-tx]]
+=== Transactions
+JCA specifies several levels of transaction support for resource adapters. The kind of
+transactions that your resource adapter supports is specified in its `ra.xml` file.
+There are essentially three options: none (for example with CICS EPI connector), local
+transactions (for example with a CICS ECI connector), global transactions (for example
+with an IMS connector).
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<connector>
+		<resourceadapter>
+			<!-- <transaction-support>NoTransaction</transaction-support> -->
+			<!-- <transaction-support>LocalTransaction</transaction-support> -->
+			<transaction-support>XATransaction</transaction-support>
+		<resourceadapter>
+	<connector>
+----
+
+For global transactions, you can use Spring's generic transaction infrastructure to
+demarcate transactions, with `JtaTransactionManager` as backend (delegating to the Java
+EE server's distributed transaction coordinator underneath).
+
+For local transactions on a single CCI `ConnectionFactory`, Spring provides a specific
+transaction management strategy for CCI, analogous to the `DataSourceTransactionManager`
+for JDBC. The CCI API defines a local transaction object and corresponding local
+transaction demarcation methods. Spring's `CciLocalTransactionManager` executes such
+local CCI transactions, fully compliant with Spring's generic
+`PlatformTransactionManager` abstraction.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<jee:jndi-lookup id="eciConnectionFactory" jndi-name="eis/cicseci"/>
+
+	<bean id="eciTransactionManager"
+			class="org.springframework.jca.cci.connection.CciLocalTransactionManager">
+		<property name="connectionFactory" ref="eciConnectionFactory"/>
+	</bean>
+----
+
+Both transaction strategies can be used with any of Spring's transaction demarcation
+facilities, be it declarative or programmatic. This is a consequence of Spring's generic
+`PlatformTransactionManager` abstraction, which decouples transaction demarcation from
+the actual execution strategy. Simply switch between `JtaTransactionManager` and
+`CciLocalTransactionManager` as needed, keeping your transaction demarcation as-is.
+
+For more information on Spring's transaction facilities, see the chapter entitled
+<<transaction>>.
+
+
+
+

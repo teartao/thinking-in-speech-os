@@ -1,0 +1,90 @@
+[[jmx-jsr160-client]]
+==== Client-side Connectors
+To create an `MBeanServerConnection` to a remote JSR-160 enabled `MBeanServer` use the
+`MBeanServerConnectionFactoryBean` as shown below:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="clientConnector" class="org.springframework.jmx.support.MBeanServerConnectionFactoryBean">
+		<property name="serviceUrl" value="service:jmx:rmi://localhost/jndi/rmi://localhost:1099/jmxrmi"/>
+	</bean>
+----
+
+
+
+[[jmx-jsr160-protocols]]
+==== JMX over Burlap/Hessian/SOAP
+JSR-160 permits extensions to the way in which communication is done between the client
+and the server. The examples above are using the mandatory RMI-based implementation
+required by the JSR-160 specification (IIOP and JRMP) and the (optional) JMXMP. By using
+other providers or JMX implementations (such as http://mx4j.sourceforge.net[MX4J]) you
+can take advantage of protocols like SOAP, Hessian, Burlap over simple HTTP or SSL and
+others:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="serverConnector" class="org.springframework.jmx.support.ConnectorServerFactoryBean">
+		<property name="objectName" value="connector:name=burlap"/>
+		<property name="serviceUrl" value="service:jmx:burlap://localhost:9874"/>
+	</bean>
+----
+
+In the case of the above example, MX4J 3.0.0 was used; see the official MX4J
+documentation for more information.
+
+
+
+
+[[jmx-proxy]]
+=== Accessing MBeans via Proxies
+Spring JMX allows you to create proxies that re-route calls to MBeans registered in a
+local or remote `MBeanServer`. These proxies provide you with a standard Java interface
+through which you can interact with your MBeans. The code below shows how to configure a
+proxy for an MBean running in a local `MBeanServer`:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="proxy" class="org.springframework.jmx.access.MBeanProxyFactoryBean">
+		<property name="objectName" value="bean:name=testBean"/>
+		<property name="proxyInterface" value="org.springframework.jmx.IJmxTestBean"/>
+	</bean>
+----
+
+Here you can see that a proxy is created for the MBean registered under the
+`ObjectName`: `bean:name=testBean`. The set of interfaces that the proxy will implement
+is controlled by the `proxyInterfaces` property and the rules for mapping methods and
+properties on these interfaces to operations and attributes on the MBean are the same
+rules used by the `InterfaceBasedMBeanInfoAssembler`.
+
+The `MBeanProxyFactoryBean` can create a proxy to any MBean that is accessible via an
+`MBeanServerConnection`. By default, the local `MBeanServer` is located and used, but
+you can override this and provide an `MBeanServerConnection` pointing to a remote
+`MBeanServer` to cater for proxies pointing to remote MBeans:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="clientConnector"
+			class="org.springframework.jmx.support.MBeanServerConnectionFactoryBean">
+		<property name="serviceUrl" value="service:jmx:rmi://remotehost:9875"/>
+	</bean>
+
+	<bean id="proxy" class="org.springframework.jmx.access.MBeanProxyFactoryBean">
+		<property name="objectName" value="bean:name=testBean"/>
+		<property name="proxyInterface" value="org.springframework.jmx.IJmxTestBean"/>
+		<property name="server" ref="clientConnector"/>
+	</bean>
+----
+
+Here you can see that we create an `MBeanServerConnection` pointing to a remote machine
+using the `MBeanServerConnectionFactoryBean`. This `MBeanServerConnection` is then
+passed to the `MBeanProxyFactoryBean` via the `server` property. The proxy that is
+created will forward all invocations to the `MBeanServer` via this
+`MBeanServerConnection`.
+
+
+
+

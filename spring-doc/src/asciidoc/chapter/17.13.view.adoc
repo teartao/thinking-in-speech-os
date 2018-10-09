@@ -1,0 +1,102 @@
+[[view-xslt-subclassing]]
+===== Convert the model data to XML
+In order to create a DOM document from our list of words or any other model data, we
+must subclass the (provided)
+`org.springframework.web.servlet.view.xslt.AbstractXsltView` class. In doing so, we must
+also typically implement the abstract method `createXsltSource(..)` method. The first
+parameter passed to this method is our model map. Here's the complete listing of the
+`HomePage` class in our trivial word application:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package xslt;
+
+	// imports omitted for brevity
+
+	public class HomePage extends AbstractXsltView {
+
+		protected Source createXsltSource(Map model, String rootName,
+				HttpServletRequest request, HttpServletResponse response) throws Exception {
+
+			Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
+			Element root = document.createElement(rootName);
+
+			List words = (List) model.get("wordList");
+			for (Iterator it = words.iterator(); it.hasNext();) {
+				String nextWord = (String) it.next();
+				Element wordNode = document.createElement("word");
+				Text textNode = document.createTextNode(nextWord);
+				wordNode.appendChild(textNode);
+				root.appendChild(wordNode);
+			}
+			return new DOMSource(root);
+		}
+
+	}
+----
+
+A series of parameter name/value pairs can optionally be defined by your subclass which
+will be added to the transformation object. The parameter names must match those defined
+in your XSLT template declared with `<xsl:param
+name="myParam">defaultValue</xsl:param>`. To specify the parameters, override the
+`getParameters()` method of the `AbstractXsltView` class and return a `Map` of the
+name/value pairs. If your parameters need to derive information from the current
+request, you can override the `getParameters(HttpServletRequest request)` method instead.
+
+
+[[view-xslt-viewdefinitions]]
+===== Defining the view properties
+The views.properties file (or equivalent xml definition if you're using an XML based
+view resolver as we did in the Velocity examples above) looks like this for the one-view
+application that is 'My First Words':
+
+[literal]
+[subs="verbatim,quotes"]
+----
+home.(class)=xslt.HomePage
+home.stylesheetLocation=/WEB-INF/xsl/home.xslt
+home.root=words
+----
+
+Here, you can see how the view is tied in with the `HomePage` class just written which
+handles the model domification in the first property `'.(class)'`. The
+`'stylesheetLocation'` property points to the XSLT file which will handle the XML
+transformation into HTML for us and the final property `'.root'` is the name that will
+be used as the root of the XML document. This gets passed to the `HomePage` class above
+in the second parameter to the `createXsltSource(..)` method(s).
+
+
+[[view-xslt-transforming]]
+===== Document transformation
+Finally, we have the XSLT code used for transforming the above document. As shown in the
+above `'views.properties'` file, the stylesheet is called `'home.xslt'` and it lives in
+the war file in the `'WEB-INF/xsl'` directory.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="utf-8"?>
+	<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+
+		<xsl:output method="html" omit-xml-declaration="yes"/>
+
+		<xsl:template match="/">
+			<html>
+				<head><title>Hello!</title></head>
+				<body>
+					<h1>My First Words</h1>
+					<xsl:apply-templates/>
+				</body>
+			</html>
+		</xsl:template>
+
+		<xsl:template match="word">
+			<xsl:value-of select="."/><br/>
+		</xsl:template>
+
+	</xsl:stylesheet>
+----
+
+
+

@@ -1,0 +1,532 @@
+[[aop-api-advice]]
+=== Advice API in Spring
+Let's now look at how Spring AOP handles advice.
+让我们看看 Spring AOP 是怎么处理 advice的
+
+
+[[aop-api-advice-lifecycle]]
+==== Advice lifecycles Advice 生命周期
+Each advice is a Spring bean. An advice instance can be shared across all advised
+objects, or unique to each advised object. This corresponds to __per-class__ or
+__per-instance__ advice.
+
+每个Advice都是Spring里面的 Bean。 
+Advice有2种： 第一种叫 __per-class__ Advice 此 Advice的实例在所有的目标对象的实例中共享。
+第二种叫  __per-instance__ Advice  此 Advice的实例在每个目标对象的实例中唯一不能共享。
+
+
+Per-class advice is used most often. It is appropriate for generic advice such as
+transaction advisors. These do not depend on the state of the proxied object or add new
+state; they merely act on the method and arguments.
+
+Per-class Advice 用的最多。 它适合用来做通用的Advice例如事物管理的Advice，
+它不会为代理的目标对象保存状态和添加状态，他们仅仅适用于方法和参数的拦截。
+
+
+Per-instance advice is appropriate for introductions, to support mixins. In this case,
+the advice adds state to the proxied object.
+
+Per-instance advice 适合做介绍，支持融合（混合）。在这种情况下，他为代理对象添加状态。
+
+It's possible to use a mix of shared and per-instance advice in the same AOP proxy.
+在相同的AOP代理中可以混用 per-class advice 和 per-instance advice 
+
+
+[[aop-api-advice-types]]
+==== Advice types in Spring
+ Spring Advice的类型
+
+Spring provides several advice types out of the box, and is extensible to support
+arbitrary advice types. Let us look at the basic concepts and standard advice types.
+
+Spring 提供了一些开箱即用的advice类型，并且通过扩展可以支持任意的advice类型。让我们看看基本概念和标准的advice类型
+
+[[aop-api-advice-around]]
+===== Interception around advice  拦截 around Advice
+
+The most fundamental advice type in Spring is __interception around advice__.
+在Spring 中最基本的advice 类型是 __拦截 around Advice
+
+Spring is compliant with the AOP Alliance interface for around advice using method
+interception. MethodInterceptors implementing around advice should implement the
+following interface:
+
+Spring 用 around Adivice 来服从 AOP联盟的接口。方法拦截器 实现 around advice 需要实现以下接口：
+
+
+7月3号开始 
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface MethodInterceptor extends Interceptor {
+
+		Object invoke(MethodInvocation invocation) throws Throwable;
+	}
+----
+
+The `MethodInvocation` argument to the `invoke()` method exposes the method being
+invoked; the target join point; the AOP proxy; and the arguments to the method. The
+`invoke()` method should return the invocation's result: the return value of the join
+point.
+`invoke()` 方法的参数  `MethodInvocation`  在被调用的时候暴漏 方法；目标切入点；AOP代理；和参数给这个方法。
+`invoke()`方法需要返回调用者的结果：返回切入点的值
+
+
+A simple `MethodInterceptor` implementation looks as follows:
+下面是一个简单的`MethodInterceptor`的实现：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class DebugInterceptor implements MethodInterceptor {
+
+		public Object invoke(MethodInvocation invocation) throws Throwable {
+			System.out.println("Before: invocation=[" + invocation + "]");
+			Object rval = invocation.proceed();
+			System.out.println("Invocation returned");
+			return rval;
+		}
+	}
+----
+
+Note the call to the MethodInvocation's `proceed()` method. This proceeds down the
+interceptor chain towards the join point. Most interceptors will invoke this method, and
+return its return value. However, a MethodInterceptor, like any around advice, can
+return a different value or throw an exception rather than invoke the proceed method.
+However, you don't want to do this without good reason!
+
+注意MethodInvocation调用的`proceed()` 方法。这些procee方法在这个加入点上击败拦截器链（ 这些procee方法在加入点上要比拦截器链要好）。
+大部分拦截器会调用这个方法，和返回他的值。然而，像任何的around Advice一样能够返回不同的值和抛出异常胜于调用这个 procce方法。
+然而，除非有更好的理由你应该不想这么做。
+
+
+[NOTE]
+====
+MethodInterceptors offer interoperability with other AOP Alliance-compliant AOP
+implementations. The other advice types discussed in the remainder of this section
+implement common AOP concepts, but in a Spring-specific way. 
+While there is an advantage in using the most specific advice type, stick with MethodInterceptor around advice if
+you are likely to want to run the aspect in another AOP framework. Note that pointcuts
+are not currently interoperable between frameworks, and the AOP Alliance does not
+currently define pointcut interfaces.
+
+方法拦截器提供与其他AOP联盟标准的AOP的互操作性实现。本章节的其余部分讨论其余的advice类型实现共同的AOP概念，但是是spring的实现方式。
+
+虽然用最具体的advice类型有优势，但是如果你想在另外的AOP框架中运行坚持使用 around advice 方法拦截器。
+
+请注意这个切入点目前在不同框架间不能相互操作，AOP联盟目前也不能定义切入点接口。
+
+
+====
+7月4号开始 
+
+[[aop-api-advice-before]]
+===== Before advice
+ 前置 Advice
+A simpler advice type is a __before advice__. This does not need a `MethodInvocation`
+object, since it will only be called before entering the method.
+__前置 Advice 是更简单的 Advice。因为它只在进入方法之前调用，所以它不需要`MethodInvocation` 对象
+
+
+The main advantage of a before advice is that there is no need to invoke the `proceed()`
+method, and therefore no possibility of inadvertently failing to proceed down the
+interceptor chain.
+
+前置advice的一个主要优势是不需要调用 `proceed()` 方法， 因此它不可能调用失败 proceed方法，在这一点上击败了 拦截器链。
+
+
+The `MethodBeforeAdvice` interface is shown below. (Spring's API design would allow for
+field before advice, although the usual objects apply to field interception and it's
+unlikely that Spring will ever implement it).
+下面展示`MethodBeforeAdvice` 接口（对于字段上的advice拦截器比较常用，虽然spring在设计上也支持，但是spring应该不太可能实现它）
+
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface MethodBeforeAdvice extends BeforeAdvice {
+
+		void before(Method m, Object[] args, Object target) throws Throwable;
+	}
+----
+
+
+Note the return type is `void`. Before advice can insert custom behavior before the join
+point executes, but cannot change the return value. 
+If a before advice throws an exception, this will abort further execution of the interceptor chain. 
+The exception will propagate back up the interceptor chain.
+If it is unchecked, or on the signature of the invoked method, it will be passed directly to the client; 
+otherwise it will be wrapped in an unchecked exception by the AOP proxy.
+注意返回类型是`void`。前置 advice 可以在加入点之前执行用户的行为，但是不能改变返回值。
+如果一个前置advice抛出了一个异常，拦截器链将不会继续执行。这个异常将会传播回拦截器链。
+如果这个异常没有被检查，或者标记的方法被调用时，它将直接传递给客户端,否则这个异常将会被AOP代理包装成一个未检查异常
+
+An example of a before advice in Spring, which counts all method invocations:
+下面是spring里面的一个前置advice例子，它将统计所有的方法调用：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class CountingBeforeAdvice implements MethodBeforeAdvice {
+
+		private int count;
+
+		public void before(Method m, Object[] args, Object target) throws Throwable {
+			++count;
+		}
+
+		public int getCount() {
+			return count;
+		}
+	}
+----
+7月5号开始 
+[TIP]
+====
+Before advice can be used with any pointcut.
+前置Advice 能够使用在任何的切入点
+====
+
+
+[[aop-api-advice-throws]]
+===== Throws advice 抛出Advice
+
+__Throws advice__ is invoked after the return of the join point if the join point threw
+an exception. Spring offers typed throws advice. Note that this means that the
+`org.springframework.aop.ThrowsAdvice` interface does not contain any methods: It is a
+tag interface identifying that the given object implements one or more typed throws
+advice methods. These should be in the form of:
+
+如果一个连接点抛出一个异常，__Throws advice__ 将会在连接点返回之后调用。Spring提供 throws advice 类型。
+请注意这就意味着 `org.springframework.aop.ThrowsAdvice`接口不会包含任何方法：它是一个标签，给实现它的对象一个或者多个throws
+advice 方法。这些应该是以下的形式
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	afterThrowing([Method, args, target], subclassOfThrowable)
+----
+
+Only the last argument is required. The method signatures may have either one or four
+arguments, depending on whether the advice method is interested in the method and
+arguments. The following classes are examples of throws advice.
+只有最后一个参数是必须的。这个方法签名会有1个或者4个参数，依赖于 是否 建议的方法 在方法或者参数上感兴趣。
+下面的类是 throws advice的例子：
+
+The advice below is invoked if a `RemoteException` is thrown (including subclasses):
+如果`RemoteException` （包括子类）被抛出， 下面的advice将会被调用
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class RemoteThrowsAdvice implements ThrowsAdvice {
+
+		public void afterThrowing(RemoteException ex) throws Throwable {
+			// Do something with remote exception
+		}
+	}
+----
+
+The following advice is invoked if a `ServletException` is thrown. Unlike the above
+advice, it declares 4 arguments, so that it has access to the invoked method, method
+arguments and target object:
+如果`ServletException`被抛出 则下面的advice将会被调用。与上述 advice不同的是 ，它定义了4个参数，因此它可以访问调用
+的方法，方法参数和目标对象
+
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class ServletThrowsAdviceWithArguments implements ThrowsAdvice {
+
+		public void afterThrowing(Method m, Object[] args, Object target, ServletException ex) {
+			// Do something with all arguments
+		}
+	}
+----
+
+7月6号开始
+
+The final example illustrates how these two methods could be used in a single class,
+which handles both `RemoteException` and `ServletException`. Any number of throws advice
+methods can be combined in a single class.
+最后的例子说明了2个方法可以用到一个类中，处理`RemoteException` 和 `ServletException`。
+任何数目的 throws advice方法能够在一个类中结合。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public static class CombinedThrowsAdvice implements ThrowsAdvice {
+
+		public void afterThrowing(RemoteException ex) throws Throwable {
+			// Do something with remote exception
+		}
+
+		public void afterThrowing(Method m, Object[] args, Object target, ServletException ex) {
+			// Do something with all arguments
+		}
+	}
+----
+
+[NOTE]
+====
+If a throws-advice method throws an exception itself, it will override the
+original exception (i.e. change the exception thrown to the user). The overriding
+exception will typically be a RuntimeException; this is compatible with any method
+signature. 
+However, if a throws-advice method throws a checked exception, it will have
+to match the declared exceptions of the target method and is hence to some degree
+coupled to specific target method signatures. __Do not throw an undeclared checked
+exception that is incompatible with the target method's signature!__
+
+如果throws-advice方法自己抛出异常，它将会重载原始异常（改变异常抛给用户）。这重载的异常是一个典型的运行时异常；这将兼容任何的方法签名。
+然而，如果throws-advice方法抛出一个受检查异常，  它必须匹配目标方法声明的异常，他今后一定程度上耦合在特定的方法签名上。
+不要抛出未检查异常，它和目标方法的签名不兼容。
+
+====
+
+[TIP]
+====
+
+Throws advice can be used with any pointcut.
+Throws advice 能够被用在任何的切入点
+
+====
+
+
+[[aop-api-advice-after-returning]]
+===== After Returning advice 后置advice
+An after returning advice in Spring must implement the
+__org.springframework.aop.AfterReturningAdvice__ interface, shown below:
+后置advice 必须实现 __org.springframework.aop.AfterReturningAdvice__ 接口，请看下面示例：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface AfterReturningAdvice extends Advice {
+
+		void afterReturning(Object returnValue, Method m, Object[] args, Object target)
+				throws Throwable;
+	}
+----
+
+7月7号开始
+
+An after returning advice has access to the return value (which it cannot modify),
+invoked method, methods arguments and target.
+后置advice可以访问调用的方法，方法参数，和目标的返回值（不能修改）
+
+The following after returning advice counts all successful method invocations that have
+not thrown exceptions:
+下面的后置advice会统计所有没有抛出异常的成功方法调用：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class CountingAfterReturningAdvice implements AfterReturningAdvice {
+
+		private int count;
+
+		public void afterReturning(Object returnValue, Method m, Object[] args, Object target)
+				throws Throwable {
+			++count;
+		}
+
+		public int getCount() {
+			return count;
+		}
+	}
+----
+
+This advice doesn't change the execution path. If it throws an exception, this will be
+thrown up the interceptor chain instead of the return value.
+上述advice不会改变执行路径。如果它抛出异常，它将会向上抛给拦截器链来代理返回值
+
+[TIP]
+====
+
+After returning advice can be used with any pointcut.
+后置advice 可以被用在任何的切入点上
+====
+
+7月8号开始
+
+[[aop-api-advice-introduction]]
+===== Introduction advice 介绍的Advice
+Spring treats introduction advice as a special kind of interception advice.
+Spring 把 introduction advice 当成一种特殊的拦截器advice
+
+Introduction requires an `IntroductionAdvisor`, and an `IntroductionInterceptor`,
+implementing the following interface:
+介绍需要`IntroductionAdvisor`和 `IntroductionInterceptor`,需要实现以下接口：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface IntroductionInterceptor extends MethodInterceptor {
+
+		boolean implementsInterface(Class intf);
+	}
+----
+
+The `invoke()` method inherited from the AOP Alliance `MethodInterceptor` interface must
+implement the introduction: that is, if the invoked method is on an introduced
+interface, the introduction interceptor is responsible for handling the method call - it
+cannot invoke `proceed()`.
+`invoke()`方法继承自AOP联盟的`MethodInterceptor`接口，它必须实现这个introduction: 如下就是,
+如果调用的方法在被介绍的接口，这个介绍的拦截器负责处理方法调用，他能够调用`proceed()`方法。
+
+Introduction advice cannot be used with any pointcut, as it applies only at class,
+rather than method, level. You can only use introduction advice with the
+`IntroductionAdvisor`, which has the following methods:
+Introduction advice 不能被用在任何的加入点，只能被用在类而不是方法级别。introduction advice只能和`IntroductionAdvisor`在一起用，
+例如下面的方法：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface IntroductionAdvisor extends Advisor, IntroductionInfo {
+
+		ClassFilter getClassFilter();
+
+		void validateInterfaces() throws IllegalArgumentException;
+	}
+
+	public interface IntroductionInfo {
+
+		Class[] getInterfaces();
+	}
+----
+
+There is no `MethodMatcher`, and hence no `Pointcut`, associated with introduction
+advice. Only class filtering is logical.
+
+这里没有`MethodMatcher`，因此没有`Pointcut`，和introduction advice连接。只有类的过滤是合乎逻辑的。
+
+The `getInterfaces()` method returns the interfaces introduced by this advisor.
+`getInterfaces()`
+`getInterfaces()`方法返回
+
+
+The `validateInterfaces()` method is used internally to see whether or not the
+introduced interfaces can be implemented by the configured `IntroductionInterceptor`.
+
+
+Let's look at a simple example from the Spring test suite. Let's suppose we want to
+introduce the following interface to one or more objects:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface Lockable {
+		void lock();
+		void unlock();
+		boolean locked();
+	}
+----
+
+7月9号开始
+
+This illustrates a __mixin__. We want to be able to cast advised objects to Lockable,
+whatever their type, and call lock and unlock methods. If we call the lock() method, we
+want all setter methods to throw a `LockedException`. Thus we can add an aspect that
+provides the ability to make objects immutable, without them having any knowledge of it:
+a good example of AOP.
+
+Firstly, we'll need an `IntroductionInterceptor` that does the heavy lifting. In this
+case, we extend the `org.springframework.aop.support.DelegatingIntroductionInterceptor`
+convenience class. We could implement IntroductionInterceptor directly, but using
+`DelegatingIntroductionInterceptor` is best for most cases.
+
+The `DelegatingIntroductionInterceptor` is designed to delegate an introduction to an
+actual implementation of the introduced interface(s), concealing the use of interception
+to do so. The delegate can be set to any object using a constructor argument; the
+default delegate (when the no-arg constructor is used) is this. Thus in the example
+below, the delegate is the `LockMixin` subclass of `DelegatingIntroductionInterceptor`.
+Given a delegate (by default itself), a `DelegatingIntroductionInterceptor` instance
+looks for all interfaces implemented by the delegate (other than
+IntroductionInterceptor), and will support introductions against any of them. It's
+possible for subclasses such as `LockMixin` to call the `suppressInterface(Class intf)`
+method to suppress interfaces that should not be exposed. However, no matter how many
+interfaces an `IntroductionInterceptor` is prepared to support, the
+`IntroductionAdvisor` used will control which interfaces are actually exposed. An
+introduced interface will conceal any implementation of the same interface by the target.
+
+Thus `LockMixin` extends `DelegatingIntroductionInterceptor` and implements `Lockable`
+itself. The superclass automatically picks up that Lockable can be supported for
+introduction, so we don't need to specify that. We could introduce any number of
+interfaces in this way.
+
+Note the use of the `locked` instance variable. This effectively adds additional state
+to that held in the target object.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class LockMixin extends DelegatingIntroductionInterceptor implements Lockable {
+
+		private boolean locked;
+
+		public void lock() {
+			this.locked = true;
+		}
+
+		public void unlock() {
+			this.locked = false;
+		}
+
+		public boolean locked() {
+			return this.locked;
+		}
+
+		public Object invoke(MethodInvocation invocation) throws Throwable {
+			if (locked() && invocation.getMethod().getName().indexOf("set") == 0) {
+				throw new LockedException();
+			}
+			return super.invoke(invocation);
+		}
+
+	}
+----
+
+7月10号开始
+
+Often it isn't necessary to override the `invoke()` method: the
+`DelegatingIntroductionInterceptor` implementation - which calls the delegate method if
+the method is introduced, otherwise proceeds towards the join point - is usually
+sufficient. In the present case, we need to add a check: no setter method can be invoked
+if in locked mode.
+
+The introduction advisor required is simple. All it needs to do is hold a distinct
+`LockMixin` instance, and specify the introduced interfaces - in this case, just
+`Lockable`. A more complex example might take a reference to the introduction
+interceptor (which would be defined as a prototype): in this case, there's no
+configuration relevant for a `LockMixin`, so we simply create it using `new`.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class LockMixinAdvisor extends DefaultIntroductionAdvisor {
+
+		public LockMixinAdvisor() {
+			super(new LockMixin(), Lockable.class);
+		}
+	}
+----
+
+We can apply this advisor very simply: it requires no configuration. (However, it __is__
+necessary: It's impossible to use an `IntroductionInterceptor` without an
+__IntroductionAdvisor__.) As usual with introductions, the advisor must be per-instance,
+as it is stateful. We need a different instance of `LockMixinAdvisor`, and hence
+`LockMixin`, for each advised object. The advisor comprises part of the advised object's
+state.
+
+We can apply this advisor programmatically, using the `Advised.addAdvisor()` method, or
+(the recommended way) in XML configuration, like any other advisor. All proxy creation
+choices discussed below, including "auto proxy creators," correctly handle introductions
+and stateful mixins.
+
+
+
+

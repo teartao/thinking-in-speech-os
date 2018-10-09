@@ -1,0 +1,111 @@
+[[view-jsp-formtaglib-inputtag]]
+===== input 标签
+
+这个标签默认通过绑定的值和 type='text' 渲染 HTML 'input' 标签。关于例子可以参考 <<view-jsp-formtaglib-formtag>>。从 Spring 3.1 开始，你可以使用其它类型，例如HTML5中定义的 'email', 'tel', 'date' 等等。
+
+[[view-jsp-formtaglib-checkboxtag]]
+===== checkbox 标签
+
+这个标签通过 'checkbox' 类型来渲染 HTML 'input' 标签。
+
+假设我们的 `用户(User)` 有订阅时事资讯和其他的一些爱好。下面是一个关于 `Preferences` 类的例子：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class Preferences {
+
+		private boolean receiveNewsletter;
+		private String[] interests;
+		private String favouriteWord;
+
+		public boolean isReceiveNewsletter() {
+			return receiveNewsletter;
+		}
+
+		public void setReceiveNewsletter(boolean receiveNewsletter) {
+			this.receiveNewsletter = receiveNewsletter;
+		}
+
+		public String[] getInterests() {
+			return interests;
+		}
+
+		public void setInterests(String[] interests) {
+			this.interests = interests;
+		}
+
+		public String getFavouriteWord() {
+			return favouriteWord;
+		}
+
+		public void setFavouriteWord(String favouriteWord) {
+			this.favouriteWord = favouriteWord;
+		}
+	}
+----
+
+`form.jsp` 像下面这样:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<form:form>
+		<table>
+			<tr>
+				<td>是否订阅时事资讯？:</td>
+				<%-- 方式 1: 属性是 java.lang.Boolean 类型的 --%>
+				<td><form:checkbox path="preferences.receiveNewsletter"/></td>
+			</tr>
+
+			<tr>
+				<td>兴趣:</td>
+				<%-- 方式 2: 属性是数组或者 java.util.Collection 类型的 --%>
+				<td>
+					魁地奇球赛: <form:checkbox path="preferences.interests" value="Quidditch"/>
+					草药学: <form:checkbox path="preferences.interests" value="Herbology"/>
+					黑魔法防御术: <form:checkbox path="preferences.interests" value="Defence Against the Dark Arts"/>
+				</td>
+			</tr>
+
+			<tr>
+				<td>最喜欢的单词:</td>
+				<%-- 方式 3: 属性是 java.lang.Object 类型的 --%>
+				<td>
+					魔法: <form:checkbox path="preferences.favouriteWord" value="Magic"/>
+				</td>
+			</tr>
+		</table>
+	</form:form>
+----
+
+`checkbox` 标签有三种方式来满足你对 checkbox 的几乎所有的需要。
+
+* 第一种方式 - 当绑定的值的类型是 `java.lang.Boolean`，如果值是  `true`，那么 `input(checkbox)`会被标记为 'checked'。`value` 属性的值对应 `setValue(Object)` 的解析值。
+* 第二种方式 - 当绑定的值的类型是 `array` 或者 `java.util.Collection`, 如果绑定的 `Collection` 中存在通过 `setValue(Object)` 配置的值，那么 `input(checkbox)`会被标记为 'checked'。
+* 第三种方式 - 对于其它绑定的类型，如果绑定的值和通过 `setValue(Object)` 配置的值相等，那么 `input(checkbox)`会被标记为 'checked'。
+
+需要注意的是，不管用哪种方式，都会生成同样的 HTML 结构。下面是一个关于 checkbox 的 HTML 片段：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<tr>
+		<td>兴趣:</td>
+		<td>
+			魁地奇球赛: <input name="preferences.interests" type="checkbox" value="Quidditch"/>
+			<input type="hidden" value="1" name="_preferences.interests"/>
+			草药学: <input name="preferences.interests" type="checkbox" value="Herbology"/>
+			<input type="hidden" value="1" name="_preferences.interests"/>
+			黑魔法防御术: <input name="preferences.interests" type="checkbox" value="Defence Against the Dark Arts"/>
+			<input type="hidden" value="1" name="_preferences.interests"/>
+		</td>
+	</tr>
+----
+
+你可能不希望看到附加在每个 checkbox 后面的隐藏域。但是当 HTML 页面中的 checkbox __不(not)__被选中，
+在提交表单时，它就不会做为 HTTP 请求参数的一部分被发送到服务端。所以，为了保证 Spring 表单数据绑定能正常工作，
+我们必须需要一个工作区来解决这个怪异的问题(quirk)。`checkbox` 标签遵循现有的 Spring 惯例，
+每个 checkbox 相对应的隐藏参数都加上一个下划线("_")前缀。通过这样做，可以有效的告诉 Spring，
+“__这个 checkbox 在表单中是可见的，并且无论它的值是什么我都希望被绑定表单数据中(the checkbox was visible in the form and I want my object to
+which the form data will be bound to reflect the state of the checkbox no matter what)__”。

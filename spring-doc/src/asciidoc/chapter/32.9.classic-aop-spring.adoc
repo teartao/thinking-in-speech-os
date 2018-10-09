@@ -1,0 +1,115 @@
+[[classic-aop-api-proxying-intf]]
+==== Proxying interfaces
+Let's look at a simple example of `ProxyFactoryBean` in action. This example involves:
+
+* A __target bean__ that will be proxied. This is the "personTarget" bean definition in
+  the example below.
+* An Advisor and an Interceptor used to provide advice.
+* An AOP proxy bean definition specifying the target object (the personTarget bean) and
+  the interfaces to proxy, along with the advices to apply.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="personTarget" class="com.mycompany.PersonImpl">
+		<property name="name"><value>Tony</value></property>
+		<property name="age"><value>51</value></property>
+	</bean>
+
+	<bean id="myAdvisor" class="com.mycompany.MyAdvisor">
+		<property name="someProperty"><value>Custom string property value</value></property>
+	</bean>
+
+	<bean id="debugInterceptor" class="org.springframework.aop.interceptor.DebugInterceptor">
+	</bean>
+
+	<bean id="person" class="org.springframework.aop.framework.ProxyFactoryBean">
+		<property name="proxyInterfaces"><value>com.mycompany.Person</value></property>
+		<property name="target"><ref bean="personTarget"/></property>
+		<property name="interceptorNames">
+			<list>
+				<value>myAdvisor</value>
+				<value>debugInterceptor</value>
+			</list>
+		</property>
+	</bean>
+----
+
+Note that the `interceptorNames` property takes a list of String: the bean names of the
+interceptor or advisors in the current factory. Advisors, interceptors, before, after
+returning and throws advice objects can be used. The ordering of advisors is significant.
+
+[NOTE]
+====
+You might be wondering why the list doesn't hold bean references. The reason for this is
+that if the ProxyFactoryBean's singleton property is set to false, it must be able to
+return independent proxy instances. If any of the advisors is itself a prototype, an
+independent instance would need to be returned, so it's necessary to be able to obtain
+an instance of the prototype from the factory; holding a reference isn't sufficient.
+====
+
+The "person" bean definition above can be used in place of a Person implementation, as
+follows:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	Person person = (Person) factory.getBean("person");
+----
+
+Other beans in the same IoC context can express a strongly typed dependency on it, as
+with an ordinary Java object:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="personUser" class="com.mycompany.PersonUser">
+		<property name="person"><ref bean="person" /></property>
+	</bean>
+----
+
+The `PersonUser` class in this example would expose a property of type Person. As far as
+it's concerned, the AOP proxy can be used transparently in place of a "real" person
+implementation. However, its class would be a dynamic proxy class. It would be possible
+to cast it to the `Advised` interface (discussed below).
+
+It's possible to conceal the distinction between target and proxy using an anonymous
+__inner bean__, as follows. Only the `ProxyFactoryBean` definition is different; the
+advice is included only for completeness:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="myAdvisor" class="com.mycompany.MyAdvisor">
+		<property name="someProperty"><value>Custom string property value</value></property>
+	</bean>
+
+	<bean id="debugInterceptor" class="org.springframework.aop.interceptor.DebugInterceptor"/>
+
+	<bean id="person" class="org.springframework.aop.framework.ProxyFactoryBean">
+		<property name="proxyInterfaces"><value>com.mycompany.Person</value></property>
+		<!-- Use inner bean, not local reference to target -->
+		<property name="target">
+			<bean class="com.mycompany.PersonImpl">
+				<property name="name"><value>Tony</value></property>
+				<property name="age"><value>51</value></property>
+			</bean>
+		</property>
+		<property name="interceptorNames">
+			<list>
+				<value>myAdvisor</value>
+				<value>debugInterceptor</value>
+			</list>
+		</property>
+	</bean>
+----
+
+This has the advantage that there's only one object of type `Person`: useful if we want
+to prevent users of the application context from obtaining a reference to the un-advised
+object, or need to avoid any ambiguity with Spring IoC __autowiring__. There's also
+arguably an advantage in that the ProxyFactoryBean definition is self-contained.
+However, there are times when being able to obtain the un-advised target from the
+factory might actually be an __advantage__: for example, in certain test scenarios.
+
+
+

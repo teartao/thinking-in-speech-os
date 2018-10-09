@@ -1,0 +1,112 @@
+[[view-jsp-formtaglib-checkboxestag]]
+===== The checkboxes tag
+
+This tag renders multiple HTML 'input' tags with type 'checkbox'.
+
+Building on the example from the previous `checkbox` tag section. Sometimes you prefer
+not to have to list all the possible hobbies in your JSP page. You would rather provide
+a list at runtime of the available options and pass that in to the tag. That is the
+purpose of the `checkboxes` tag. You pass in an `Array`, a `List` or a `Map` containing
+the available options in the "items" property. Typically the bound property is a
+collection so it can hold multiple values selected by the user. Below is an example of
+the JSP using this tag:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<form:form>
+		<table>
+			<tr>
+				<td>Interests:</td>
+				<td>
+					<%-- Property is of an array or of type java.util.Collection --%>
+					<form:checkboxes path="preferences.interests" items="${interestList}"/>
+				</td>
+			</tr>
+		</table>
+	</form:form>
+----
+
+This example assumes that the "interestList" is a `List` available as a model attribute
+containing strings of the values to be selected from. In the case where you use a Map,
+the map entry key will be used as the value and the map entry's value will be used as
+the label to be displayed. You can also use a custom object where you can provide the
+property names for the value using "itemValue" and the label using "itemLabel".
+
+
+[[view-jsp-formtaglib-radiobuttontag]]
+===== The radiobutton tag
+
+This tag renders an HTML 'input' tag with type 'radio'.
+
+A typical usage pattern will involve multiple tag instances bound to the same property
+but with different values.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<tr>
+		<td>Sex:</td>
+		<td>
+			Male: <form:radiobutton path="sex" value="M"/> <br/>
+			Female: <form:radiobutton path="sex" value="F"/>
+		</td>
+	</tr>
+----
+
+
+[[view-jsp-formtaglib-radiobuttonstag]]
+===== The radiobuttons tag
+
+This tag renders multiple HTML 'input' tags with type 'radio'.
+
+Just like the `checkboxes` tag above, you might want to pass in the available options as
+a runtime variable. For this usage you would use the `radiobuttons` tag. You pass in an
+`Array`, a `List` or a `Map` containing the available options in the "items" property.
+In the case where you use a Map, the map entry key will be used as the value and the map
+entry's value will be used as the label to be displayed. You can also use a custom
+object where you can provide the property names for the value using "itemValue" and the
+label using "itemLabel".
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<tr>
+		<td>Sex:</td>
+		<td><form:radiobuttons path="sex" items="${sexOptions}"/></td>
+	</tr>
+----
+
+
+[[view-jsp-formtaglib-passwordtag]]
+===== The password tag
+
+This tag renders an HTML 'input' tag with type 'password' using the bound value.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<tr>
+		<td>Password:</td>
+		<td>
+			<form:password path="password" />
+		</td>
+	</tr>
+----
+
+Please note that by default, the password value is __not__ shown. If you do want the
+password value to be shown, then set the value of the `'showPassword'` attribute to
+true, like so.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<tr>
+		<td>Password:</td>
+		<td>
+			<form:password path="password" value="^76525bvHGq" showPassword="true" />
+		</td>
+	</tr>
+----
+
+

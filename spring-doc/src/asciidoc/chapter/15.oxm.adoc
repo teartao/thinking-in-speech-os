@@ -1,0 +1,58 @@
+[[oxm]]
+== Marshalling XML using O/X Mappers
+
+
+
+
+[[oxm-introduction]]
+=== Introduction
+In this chapter, we will describe Spring's Object/XML Mapping support. Object/XML
+Mapping, or O/X mapping for short, is the act of converting an XML document to and from
+an object. This conversion process is also known as XML Marshalling, or XML
+Serialization. This chapter uses these terms interchangeably.
+
+Within the field of O/X mapping, a __marshaller__ is responsible for serializing an
+object (graph) to XML. In similar fashion, an __unmarshaller__ deserializes the XML to
+an object graph. This XML can take the form of a DOM document, an input or output
+stream, or a SAX handler.
+
+Some of the benefits of using Spring for your O/X mapping needs are:
+
+
+
+==== Ease of configuration
+Spring's bean factory makes it easy to configure marshallers, without needing to
+construct JAXB context, JiBX binding factories, etc. The marshallers can be configured
+as any other bean in your application context. Additionally, XML Schema-based
+configuration is available for a number of marshallers, making the configuration even
+simpler.
+
+
+
+==== Consistent Interfaces
+Spring's O/X mapping operates through two global interfaces: the `Marshaller` and
+`Unmarshaller` interface. These abstractions allow you to switch O/X mapping frameworks
+with relative ease, with little or no changes required on the classes that do the
+marshalling. This approach has the additional benefit of making it possible to do XML
+marshalling with a mix-and-match approach (e.g. some marshalling performed using JAXB,
+other using XMLBeans) in a non-intrusive fashion, leveraging the strength of each
+technology.
+
+
+
+==== Consistent Exception Hierarchy
+Spring provides a conversion from exceptions from the underlying O/X mapping tool to its
+own exception hierarchy with the `XmlMappingException` as the root exception. As can be
+expected, these runtime exceptions wrap the original exception so no information is lost.
+
+
+
+
+[[oxm-marshaller-unmarshaller]]
+=== Marshaller and Unmarshaller
+As stated in the introduction, a __marshaller__ serializes an object to XML, and an
+__unmarshaller__ deserializes XML stream to an object. In this section, we will describe
+the two Spring interfaces used for this purpose.
+
+
+

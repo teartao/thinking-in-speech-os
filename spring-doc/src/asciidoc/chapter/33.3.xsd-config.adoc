@@ -1,0 +1,213 @@
+[[xsd-config-body-schemas-util-property-path]]
+===== <util:property-path/>
+
+Before...
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<!-- target bean to be referenced by name -->
+	<bean id="testBean" class="org.springframework.beans.TestBean" scope="prototype">
+		<property name="age" value="10"/>
+		<property name="spouse">
+			<bean class="org.springframework.beans.TestBean">
+				<property name="age" value="11"/>
+			</bean>
+		</property>
+	</bean>
+
+	<!-- will result in 10, which is the value of property 'age' of bean 'testBean' -->
+	<bean id="testBean.age" class="org.springframework.beans.factory.config.PropertyPathFactoryBean"/>
+----
+
+The above configuration uses a Spring `FactoryBean` implementation, the
+`PropertyPathFactoryBean`, to create a bean (of type `int`) called `testBean.age` that
+has a value equal to the `age` property of the `testBean` bean.
+
+After...
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<!-- target bean to be referenced by name -->
+	<bean id="testBean" class="org.springframework.beans.TestBean" scope="prototype">
+		<property name="age" value="10"/>
+		<property name="spouse">
+			<bean class="org.springframework.beans.TestBean">
+				<property name="age" value="11"/>
+			</bean>
+		</property>
+	</bean>
+
+	<!-- will result in 10, which is the value of property 'age' of bean 'testBean' -->
+	<util:property-path id="name" path="testBean.age"/>
+----
+
+The value of the `path` attribute of the `<property-path/>` tag follows the form
+`beanName.beanProperty`.
+
+[[xsd-config-body-schemas-util-property-path-dependency]]
+====== Using <util:property-path/> to set a bean property or constructor-argument
+
+`PropertyPathFactoryBean` is a `FactoryBean` that evaluates a property path on a given
+target object. The target object can be specified directly or via a bean name. This
+value may then be used in another bean definition as a property value or constructor
+argument.
+
+Here's an example where a path is used against another bean, by name:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	// target bean to be referenced by name
+	<bean id="person" class="org.springframework.beans.TestBean" scope="prototype">
+		<property name="age" value="10"/>
+		<property name="spouse">
+			<bean class="org.springframework.beans.TestBean">
+				<property name="age" value="11"/>
+			</bean>
+		</property>
+	</bean>
+
+	// will result in 11, which is the value of property 'spouse.age' of bean 'person'
+	<bean id="theAge"
+			class="org.springframework.beans.factory.config.PropertyPathFactoryBean">
+		<property name="targetBeanName" value="person"/>
+		<property name="propertyPath" value="spouse.age"/>
+	</bean>
+----
+
+In this example, a path is evaluated against an inner bean:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<!-- will result in 12, which is the value of property 'age' of the inner bean -->
+	<bean id="theAge"
+			class="org.springframework.beans.factory.config.PropertyPathFactoryBean">
+		<property name="targetObject">
+			<bean class="org.springframework.beans.TestBean">
+				<property name="age" value="12"/>
+			</bean>
+		</property>
+		<property name="propertyPath" value="age"/>
+	</bean>
+----
+
+There is also a shortcut form, where the bean name is the property path.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<!-- will result in 10, which is the value of property 'age' of bean 'person' -->
+	<bean id="person.age"
+			class="org.springframework.beans.factory.config.PropertyPathFactoryBean"/>
+----
+
+This form does mean that there is no choice in the name of the bean. Any reference to it
+will also have to use the same id, which is the path. Of course, if used as an inner
+bean, there is no need to refer to it at all:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="..." class="...">
+		<property name="age">
+			<bean id="person.age"
+					class="org.springframework.beans.factory.config.PropertyPathFactoryBean"/>
+		</property>
+	</bean>
+----
+
+The result type may be specifically set in the actual definition. This is not necessary
+for most use cases, but can be of use for some. Please see the Javadocs for more info on
+this feature.
+
+
+[[xsd-config-body-schemas-util-properties]]
+===== <util:properties/>
+
+Before...
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<!-- creates a java.util.Properties instance with values loaded from the supplied location -->
+	<bean id="jdbcConfiguration" class="org.springframework.beans.factory.config.PropertiesFactoryBean">
+		<property name="location" value="classpath:com/foo/jdbc-production.properties"/>
+	</bean>
+----
+
+The above configuration uses a Spring `FactoryBean` implementation, the
+`PropertiesFactoryBean`, to instantiate a `java.util.Properties` instance with values
+loaded from the supplied <<resources, `Resource`>> location).
+
+After...
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<!-- creates a java.util.Properties instance with values loaded from the supplied location -->
+	<util:properties id="jdbcConfiguration" location="classpath:com/foo/jdbc-production.properties"/>
+----
+
+
+[[xsd-config-body-schemas-util-list]]
+===== <util:list/>
+
+Before...
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<!-- creates a java.util.List instance with values loaded from the supplied 'sourceList' -->
+	<bean id="emails" class="org.springframework.beans.factory.config.ListFactoryBean">
+		<property name="sourceList">
+			<list>
+				<value>pechorin@hero.org</value>
+				<value>raskolnikov@slums.org</value>
+				<value>stavrogin@gov.org</value>
+				<value>porfiry@gov.org</value>
+			</list>
+		</property>
+	</bean>
+----
+
+The above configuration uses a Spring `FactoryBean` implementation, the
+`ListFactoryBean`, to create a `java.util.List` instance initialized with values taken
+from the supplied `sourceList`.
+
+After...
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<!-- creates a java.util.List instance with the supplied values -->
+	<util:list id="emails">
+		<value>pechorin@hero.org</value>
+		<value>raskolnikov@slums.org</value>
+		<value>stavrogin@gov.org</value>
+		<value>porfiry@gov.org</value>
+	</util:list>
+----
+
+You can also explicitly control the exact type of `List` that will be instantiated and
+populated via the use of the `list-class` attribute on the `<util:list/>` element. For
+example, if we really need a `java.util.LinkedList` to be instantiated, we could use the
+following configuration:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<util:list id="emails" list-class="java.util.LinkedList">
+		<value>jackshaftoe@vagabond.org</value>
+		<value>eliza@thinkingmanscrumpet.org</value>
+		<value>vanhoek@pirate.org</value>
+		<value>d'Arcachon@nemesis.org</value>
+	</util:list>
+----
+
+If no `list-class` attribute is supplied, a `List` implementation will be chosen by
+the container.
+
+

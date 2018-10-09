@@ -1,0 +1,42 @@
+[[beans-java-conditional]]
+===== Conditionally including @Configuration classes or @Beans
+It is often useful to conditionally enable to disable a complete `@Configuration` class,
+or even individual `@Bean` methods, based on some arbitrary system state. One common
+example of this it to use the `@Profile` annotation to active beans only when a specific
+profile has been enabled in the Spring `Environment` (see <<beans-definition-profiles>>
+for details).
+
+The `@Profile` annotation is actually implemented using a much more flexible annotation
+called {javadoc-baseurl}/org/springframework/context/annotation/Conditional.html[`@Conditional`].
+The `@Conditional` annotation indicates specific
+`org.springframework.context.annotation.Condition` implementations that should be
+consulted before a `@Bean` is registered.
+
+Implementations of the `Condition` interface simply provide a `matches(...)`
+method that returns `true` or `false`. For example, here is the actual
+`Condition` implementation used for `@Profile`:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Override
+	public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
+		if (context.getEnvironment() != null) {
+			// Read the @Profile annotation attributes
+			MultiValueMap<String, Object> attrs = metadata.getAllAnnotationAttributes(Profile.class.getName());
+			if (attrs != null) {
+				for (Object value : attrs.get("value")) {
+					if (context.getEnvironment().acceptsProfiles(((String[]) value))) {
+						return true;
+					}
+				}
+				return false;
+			}
+		}
+		return true;
+	}
+----
+
+See the {javadoc-baseurl}/org/springframework/context/annotation/Conditional.html[
+`@Conditional` javadocs] for more detail.
+

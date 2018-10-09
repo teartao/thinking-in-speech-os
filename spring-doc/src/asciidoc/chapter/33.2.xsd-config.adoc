@@ -1,0 +1,163 @@
+[[xsd-config-body-schemas-util]]
+==== the util schema
+
+First up is coverage of the `util` tags. As the name implies, the `util` tags deal with
+common, __utility__ configuration issues, such as configuring collections, referencing
+constants, and suchlike.
+
+To use the tags in the `util` schema, you need to have the following preamble at the top
+of your Spring XML configuration file; the text in the snippet below references the
+correct schema so that the tags in the `util` namespace are available to you.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		__xmlns:util="http://www.springframework.org/schema/util"__ xsi:schemaLocation="
+			http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+			__http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd"__> <!-- bean definitions here -->
+
+	</beans>
+----
+
+
+[[xsd-config-body-schemas-util-constant]]
+===== <util:constant/>
+
+Before...
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="..." class="...">
+		<property name="isolation">
+			<bean id="java.sql.Connection.TRANSACTION_SERIALIZABLE"
+					class="org.springframework.beans.factory.config.FieldRetrievingFactoryBean" />
+		</property>
+	</bean>
+----
+
+The above configuration uses a Spring `FactoryBean` implementation, the
+`FieldRetrievingFactoryBean`, to set the value of the `isolation` property on a bean
+to the value of the `java.sql.Connection.TRANSACTION_SERIALIZABLE` constant. This is
+all well and good, but it is a tad verbose and (unnecessarily) exposes Spring's internal
+plumbing to the end user.
+
+The following XML Schema-based version is more concise and clearly expresses the
+developer's intent (__'inject this constant value'__), and it just reads better.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="..." class="...">
+		<property name="isolation">
+			<util:constant static-field="java.sql.Connection.TRANSACTION_SERIALIZABLE"/>
+		</property>
+	</bean>
+----
+
+[[xsd-config-body-schemas-util-frfb]]
+====== Setting a bean property or constructor arg from a field value
+http://docs.spring.io/spring/docs/current/javadoc-api/org/springframework/beans/factory/config/FieldRetrievingFactoryBean.html[`FieldRetrievingFactoryBean`]
+is a `FactoryBean` which retrieves a `static` or non-static field value. It is typically
+used for retrieving `public` `static` `final` constants, which may then be used to set a
+property value or constructor arg for another bean.
+
+Find below an example which shows how a `static` field is exposed, by using the
+http://docs.spring.io/spring/docs/current/javadoc-api/org/springframework/beans/factory/config/FieldRetrievingFactoryBean.html#setStaticField(java.lang.String)[`staticField`]
+property:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="myField"
+			class="org.springframework.beans.factory.config.FieldRetrievingFactoryBean">
+		<property name="staticField" value="java.sql.Connection.TRANSACTION_SERIALIZABLE"/>
+	</bean>
+----
+
+There is also a convenience usage form where the `static` field is specified as the bean
+name:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="java.sql.Connection.TRANSACTION_SERIALIZABLE"
+			class="org.springframework.beans.factory.config.FieldRetrievingFactoryBean"/>
+----
+
+This does mean that there is no longer any choice in what the bean id is (so any other
+bean that refers to it will also have to use this longer name), but this form is very
+concise to define, and very convenient to use as an inner bean since the id doesn't have
+to be specified for the bean reference:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="..." class="...">
+		<property name="isolation">
+			<bean id="java.sql.Connection.TRANSACTION_SERIALIZABLE"
+					class="org.springframework.beans.factory.config.FieldRetrievingFactoryBean" />
+		</property>
+	</bean>
+----
+
+It is also possible to access a non-static (instance) field of another bean, as
+described in the API documentation for the
+http://docs.spring.io/spring/docs/current/javadoc-api/org/springframework/beans/factory/config/FieldRetrievingFactoryBean.html[`FieldRetrievingFactoryBean`]
+class.
+
+Injecting enum values into beans as either property or constructor arguments is very
+easy to do in Spring, in that you don't actually have to __do__ anything or know
+anything about the Spring internals (or even about classes such as the
+`FieldRetrievingFactoryBean`). Let's look at an example to see how easy injecting an
+enum value is; consider this JDK 5 enum:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package javax.persistence;
+
+	public enum PersistenceContextType {
+
+		TRANSACTION,
+		EXTENDED
+
+	}
+----
+
+Now consider a setter of type `PersistenceContextType`:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package example;
+
+	public class Client {
+
+		private PersistenceContextType persistenceContextType;
+
+		public void setPersistenceContextType(PersistenceContextType type) {
+			this.persistenceContextType = type;
+		}
+
+	}
+----
+
+.. and the corresponding bean definition:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean class="example.Client">
+		<property name="persistenceContextType" value="TRANSACTION" />
+	</bean>
+----
+
+This works for classic type-safe emulated enums (on JDK 1.4 and JDK 1.3) as well; Spring
+will automatically attempt to match the string property value to a constant on the enum
+class.
+
+

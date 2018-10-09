@@ -1,0 +1,60 @@
+[[jms-tx-participation]]
+==== Processing messages within transactions
+Invoking a message listener within a transaction only requires reconfiguration of the
+listener container.
+
+Local resource transactions can simply be activated through the `sessionTransacted` flag
+on the listener container definition. Each message listener invocation will then operate
+within an active JMS transaction, with message reception rolled back in case of listener
+execution failure. Sending a response message (via `SessionAwareMessageListener`) will
+be part of the same local transaction, but any other resource operations (such as
+database access) will operate independently. This usually requires duplicate message
+detection in the listener implementation, covering the case where database processing
+has committed but message processing failed to commit.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="jmsContainer" class="org.springframework.jms.listener.DefaultMessageListenerContainer">
+		<property name="connectionFactory" ref="connectionFactory"/>
+		<property name="destination" ref="destination"/>
+		<property name="messageListener" ref="messageListener"/>
+		**<property name="sessionTransacted" value="true"/>**
+	</bean>
+----
+
+For participating in an externally managed transaction, you will need to configure a
+transaction manager and use a listener container which supports externally managed
+transactions: typically `DefaultMessageListenerContainer`.
+
+To configure a message listener container for XA transaction participation, you'll want
+to configure a `JtaTransactionManager` (which, by default, delegates to the Java EE
+server's transaction subsystem). Note that the underlying JMS ConnectionFactory needs to
+be XA-capable and properly registered with your JTA transaction coordinator! (Check your
+Java EE server's configuration of JNDI resources.) This allows message reception as well
+as e.g. database access to be part of the same transaction (with unified commit
+semantics, at the expense of XA transaction log overhead).
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="transactionManager" class="org.springframework.transaction.jta.JtaTransactionManager"/>
+----
+
+Then you just need to add it to our earlier container configuration. The container will
+take care of the rest.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="jmsContainer" class="org.springframework.jms.listener.DefaultMessageListenerContainer">
+		<property name="connectionFactory" ref="connectionFactory"/>
+		<property name="destination" ref="destination"/>
+		<property name="messageListener" ref="messageListener"/>
+		**<property name="transactionManager" ref="transactionManager"/>**
+	</bean>
+----
+
+
+
+

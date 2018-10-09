@@ -1,0 +1,251 @@
+[[aop-aj-ltw]]
+==== Load-time weaving with AspectJ in the Spring Framework
+Load-time weaving (LTW) refers to the process of weaving AspectJ aspects into an
+application's class files as they are being loaded into the Java virtual machine (JVM).
+The focus of this section is on configuring and using LTW in the specific context of the
+Spring Framework: this section is not an introduction to LTW though. For full details on
+the specifics of LTW and configuring LTW with just AspectJ (with Spring not being
+involved at all), see the
+http://www.eclipse.org/aspectj/doc/released/devguide/ltw.html[LTW section of the AspectJ
+Development Environment Guide].
+
+The value-add that the Spring Framework brings to AspectJ LTW is in enabling much
+finer-grained control over the weaving process. 'Vanilla' AspectJ LTW is effected using
+a Java (5+) agent, which is switched on by specifying a VM argument when starting up a
+JVM. It is thus a JVM-wide setting, which may be fine in some situations, but often is a
+little too coarse. Spring-enabled LTW enables you to switch on LTW on a
+__per-ClassLoader__ basis, which obviously is more fine-grained and which can make more
+sense in a 'single-JVM-multiple-application' environment (such as is found in a typical
+application server environment).
+
+Further, <<aop-aj-ltw-environments,in certain environments>>, this support enables
+load-time weaving __without making any modifications to the application server's launch
+script__ that will be needed to add `-javaagent:path/to/aspectjweaver.jar` or (as we
+describe later in this section)
+`-javaagent:path/to/org.springframework.instrument-{version}.jar` (previously named
+`spring-agent.jar`). Developers simply modify one or more files that form the
+application context to enable load-time weaving instead of relying on administrators who
+typically are in charge of the deployment configuration such as the launch script.
+
+Now that the sales pitch is over, let us first walk through a quick example of AspectJ
+LTW using Spring, followed by detailed specifics about elements introduced in the
+following example. For a complete example, please see the
+https://github.com/spring-projects/spring-petclinic[Petclinic sample application].
+
+
+[[aop-aj-ltw-first-example]]
+===== A first example
+Let us assume that you are an application developer who has been tasked with diagnosing
+the cause of some performance problems in a system. Rather than break out a profiling
+tool, what we are going to do is switch on a simple profiling aspect that will enable us
+to very quickly get some performance metrics, so that we can then apply a finer-grained
+profiling tool to that specific area immediately afterwards.
+
+[NOTE]
+====
+The example presented here uses XML style configuration, it is also possible to
+configure and use @AspectJ with <<beans-java,Java Configuration>>. Specifically the
+`@EnableLoadTimeWeaving` annotation can be used as an alternative to
+`<context:load-time-weaver/>` (see <<aop-aj-ltw-spring,below>> for details).
+====
+
+Here is the profiling aspect. Nothing too fancy, just a quick-and-dirty time-based
+profiler, using the @AspectJ-style of aspect declaration.
+
+[source,java,indent=0]
+[subs="verbatim"]
+----
+	package foo;
+
+	import org.aspectj.lang.ProceedingJoinPoint;
+	import org.aspectj.lang.annotation.Aspect;
+	import org.aspectj.lang.annotation.Around;
+	import org.aspectj.lang.annotation.Pointcut;
+	import org.springframework.util.StopWatch;
+	import org.springframework.core.annotation.Order;
+
+	@Aspect
+	public class ProfilingAspect {
+
+		@Around("methodsToBeProfiled()")
+		public Object profile(ProceedingJoinPoint pjp) throws Throwable {
+			StopWatch sw = new StopWatch(getClass().getSimpleName());
+			try {
+				sw.start(pjp.getSignature().getName());
+				return pjp.proceed();
+			} finally {
+				sw.stop();
+				System.out.println(sw.prettyPrint());
+			}
+		}
+
+		@Pointcut("execution(public * foo..*.*(..))")
+		public void methodsToBeProfiled(){}
+	}
+----
+
+We will also need to create an '++META-INF/aop.xml++' file, to inform the AspectJ weaver
+that we want to weave our `ProfilingAspect` into our classes. This file convention,
+namely the presence of a file (or files) on the Java classpath called
+'++META-INF/aop.xml++' is standard AspectJ.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<!DOCTYPE aspectj PUBLIC "-//AspectJ//DTD//EN" "http://www.eclipse.org/aspectj/dtd/aspectj.dtd">
+	<aspectj>
+
+		<weaver>
+			<!-- only weave classes in our application-specific packages -->
+			<include within="foo.*"/>
+		</weaver>
+
+		<aspects>
+			<!-- weave in just this aspect -->
+			<aspect name="foo.ProfilingAspect"/>
+		</aspects>
+
+	</aspectj>
+----
+
+Now to the Spring-specific portion of the configuration. We need to configure a
+`LoadTimeWeaver` (all explained later, just take it on trust for now). This load-time
+weaver is the essential component responsible for weaving the aspect configuration in
+one or more '++META-INF/aop.xml++' files into the classes in your application. The good
+thing is that it does not require a lot of configuration, as can be seen below (there
+are some more options that you can specify, but these are detailed later).
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns:context="http://www.springframework.org/schema/context"
+		xsi:schemaLocation="
+			http://www.springframework.org/schema/beans
+			http://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.springframework.org/schema/context
+			http://www.springframework.org/schema/context/spring-context.xsd">
+
+		<!-- a service object; we will be profiling its methods -->
+		<bean id="entitlementCalculationService"
+				class="foo.StubEntitlementCalculationService"/>
+
+		<!-- this switches on the load-time weaving -->
+		**<context:load-time-weaver/>**
+	</beans>
+----
+
+Now that all the required artifacts are in place - the aspect, the '++META-INF/aop.xml++'
+file, and the Spring configuration -, let us create a simple driver class with a
+`main(..)` method to demonstrate the LTW in action.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package foo;
+
+	import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+	public final class Main {
+
+		public static void main(String[] args) {
+
+			ApplicationContext ctx = new ClassPathXmlApplicationContext("beans.xml", Main.class);
+
+			EntitlementCalculationService entitlementCalculationService
+				= (EntitlementCalculationService) ctx.getBean("entitlementCalculationService");
+
+			// the profiling aspect is 'woven' around this method execution
+			entitlementCalculationService.calculateEntitlement();
+		}
+	}
+----
+
+There is one last thing to do. The introduction to this section did say that one could
+switch on LTW selectively on a per- `ClassLoader` basis with Spring, and this is true.
+However, just for this example, we are going to use a Java agent (supplied with Spring)
+to switch on the LTW. This is the command line we will use to run the above `Main` class:
+
+[literal]
+[subs="verbatim,quotes"]
+----
+java -javaagent:C:/projects/foo/lib/global/spring-instrument.jar foo.Main
+----
+
+The '++-javaagent++' is a flag for specifying and enabling
+http://docs.oracle.com/javase/6/docs/api/java/lang/instrument/package-summary.html[agents
+to instrument programs running on the JVM]. The Spring Framework ships with such an
+agent, the `InstrumentationSavingAgent`, which is packaged in the
+`spring-instrument.jar` that was supplied as the value of the `-javaagent` argument in
+the above example.
+
+The output from the execution of the `Main` program will look something like that below.
+(I have introduced a `Thread.sleep(..)` statement into the `calculateEntitlement()`
+implementation so that the profiler actually captures something other than 0
+milliseconds - the `01234` milliseconds is __not__ an overhead introduced by the AOP :) )
+
+[literal]
+[subs="verbatim,quotes"]
+----
+Calculating entitlement
+
+StopWatch 'ProfilingAspect': running time (millis) = 1234
+------ ----- ----------------------------
+ms     %     Task name
+------ ----- ----------------------------
+01234  100%  calculateEntitlement
+----
+
+Since this LTW is effected using full-blown AspectJ, we are not just limited to advising
+Spring beans; the following slight variation on the `Main` program will yield the same
+result.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package foo;
+
+	import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+	public final class Main {
+
+		public static void main(String[] args) {
+
+			new ClassPathXmlApplicationContext("beans.xml", Main.class);
+
+			EntitlementCalculationService entitlementCalculationService =
+				new StubEntitlementCalculationService();
+
+			// the profiling aspect will be 'woven' around this method execution
+			entitlementCalculationService.calculateEntitlement();
+		}
+	}
+----
+
+Notice how in the above program we are simply bootstrapping the Spring container, and
+then creating a new instance of the `StubEntitlementCalculationService` totally outside
+the context of Spring... the profiling advice still gets woven in.
+
+The example admittedly is simplistic... however the basics of the LTW support in Spring
+have all been introduced in the above example, and the rest of this section will explain
+the 'why' behind each bit of configuration and usage in detail.
+
+[NOTE]
+====
+The `ProfilingAspect` used in this example may be basic, but it is quite useful. It is a
+nice example of a development-time aspect that developers can use during development (of
+course), and then quite easily exclude from builds of the application being deployed
+into UAT or production.
+====
+
+
+[[aop-aj-ltw-the-aspects]]
+===== Aspects
+The aspects that you use in LTW have to be AspectJ aspects. They can be written in
+either the AspectJ language itself or you can write your aspects in the @AspectJ-style.
+It means that your aspects are then both valid AspectJ __and__ Spring AOP aspects.
+Furthermore, the compiled aspect classes need to be available on the classpath.
+
+

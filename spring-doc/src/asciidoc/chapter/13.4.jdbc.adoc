@@ -1,0 +1,180 @@
+[[jdbc-JdbcTemplate-examples-update]]
+====== Updating (INSERT/UPDATE/DELETE) with jdbcTemplate
+You use the `update(..)` method to perform insert, update and delete operations.
+Parameter values are usually provided as var args or alternatively as an object array.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	this.jdbcTemplate.update(
+			"insert into t_actor (first_name, last_name) values (?, ?)",
+			"Leonor", "Watling");
+----
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	this.jdbcTemplate.update(
+			"update t_actor set last_name = ? where id = ?",
+			"Banjo", 5276L);
+----
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	this.jdbcTemplate.update(
+			"delete from actor where id = ?",
+			Long.valueOf(actorId));
+----
+
+[[jdbc-JdbcTemplate-examples-other]]
+====== Other jdbcTemplate operations
+You can use the `execute(..)` method to execute any arbitrary SQL, and as such the
+method is often used for DDL statements. It is heavily overloaded with variants taking
+callback interfaces, binding variable arrays, and so on.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	this.jdbcTemplate.execute("create table mytable (id integer, name varchar(100))");
+----
+
+The following example invokes a simple stored procedure. More sophisticated stored
+procedure support is <<jdbc-StoredProcedure,covered later>>.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	this.jdbcTemplate.update(
+			"call SUPPORT.REFRESH_ACTORS_SUMMARY(?)",
+			Long.valueOf(unionId));
+----
+
+
+[[jdbc-JdbcTemplate-idioms]]
+===== JdbcTemplate best practices
+
+Instances of the `JdbcTemplate` class are __threadsafe once configured__. This is
+important because it means that you can configure a single instance of a `JdbcTemplate`
+and then safely inject this __shared__ reference into multiple DAOs (or repositories).
+The `JdbcTemplate` is stateful, in that it maintains a reference to a `DataSource`, but
+this state is __not__ conversational state.
+
+A common practice when using the `JdbcTemplate` class (and the associated
+<<jdbc-NamedParameterJdbcTemplate, `NamedParameterJdbcTemplate`>> classes) is to
+configure a `DataSource` in your Spring configuration file, and then dependency-inject
+that shared `DataSource` bean into your DAO classes; the `JdbcTemplate` is created in
+the setter for the `DataSource`. This leads to DAOs that look in part like the following:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class JdbcCorporateEventDao implements CorporateEventDao {
+
+		private JdbcTemplate jdbcTemplate;
+
+		public void setDataSource(DataSource dataSource) {
+			**this.jdbcTemplate = new JdbcTemplate(dataSource);**
+		}
+
+		// JDBC-backed implementations of the methods on the CorporateEventDao follow...
+	}
+----
+
+The corresponding configuration might look like this.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns:context="http://www.springframework.org/schema/context"
+		xsi:schemaLocation="
+			http://www.springframework.org/schema/beans
+			http://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.springframework.org/schema/context
+			http://www.springframework.org/schema/context/spring-context.xsd">
+
+		<bean id="corporateEventDao" class="com.example.JdbcCorporateEventDao">
+			<property name="dataSource" ref="dataSource"/>
+		</bean>
+
+		<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+			<property name="driverClassName" value="${jdbc.driverClassName}"/>
+			<property name="url" value="${jdbc.url}"/>
+			<property name="username" value="${jdbc.username}"/>
+			<property name="password" value="${jdbc.password}"/>
+		</bean>
+
+		<context:property-placeholder location="jdbc.properties"/>
+
+	</beans>
+----
+
+An alternative to explicit configuration is to use component-scanning and annotation
+support for dependency injection. In this case you annotate the class with `@Repository`
+(which makes it a candidate for component-scanning) and annotate the `DataSource` setter
+method with `@Autowired`.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	**@Repository**
+	public class JdbcCorporateEventDao implements CorporateEventDao {
+
+		private JdbcTemplate jdbcTemplate;
+
+		**@Autowired**
+		public void setDataSource(DataSource dataSource) {
+			**this.jdbcTemplate = new JdbcTemplate(dataSource);**
+		}
+
+		// JDBC-backed implementations of the methods on the CorporateEventDao follow...
+	}
+----
+
+The corresponding XML configuration file would look like the following:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns:context="http://www.springframework.org/schema/context"
+		xsi:schemaLocation="
+			http://www.springframework.org/schema/beans
+			http://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.springframework.org/schema/context
+			http://www.springframework.org/schema/context/spring-context.xsd">
+
+		<!-- Scans within the base package of the application for @Component classes to configure as beans -->
+		<context:component-scan base-package="org.springframework.docs.test" />
+
+		<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+			<property name="driverClassName" value="${jdbc.driverClassName}"/>
+			<property name="url" value="${jdbc.url}"/>
+			<property name="username" value="${jdbc.username}"/>
+			<property name="password" value="${jdbc.password}"/>
+		</bean>
+
+		<context:property-placeholder location="jdbc.properties"/>
+
+	</beans>
+----
+
+If you are using Spring's `JdbcDaoSupport` class, and your various JDBC-backed DAO classes
+extend from it, then your sub-class inherits a `setDataSource(..)` method from the
+`JdbcDaoSupport` class. You can choose whether to inherit from this class. The
+`JdbcDaoSupport` class is provided as a convenience only.
+
+Regardless of which of the above template initialization styles you choose to use (or
+not), it is seldom necessary to create a new instance of a `JdbcTemplate` class each
+time you want to execute SQL. Once configured, a `JdbcTemplate` instance is threadsafe.
+You may want multiple `JdbcTemplate` instances if your application accesses multiple
+databases, which requires multiple `DataSources`, and subsequently multiple differently
+configured `JdbcTemplates`.
+
+
+

@@ -1,0 +1,118 @@
+dynamic-language-a-first-example]]
+=== A first example
+This bulk of this chapter is concerned with describing the dynamic language support in
+detail. Before diving into all of the ins and outs of the dynamic language support,
+let's look at a quick example of a bean defined in a dynamic language. The dynamic
+language for this first bean is Groovy (the basis of this example was taken from the
+Spring test suite, so if you want to see equivalent examples in any of the other
+supported languages, take a look at the source code).
+
+Find below the `Messenger` interface that the Groovy bean is going to be implementing,
+and note that this interface is defined in plain Java. Dependent objects that are
+injected with a reference to the `Messenger` won't know that the underlying
+implementation is a Groovy script.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package org.springframework.scripting;
+
+	public interface Messenger {
+
+		String getMessage();
+
+	}
+----
+
+Here is the definition of a class that has a dependency on the `Messenger` interface.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package org.springframework.scripting;
+
+	public class DefaultBookingService implements BookingService {
+
+		private Messenger messenger;
+
+		public void setMessenger(Messenger messenger) {
+			this.messenger = messenger;
+		}
+
+		public void processBooking() {
+			// use the injected Messenger object...
+		}
+
+	}
+----
+
+Here is an implementation of the `Messenger` interface in Groovy.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	// from the file 'Messenger.groovy'
+	package org.springframework.scripting.groovy;
+
+	// import the Messenger interface (written in Java) that is to be implemented
+	import org.springframework.scripting.Messenger
+
+	// define the implementation in Groovy
+	class GroovyMessenger implements Messenger {
+
+		String message
+
+	}
+----
+
+Finally, here are the bean definitions that will effect the injection of the
+Groovy-defined `Messenger` implementation into an instance of the
+`DefaultBookingService` class.
+
+[NOTE]
+====
+To use the custom dynamic language tags to define dynamic-language-backed beans, you
+need to have the XML Schema preamble at the top of your Spring XML configuration file.
+You also need to be using a Spring `ApplicationContext` implementation as your IoC
+container. Using the dynamic-language-backed beans with a plain `BeanFactory`
+implementation is supported, but you have to manage the plumbing of the Spring internals
+to do so.
+
+For more information on schema-based configuration, see <<xsd-config>>.
+====
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns:lang="http://www.springframework.org/schema/lang"
+		xsi:schemaLocation="
+			http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.springframework.org/schema/lang http://www.springframework.org/schema/lang/spring-lang.xsd">
+
+		<!-- this is the bean definition for the Groovy-backed Messenger implementation -->
+		<lang:groovy id="messenger" script-source="classpath:Messenger.groovy">
+			<lang:property name="message" value="I Can Do The Frug" />
+		</lang:groovy>
+
+		<!-- an otherwise normal bean that will be injected by the Groovy-backed Messenger -->
+		<bean id="bookingService" class="x.y.DefaultBookingService">
+			<property name="messenger" ref="messenger" />
+		</bean>
+
+	</beans>
+----
+
+The `bookingService` bean (a `DefaultBookingService`) can now use its private
+`messenger` member variable as normal because the `Messenger` instance that was injected
+into it __is__ a `Messenger` instance. There is nothing special going on here, just
+plain Java and plain Groovy.
+
+Hopefully the above XML snippet is self-explanatory, but don't worry unduly if it isn't.
+Keep reading for the in-depth detail on the whys and wherefores of the above
+configuration.
+
+
+
+

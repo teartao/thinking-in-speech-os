@@ -1,0 +1,45 @@
+[[cci-config-single-connection]]
+==== Using a single CCI connection
+If you want to use a single CCI connection, Spring provides a further
+`ConnectionFactory` adapter to manage this. The `SingleConnectionFactory` adapter class
+will open a single connection lazily and close it when this bean is destroyed at
+application shutdown. This class will expose special `Connection` proxies that behave
+accordingly, all sharing the same underlying physical connection.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="eciManagedConnectionFactory"
+			class="com.ibm.connector2.cics.ECIManagedConnectionFactory">
+		<property name="serverName" value="TEST"/>
+		<property name="connectionURL" value="tcp://localhost/"/>
+		<property name="portNumber" value="2006"/>
+	</bean>
+
+	<bean id="targetEciConnectionFactory"
+			class="org.springframework.jca.support.LocalConnectionFactoryBean">
+		<property name="managedConnectionFactory" ref="eciManagedConnectionFactory"/>
+	</bean>
+
+	<bean id="eciConnectionFactory"
+			class="org.springframework.jca.cci.connection.SingleConnectionFactory">
+		<property name="targetConnectionFactory" ref="targetEciConnectionFactory"/>
+	</bean>
+----
+
+[NOTE]
+====
+This `ConnectionFactory` adapter cannot directly be configured with a `ConnectionSpec`.
+Use an intermediary `ConnectionSpecConnectionFactoryAdapter` that the
+`SingleConnectionFactory` talks to if you require a single connection for a specific
+`ConnectionSpec`.
+====
+
+
+
+
+[[cci-using]]
+=== Using Spring's CCI access support
+
+
+

@@ -1,0 +1,92 @@
+[[aop-introductions]]
+==== Introductions
+Introductions (known as inter-type declarations in AspectJ) enable an aspect to declare
+that advised objects implement a given interface, and to provide an implementation of
+that interface on behalf of those objects.
+
+An introduction is made using the `@DeclareParents` annotation. This annotation is used
+to declare that matching types have a new parent (hence the name). For example, given an
+interface `UsageTracked`, and an implementation of that interface `DefaultUsageTracked`,
+the following aspect declares that all implementors of service interfaces also implement
+the `UsageTracked` interface. (In order to expose statistics via JMX for example.)
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Aspect
+	public class UsageTracking {
+
+		@DeclareParents(value="com.xzy.myapp.service.*+", defaultImpl=DefaultUsageTracked.class)
+		public static UsageTracked mixin;
+
+		@Before("com.xyz.myapp.SystemArchitecture.businessService() && this(usageTracked)")
+		public void recordUsage(UsageTracked usageTracked) {
+			usageTracked.incrementUseCount();
+		}
+
+	}
+----
+
+The interface to be implemented is determined by the type of the annotated field. The
+`value` attribute of the `@DeclareParents` annotation is an AspectJ type pattern :- any
+bean of a matching type will implement the UsageTracked interface. Note that in the
+before advice of the above example, service beans can be directly used as
+implementations of the `UsageTracked` interface. If accessing a bean programmatically
+you would write the following:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	UsageTracked usageTracked = (UsageTracked) context.getBean("myService");
+----
+
+
+
+[[aop-instantiation-models]]
+==== Aspect instantiation models
+[NOTE]
+====
+(This is an advanced topic, so if you are just starting out with AOP you can safely skip
+it until later.)
+====
+
+By default there will be a single instance of each aspect within the application
+context. AspectJ calls this the singleton instantiation model. It is possible to define
+aspects with alternate lifecycles :- Spring supports AspectJ's `perthis` and `pertarget`
+instantiation models ( `percflow, percflowbelow,` and `pertypewithin` are not currently
+supported).
+
+A "perthis" aspect is declared by specifying a `perthis` clause in the `@Aspect`
+annotation. Let's look at an example, and then we'll explain how it works.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Aspect("perthis(com.xyz.myapp.SystemArchitecture.businessService())")
+	public class MyAspect {
+
+		private int someState;
+
+		@Before(com.xyz.myapp.SystemArchitecture.businessService())
+		public void recordServiceUsage() {
+			// ...
+		}
+
+	}
+----
+
+The effect of the `'perthis'` clause is that one aspect instance will be created for
+each unique service object executing a business service (each unique object bound to
+'this' at join points matched by the pointcut expression). The aspect instance is
+created the first time that a method is invoked on the service object. The aspect goes
+out of scope when the service object goes out of scope. Before the aspect instance is
+created, none of the advice within it executes. As soon as the aspect instance has been
+created, the advice declared within it will execute at matched join points, but only
+when the service object is the one this aspect is associated with. See the AspectJ
+programming guide for more information on per-clauses.
+
+The `'pertarget'` instantiation model works in exactly the same way as perthis, but
+creates one aspect instance for each unique target object at matched join points.
+
+
+

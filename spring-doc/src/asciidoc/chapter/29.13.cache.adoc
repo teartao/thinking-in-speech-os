@@ -1,0 +1,90 @@
+[[cache-store-configuration-gemfire]]
+==== GemFire-based Cache
+
+GemFire is a memory-oriented/disk-backed, elastically scalable, continuously available,
+active (with built-in pattern-based subscription notifications), globally replicated
+database and provides fully-featured edge caching. For further information on how to use
+GemFire as a CacheManager (and more), please refer to the
+http://docs.spring.io/spring-gemfire/docs/current/reference/htmlsingle/[Spring Data GemFire
+reference documentation].
+
+[[cache-store-configuration-jsr107]]
+==== JSR-107 Cache
+
+JSR-107 compliant caches can also be used by Spring's caching abstraction. The JCache
+implementation is located under `org.springframework.cache.jcache` package.
+
+Again, to use it, one simply needs to declare the appropriate `CacheManager`:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="cacheManager"
+	      class="org.springframework.cache.jcache.JCacheCacheManager"
+	      p:cache-manager-ref="jCacheManager"/>
+
+	<!-- JSR-107 cache manager setup  -->
+	<bean id="jCacheManager" .../>
+----
+
+
+[[cache-store-configuration-noop]]
+==== Dealing with caches without a backing store
+Sometimes when switching environments or doing testing, one might have cache
+declarations without an actual backing cache configured. As this is an invalid
+configuration, at runtime an exception will be thrown since the caching infrastructure
+is unable to find a suitable store. In situations like this, rather then removing the
+cache declarations (which can prove tedious), one can wire in a simple, dummy cache that
+performs no caching - that is, forces the cached methods to be executed every time:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="cacheManager" class="org.springframework.cache.support.CompositeCacheManager">
+		<property name="cacheManagers">
+			<list>
+				<ref bean="jdkCache"/>
+				<ref bean="gemfireCache"/>
+			</list>
+		</property>
+		<property name="fallbackToNoOpCache" value="true"/>
+	</bean>
+----
+
+The `CompositeCacheManager` above chains multiple ++CacheManager++s and additionally,
+through the `fallbackToNoOpCache` flag, adds a __no op__ cache that for all the
+definitions not handled by the configured cache managers. That is, every cache
+definition not found in either `jdkCache` or `gemfireCache` (configured above) will be
+handled by the no op cache, which will not store any information causing the target
+method to be executed every time.
+
+
+
+
+[[cache-plug]]
+=== Plugging-in different back-end caches
+Clearly there are plenty of caching products out there that can be used as a backing
+store. To plug them in, one needs to provide a `CacheManager` and `Cache` implementation
+since unfortunately there is no available standard that we can use instead. This may
+sound harder than it is since in practice, the classes tend to be simple
+http://en.wikipedia.org/wiki/Adapter_pattern[adapter]s that map the caching abstraction
+framework on top of the storage API as the `ehcache` classes can show. Most
+`CacheManager` classes can use the classes in `org.springframework.cache.support`
+package, such as `AbstractCacheManager` which takes care of the boiler-plate code
+leaving only the actual __mapping__ to be completed. We hope that in time, the libraries
+that provide integration with Spring can fill in this small configuration gap.
+
+
+
+
+[[cache-specific-config]]
+=== How can I set the TTL/TTI/Eviction policy/XXX feature?
+Directly through your cache provider. The cache abstraction is... well, an abstraction
+not a cache implementation. The solution you are using might support various data
+policies and different topologies which other solutions do not (take for example the JDK
+`ConcurrentHashMap`) - exposing that in the cache abstraction would be useless simply
+because there would no backing support. Such functionality should be controlled directly
+through the backing cache, when configuring it or through its native API.
+
+
+

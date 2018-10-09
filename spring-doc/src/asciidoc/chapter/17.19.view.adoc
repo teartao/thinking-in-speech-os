@@ -1,0 +1,82 @@
+[[view-jasper-reports-subreports]]
+==== Working with Sub-Reports
+JasperReports provides support for embedded sub-reports within your master report files.
+There are a wide variety of mechanisms for including sub-reports in your report files.
+The easiest way is to hard code the report path and the SQL query for the sub report
+into your design files. The drawback of this approach is obvious: the values are
+hard-coded into your report files reducing reusability and making it harder to modify
+and update report designs. To overcome this you can configure sub-reports declaratively,
+and you can include additional data for these sub-reports directly from your controllers.
+
+
+[[view-jasper-reports-subreports-config-reports]]
+===== Configuring Sub-Report Files
+To control which sub-report files are included in a master report using Spring, your
+report file must be configured to accept sub-reports from an external source. To do this
+you declare a parameter in your report file like so:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<parameter name="ProductsSubReport" class="net.sf.jasperreports.engine.JasperReport"/>
+----
+
+Then, you define your sub-report to use this sub-report parameter:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<subreport>
+		<reportElement isPrintRepeatedValues="false" x="5" y="25" width="325"
+			height="20" isRemoveLineWhenBlank="true" backcolor="#ffcc99"/>
+		<subreportParameter name="City">
+			<subreportParameterExpression><![CDATA[$F{city}]]></subreportParameterExpression>
+		</subreportParameter>
+		<dataSourceExpression><![CDATA[$P{SubReportData}]]></dataSourceExpression>
+		<subreportExpression class="net.sf.jasperreports.engine.JasperReport">
+			<![CDATA[$P{ProductsSubReport}]]></subreportExpression>
+	</subreport>
+----
+
+This defines a master report file that expects the sub-report to be passed in as an
+instance of `net.sf.jasperreports.engine.JasperReports` under the parameter
+`ProductsSubReport`. When configuring your Jasper view class, you can instruct Spring to
+load a report file and pass it into the JasperReports engine as a sub-report using the
+`subReportUrls` property:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<property name="subReportUrls">
+		<map>
+			<entry key="ProductsSubReport" value="/WEB-INF/reports/subReportChild.jrxml"/>
+		</map>
+	</property>
+----
+
+Here, the key of the `Map` corresponds to the name of the sub-report parameter in the
+report design file, and the entry is the URL of the report file. Spring will load this
+report file, compiling it if necessary, and pass it into the JasperReports engine under
+the given key.
+
+
+[[view-jasper-reports-subreports-config-datasources]]
+===== Configuring Sub-Report Data Sources
+This step is entirely optional when using Spring to configure your sub-reports. If you
+wish, you can still configure the data source for your sub-reports using static queries.
+However, if you want Spring to convert data returned in your `ModelAndView` into
+instances of `JRDataSource` then you need to specify which of the parameters in your
+`ModelAndView` Spring should convert. To do this, configure the list of parameter names
+using the `subReportDataKeys` property of your chosen view class:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<property name="subReportDataKeys" value="SubReportData"/>
+----
+
+Here, the key you supply __must__ correspond to both the key used in your `ModelAndView`
+and the key used in your report design file.
+
+
+

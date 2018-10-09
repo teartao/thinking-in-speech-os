@@ -1,0 +1,146 @@
+[[cache-annotation-enable]]
+==== Enable caching annotations
+It is important to note that even though declaring the cache annotations does not
+automatically trigger their actions - like many things in Spring, the feature has to be
+declaratively enabled (which means if you ever suspect caching is to blame, you can
+disable it by removing only one configuration line rather than all the annotations in
+your code).
+
+To enable caching annotations add the annotation `@EnableCaching` to one of your
+`@Configuration` classes:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Configuration
+	@EnableCaching
+	public class AppConfig {
+	}
+----
+
+Alternatively for XML configuration use the `cache:annotation-driven` element:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns:cache="http://www.springframework.org/schema/cache"
+		xsi:schemaLocation="
+			http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.springframework.org/schema/cache http://www.springframework.org/schema/cache/spring-cache.xsd">
+
+			<cache:annotation-driven />
+
+	</beans>
+----
+
+Both the `cache:annotation-driven` element and `@EnableCaching` annotation allow various
+options to be specified that influence the way the caching behavior is added to the
+application through AOP. The configuration is intentionally similar with that of
+<<tx-annotation-driven-settings, `@Transactional`>>:
+
+[[cache-annotation-driven-settings]]
+.Cache annotation settings
+[cols="1,1,1,3"]
+|===
+| XML Attribute| Annotation Attribute| Default| Description
+
+| `cache-manager`
+| N/A (See `CachingConfigurer` javadocs)
+| cacheManager
+| Name of cache manager to use. A default `CacheResolver` will be initialized behind
+  the scenes with this cache manager (or `cacheManager`if not set). For more
+  fine-grained management of the cache resolution, consider setting the 'cache-resolver'
+  attribute.
+
+| `cache-resolver`
+| N/A (See `CachingConfigurer` javadocs)
+| A `SimpleCacheResolver` using the configured `cacheManager`.
+| The bean name of the CacheResolver that is to be used to resolve the backing caches.
+  This attribute is not required, and only needs to be specified as an alternative to
+  the 'cache-manager' attribute.
+
+| `key-generator`
+| N/A (See `CachingConfigurer` javadocs)
+| `SimpleKeyGenerator`
+| Name of the custom key generator to use.
+
+| `error-handler`
+| N/A (See `CachingConfigurer` javadocs)
+| `SimpleCacheErrorHandler`
+| Name of the custom cache error handler to use. By default, any exception throw during
+  a cache related operations are thrown back at the client.
+
+| `mode`
+| `mode`
+| proxy
+| The default mode "proxy" processes annotated beans to be proxied using Spring's AOP
+  framework (following proxy semantics, as discussed above, applying to method calls
+  coming in through the proxy only). The alternative mode "aspectj" instead weaves the
+  affected classes with Spring's AspectJ caching aspect, modifying the target class byte
+  code to apply to any kind of method call. AspectJ weaving requires spring-aspects.jar
+  in the classpath as well as load-time weaving (or compile-time weaving) enabled. (See
+  <<aop-aj-ltw-spring>> for details on how to set up load-time weaving.)
+
+| `proxy-target-class`
+| `proxyTargetClass`
+| false
+| Applies to proxy mode only. Controls what type of caching proxies are created for
+  classes annotated with the `@Cacheable` or `@CacheEvict` annotations. If the
+  `proxy-target-class` attribute is set to `true`, then class-based proxies are created.
+  If `proxy-target-class` is `false` or if the attribute is omitted, then standard JDK
+  interface-based proxies are created. (See <<aop-proxying>> for a detailed examination
+  of the different proxy types.)
+
+| `order`
+| `order`
+| Ordered.LOWEST_PRECEDENCE
+| Defines the order of the cache advice that is applied to beans annotated with
+  `@Cacheable` or `@CacheEvict`. (For more information about the rules related to
+  ordering of AOP advice, see <<aop-ataspectj-advice-ordering>>.) No specified ordering
+  means that the AOP subsystem determines the order of the advice.
+|===
+
+[NOTE]
+====
+`<cache:annotation-driven/>` only looks for `@Cacheable/@CachePut/@CacheEvict/@Caching`
+on beans in the same application context it is defined in. This means that, if you put
+`<cache:annotation-driven/>` in a `WebApplicationContext` for a `DispatcherServlet`, it
+only checks for beans in your controllers, and not your services. See <<mvc-servlet>>
+for more information.
+====
+
+.Method visibility and cache annotations
+****
+When using proxies, you should apply the cache annotations only to methods with
+__public__ visibility. If you do annotate protected, private or package-visible methods
+with these annotations, no error is raised, but the annotated method does not exhibit
+the configured caching settings. Consider the use of AspectJ (see below) if you need to
+annotate non-public methods as it changes the bytecode itself.
+****
+
+[TIP]
+====
+Spring recommends that you only annotate concrete classes (and methods of concrete
+classes) with the `@Cache*` annotation, as opposed to annotating interfaces. You
+certainly can place the `@Cache*` annotation on an interface (or an interface method),
+but this works only as you would expect it to if you are using interface-based proxies.
+The fact that Java annotations are __not inherited from interfaces__ means that if you
+are using class-based proxies ( `proxy-target-class="true"`) or the weaving-based aspect
+( `mode="aspectj"`), then the caching settings are not recognized by the proxying and
+weaving infrastructure, and the object will not be wrapped in a caching proxy, which
+would be decidedly __bad__.
+====
+
+[NOTE]
+====
+In proxy mode (which is the default), only external method calls coming in through the
+proxy are intercepted. This means that self-invocation, in effect, a method within the
+target object calling another method of the target object, will not lead to an actual
+caching at runtime even if the invoked method is marked with `@Cacheable` - considering
+using the aspectj mode in this case.
+====
+
+
+

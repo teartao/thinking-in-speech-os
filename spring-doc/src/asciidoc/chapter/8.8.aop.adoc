@@ -1,0 +1,105 @@
+[[aop-schema-introductions]]
+==== Introductions
+Introductions (known as inter-type declarations in AspectJ) enable an aspect to declare
+that advised objects implement a given interface, and to provide an implementation of
+that interface on behalf of those objects.
+
+An introduction is made using the `aop:declare-parents` element inside an `aop:aspect`
+This element is used to declare that matching types have a new parent (hence the name).
+For example, given an interface `UsageTracked`, and an implementation of that interface
+`DefaultUsageTracked`, the following aspect declares that all implementors of service
+interfaces also implement the `UsageTracked` interface. (In order to expose statistics
+via JMX for example.)
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<aop:aspect id="usageTrackerAspect" ref="usageTracking">
+
+		<aop:declare-parents
+			types-matching="com.xzy.myapp.service.*+"
+			implement-interface="com.xyz.myapp.service.tracking.UsageTracked"
+			default-impl="com.xyz.myapp.service.tracking.DefaultUsageTracked"/>
+
+		<aop:before
+			pointcut="com.xyz.myapp.SystemArchitecture.businessService()
+				and this(usageTracked)"
+				method="recordUsage"/>
+
+	</aop:aspect>
+----
+
+The class backing the `usageTracking` bean would contain the method:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public void recordUsage(UsageTracked usageTracked) {
+		usageTracked.incrementUseCount();
+	}
+----
+
+The interface to be implemented is determined by `implement-interface` attribute. The
+value of the `types-matching` attribute is an AspectJ type pattern :- any bean of a
+matching type will implement the `UsageTracked` interface. Note that in the before
+advice of the above example, service beans can be directly used as implementations of
+the `UsageTracked` interface. If accessing a bean programmatically you would write the
+following:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	UsageTracked usageTracked = (UsageTracked) context.getBean("myService");
+----
+
+
+
+[[aop-schema-instatiation-models]]
+==== Aspect instantiation models
+The only supported instantiation model for schema-defined aspects is the singleton
+model. Other instantiation models may be supported in future releases.
+
+
+
+[[aop-schema-advisors]]
+==== Advisors
+The concept of "advisors" is brought forward from the AOP support defined in Spring 1.2
+and does not have a direct equivalent in AspectJ. An advisor is like a small
+self-contained aspect that has a single piece of advice. The advice itself is
+represented by a bean, and must implement one of the advice interfaces described in
+<<aop-api-advice-types>>. Advisors can take advantage of AspectJ pointcut expressions
+though.
+
+Spring supports the advisor concept with the `<aop:advisor>` element. You will most
+commonly see it used in conjunction with transactional advice, which also has its own
+namespace support in Spring. Here's how it looks:
+
+[source,xml,indent=0]
+[subs="verbatim"]
+----
+	<aop:config>
+
+		<aop:pointcut id="businessService"
+			expression="execution(* com.xyz.myapp.service.*.*(..))"/>
+
+		<aop:advisor
+			pointcut-ref="businessService"
+			advice-ref="tx-advice"/>
+
+	</aop:config>
+
+	<tx:advice id="tx-advice">
+		<tx:attributes>
+			<tx:method name="*" propagation="REQUIRED"/>
+		</tx:attributes>
+	</tx:advice>
+----
+
+As well as the `pointcut-ref` attribute used in the above example, you can also use the
+`pointcut` attribute to define a pointcut expression inline.
+
+To define the precedence of an advisor so that the advice can participate in ordering,
+use the `order` attribute to define the `Ordered` value of the advisor.
+
+
+

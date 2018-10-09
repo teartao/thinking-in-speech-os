@@ -1,0 +1,95 @@
+[[aop-ataspectj-advice-params]]
+===== Advice parameters
+Spring offers fully typed advice - meaning that you declare the parameters you need
+in the advice signature (as we saw for the returning and throwing examples above) rather
+than work with `Object[]` arrays all the time. We'll see how to make argument and other
+contextual values available to the advice body in a moment. First let's take a look at
+how to write generic advice that can find out about the method the advice is currently
+advising.
+
+[[aop-ataspectj-advice-params-the-joinpoint]]
+====== Access to the current JoinPoint
+
+Any advice method may declare as its first parameter, a parameter of type
+`org.aspectj.lang.JoinPoint` (please note that around advice is __required__ to declare
+a first parameter of type `ProceedingJoinPoint`, which is a subclass of `JoinPoint`. The
+`JoinPoint` interface provides a number of useful methods such as `getArgs()` (returns
+the method arguments), `getThis()` (returns the proxy object), `getTarget()` (returns
+the target object), `getSignature()` (returns a description of the method that is being
+advised) and `toString()` (prints a useful description of the method being advised).
+Please do consult the javadocs for full details.
+
+[[aop-ataspectj-advice-params-passing]]
+====== Passing parameters to advice
+We've already seen how to bind the returned value or exception value (using after
+returning and after throwing advice). To make argument values available to the advice
+body, you can use the binding form of `args`. If a parameter name is used in place of a
+type name in an args expression, then the value of the corresponding argument will be
+passed as the parameter value when the advice is invoked. An example should make this
+clearer. Suppose you want to advise the execution of dao operations that take an Account
+object as the first parameter, and you need access to the account in the advice body.
+You could write the following:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Before("com.xyz.myapp.SystemArchitecture.dataAccessOperation() && args(account,..)")
+	public void validateAccount(Account account) {
+		// ...
+	}
+----
+
+The `args(account,..)` part of the pointcut expression serves two purposes: firstly, it
+restricts matching to only those method executions where the method takes at least one
+parameter, and the argument passed to that parameter is an instance of `Account`;
+secondly, it makes the actual `Account` object available to the advice via the `account`
+parameter.
+
+Another way of writing this is to declare a pointcut that "provides" the `Account`
+object value when it matches a join point, and then just refer to the named pointcut
+from the advice. This would look as follows:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Pointcut("com.xyz.myapp.SystemArchitecture.dataAccessOperation() && args(account,..)")
+	private void accountDataAccessOperation(Account account) {}
+
+	@Before("accountDataAccessOperation(account)")
+	public void validateAccount(Account account) {
+		// ...
+	}
+----
+
+The interested reader is once more referred to the AspectJ programming guide for more
+details.
+
+The proxy object ( `this`), target object ( `target`), and annotations ( `@within,
+@target, @annotation, @args`) can all be bound in a similar fashion. The following
+example shows how you could match the execution of methods annotated with an
+`@Auditable` annotation, and extract the audit code.
+
+First the definition of the `@Auditable` annotation:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target(ElementType.METHOD)
+	public @interface Auditable {
+		AuditCode value();
+	}
+----
+
+And then the advice that matches the execution of `@Auditable` methods:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Before("com.xyz.lib.Pointcuts.anyPublicMethod() && @annotation(auditable)")
+	public void audit(Auditable auditable) {
+		AuditCode code = auditable.value();
+		// ...
+	}
+----
+

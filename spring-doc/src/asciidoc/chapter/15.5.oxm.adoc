@@ -1,0 +1,102 @@
+[[oxm-xmlbeans]]
+=== XMLBeans
+XMLBeans is an XML binding tool that has full XML Schema support, and offers full XML
+Infoset fidelity. It takes a different approach to that of most other O/X mapping
+frameworks, in that all classes that are generated from an XML Schema are all derived
+from `XmlObject`, and contain XML binding information in them.
+
+For more information on XMLBeans, refer to the http://xmlbeans.apache.org/[__XMLBeans
+web site __]. The Spring-WS integration classes reside in the
+`org.springframework.oxm.xmlbeans` package.
+
+
+
+[[oxm-xmlbeans-marshaller]]
+==== XmlBeansMarshaller
+The `XmlBeansMarshaller` implements both the `Marshaller` and `Unmarshaller` interfaces.
+It can be configured as follows:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<beans>
+
+		<bean id="xmlBeansMarshaller" class="org.springframework.oxm.xmlbeans.XmlBeansMarshaller" />
+		...
+
+	</beans>
+----
+
+[NOTE]
+====
+Note that the `XmlBeansMarshaller` can only marshal objects of type `XmlObject`, and not
+every `java.lang.Object`.
+====
+
+
+[[oxm-xmlbeans-xsd]]
+===== XML Schema-based Configuration
+The `xmlbeans-marshaller` tag configures a
+`org.springframework.oxm.xmlbeans.XmlBeansMarshaller`. Here is an example:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<oxm:xmlbeans-marshaller id="marshaller"/>
+----
+
+Available attributes are:
+
+|===
+| Attribute| Description| Required
+
+| `id`
+| the id of the marshaller
+| no
+
+| `options`
+| the bean name of the XmlOptions that is to be used for this marshaller. Typically a
+  `XmlOptionsFactoryBean` definition
+| no
+|===
+
+
+
+
+[[oxm-jibx]]
+=== JiBX
+The JiBX framework offers a solution similar to that which JDO provides for ORM: a
+binding definition defines the rules for how your Java objects are converted to or from
+XML. After preparing the binding and compiling the classes, a JiBX binding compiler
+enhances the class files, and adds code to handle converting instances of the classes
+from or to XML.
+
+For more information on JiBX, refer to the http://jibx.sourceforge.net/[__JiBX web
+site__]. The Spring integration classes reside in the `org.springframework.oxm.jibx`
+package.
+
+
+
+[[oxm-jibx-marshaller]]
+==== JibxMarshaller
+The `JibxMarshaller` class implements both the `Marshaller` and `Unmarshaller`
+interface. To operate, it requires the name of the class to marshal in, which you can
+set using the `targetClass` property. Optionally, you can set the binding name using the
+`bindingName` property. In the next sample, we bind the `Flights` class:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<beans>
+		<bean id="jibxFlightsMarshaller" class="org.springframework.oxm.jibx.JibxMarshaller">
+			<property name="targetClass">org.springframework.oxm.jibx.Flights</property>
+		</bean>
+		...
+	</beans>
+----
+
+A `JibxMarshaller` is configured for a single class. If you want to marshal multiple
+classes, you have to configure multiple ++JibxMarshaller++s with different `targetClass`
+property values.
+
+

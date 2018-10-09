@@ -1,0 +1,82 @@
+[[portlet-webappctx-special-beans-tbl]]
+.Special beans in the WebApplicationContext
+[cols="1,4"]
+|===
+| Expression| Explanation
+
+| handler mapping(s)
+| (<<portlet-handlermapping>>) a list of pre- and post-processors and controllers that
+  will be executed if they match certain criteria (for instance a matching portlet mode
+  specified with the controller)
+
+| controller(s)
+| (<<portlet-controller>>) the beans providing the actual functionality (or at least,
+  access to the functionality) as part of the MVC triad
+
+| view resolver
+| (<<portlet-viewresolver>>) capable of resolving view names to view definitions
+
+| multipart resolver
+| (<<portlet-multipart>>) offers functionality to process file uploads from HTML forms
+
+| handler exception resolver
+| (<<portlet-exceptionresolver>>) offers functionality to map exceptions to views or
+  implement other more complex exception handling code
+|===
+
+When a `DispatcherPortlet` is setup for use and a request comes in for that specific
+`DispatcherPortlet`, it starts processing the request. The list below describes the
+complete process a request goes through if handled by a `DispatcherPortlet`:
+
+. The locale returned by `PortletRequest.getLocale()` is bound to the request to let
+elements in the process resolve the locale to use when processing the request (rendering
+the view, preparing data, etc.).
+. If a multipart resolver is specified and this is an `ActionRequest`, the request is
+inspected for multiparts and if they are found, it is wrapped in a
+`MultipartActionRequest` for further processing by other elements in the process. (See
+<<portlet-multipart>> for further information about multipart handling).
+. An appropriate handler is searched for. If a handler is found, the execution chain
+associated with the handler (pre-processors, post-processors, controllers) will be
+executed in order to prepare a model.
+. If a model is returned, the view is rendered, using the view resolver that has been
+configured with the `WebApplicationContext`. If no model is returned (which could be due
+to a pre- or post-processor intercepting the request, for example, for security
+reasons), no view is rendered, since the request could already have been fulfilled.
+
+Exceptions that are thrown during processing of the request get picked up by any of the
+handler exception resolvers that are declared in the `WebApplicationContext`. Using
+these exception resolvers you can define custom behavior in case such exceptions get
+thrown.
+
+You can customize Spring's `DispatcherPortlet` by adding context parameters in the
+`portlet.xml` file or portlet init-parameters. The possibilities are listed below.
+
+[[portlet-dpp-init-params]]
+.DispatcherPortlet initialization parameters
+[cols="1,4"]
+|===
+| Parameter| Explanation
+
+| `contextClass`
+| Class that implements `WebApplicationContext`, which will be used to instantiate the
+  context used by this portlet. If this parameter isn't specified, the
+  `XmlPortletApplicationContext` will be used.
+
+| `contextConfigLocation`
+| String which is passed to the context instance (specified by `contextClass`) to
+  indicate where context(s) can be found. The String is potentially split up into
+  multiple Strings (using a comma as a delimiter) to support multiple contexts (in case
+  of multiple context locations, for beans that are defined twice, the latest takes
+  precedence).
+
+| `namespace`
+| The namespace of the `WebApplicationContext`. Defaults to `[portlet-name]-portlet`.
+
+| `viewRendererUrl`
+| The URL at which `DispatcherPortlet` can access an instance of `ViewRendererServlet`
+  (see <<portlet-viewservlet>>).
+|===
+
+
+
+

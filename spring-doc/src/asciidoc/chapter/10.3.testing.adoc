@@ -1,0 +1,763 @@
+[[integration-testing-annotations]]
+==== 注解
+
+
+[[integration-testing-annotations-spring]]
+===== Spring 测试相关注解
+
+Spring框架提供了一组__Spring特定__的注解，你可以在测试中联合TestContext框架进行单元或者是集成测试。
+想要获得进一步的信息，包括默认值、属性别名等等，请参阅相关的javadocs。
+
+* `@ContextConfiguration`
+
++
+
+定义类级别的元数据，用来决定如何为集成测试加载和配置一个 `ApplicationContext`。`@ContextConfiguration`
+用来声明应用上下文资源的 `locations` 或者加了注解的被用来加载上下文的 `classes`。
+
++
+
+资源路径典型的是位于类路径中的XML配置文件；而注解的类典型的是加了注解 `@Configuration` 的类。尽管如此
+资源路径也可以是执行文件系统中的文件，注解的类可以是组件类等等。
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	**@ContextConfiguration**("/test-config.xml")
+	public class XmlApplicationContextTests {
+		// class body...
+	}
+----
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	**@ContextConfiguration**(**classes** = TestConfig.class)
+	public class ConfigClassApplicationContextTests {
+		// class body...
+	}
+----
+
++
+
+对声明资源类路径或注解类而言，作为一个可选的或者是附加的方式，`@ContextConfiguration`可以被用来指定
+用于自定义的 `ApplicationContextInitializer` 接口的实现类。
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	**@ContextConfiguration**(**initializers** = CustomContextIntializer.class)
+	public class ContextInitializerTests {
+		// class body...
+	}
+----
+
++
+
+`@ContextConfiguration`也可以可选地被用来声明 `ContextLoader` 策略。注意，尽管如此，典型性情况下
+你不必显式配置加载器，因为默认的加载其既支持资源 `locations` 或注解 `classes` 也支持 `initializers` 初始器方式。
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	**@ContextConfiguration**(**locations** = "/test-context.xml", **loader** = CustomContextLoader.class)
+	public class CustomLoaderXmlApplicationContextTests {
+		// class body...
+	}
+----
+
++
+
+[NOTE]
+====
+`@ContextConfiguration` 默认地提供了对资源路径或配置类以及由超类声明的上下文初始化器的 __继承__ 机制。
+
+====
+
++
+
+参阅 <<testcontext-ctx-management>> 和  `@ContextConfiguration` javadocs 进一步了解详情。
+
+* `@WebAppConfiguration`
+
++
+
+为集成测试加载的使用类级注解声明的 `ApplicationContext` 对象应该是一个 `WebApplicationContext`
+对象。在测试类上存在`@WebAppConfiguration` 基本价值是在测试中确保一个 `WebApplicationContext`
+对象被加载，该对象使用默认值 `"file:src/main/webapp"` 作为web应用（例如，__资源基本路径__）的根
+路径。资源基本路径被用来在 `WebApplicationContext` 测试中创建一个模拟 `ServletContext` 对象的
+`MockServletContext` 模拟对象来提供服务。
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@ContextConfiguration
+	**@WebAppConfiguration**
+	public class WebAppTests {
+		// class body...
+	}
+----
+
++
+
+要覆盖默认值，可以通过 __固有__ `value` 属性指定另外一个基础资源路径。资源前缀支持 `classpath:` 和
+`file:` 两种方式。 如果没有指定资源前缀，则默认为文件系统资源。
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@ContextConfiguration
+	**@WebAppConfiguration("classpath:test-web-resources")**
+	public class WebAppTests {
+		// class body...
+	}
+----
+
++
+
+注意： `@WebAppConfiguration` 必须和联合 `@ContextConfiguration` 一起使用，同时需要在单个
+测试类或者是在一个测试类的层次内。 参考 `@WebAppConfiguration` javadocs 了解详情。
+
++
+
+* `@ContextHierarchy`
+
++
+
+一个类级别的注解，用来为集成测试定义 ++ApplicationContext++s 的层次。 `@ContextHierarchy` 声明的
+时候应该包含一个或多个 `@ContextConfiguration` 实例的列表。在上下文层次中，每一个实例都定义了一个级别。
+下面的示例演示了单个测试类中 `@ContextHierarchy` 的使用；尽管如此， `@ContextHierarchy`也可以被用在
+一个测试类层次中。
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@ContextHierarchy({
+		@ContextConfiguration("/parent-config.xml"),
+		@ContextConfiguration("/child-config.xml")
+	})
+	public class ContextHierarchyTests {
+		// class body...
+	}
+----
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@WebAppConfiguration
+	@ContextHierarchy({
+		@ContextConfiguration(classes = AppConfig.class),
+		@ContextConfiguration(classes = WebConfig.class)
+	})
+	public class WebIntegrationTests {
+		// class body...
+	}
+----
+
++
+
+如果你需要在一个测试类层次中合并或覆盖指定的上下文层次的级别，在每一个类层次的相关级别中，你必须通过为
+`@ContextConfiguration` 的 `name` 属性提供相同的值显式命名那个级别。请参考 <<testcontext-ctx-management-ctx-hierarchies>>
+和 `@ContextHierarchy` javadocs 了解进一步的例子。
+
+* `@ActiveProfiles`
+
++
+
+一个类级别的注解，用来声明当为测试类加载一个 `ApplicationContext`时，哪些 __bean 定义配置__ 应该
+被激活。
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@ContextConfiguration
+	**@ActiveProfiles**("dev")
+	public class DeveloperTests {
+		// class body...
+	}
+----
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@ContextConfiguration
+	**@ActiveProfiles**({"dev", "integration"})
+	public class DeveloperIntegrationTests {
+		// class body...
+	}
+----
+
++
+
+[NOTE]
+====
+
+默认情况下，`@ActiveProfiles` 提供了对 __继承__ 超类声明的活bean定义配置的支持。也可以使用编程的
+方式来解析已激活bean定义配置，只需一个<<testcontext-ctx-management-env-profiles-ActiveProfilesResolver,`ActiveProfilesResolver`>>
+的自定义实现并且通过 `@ActiveProfiles` 的 `resolver` 属性进行注册。
+====
+
++
+
+参考 <<testcontext-ctx-management-env-profiles>> 和 `@ActiveProfiles` javadocs了解示例和
+进一步的详情。
+
+* `@TestPropertySource`
+
++
+
+一个类级别的注解，用来配置属性文件和内联属性的位置，在集成测试的`ApplicationContext` 对象加载的时候，
+这些属性要被加到 `PropertySources` 的 `Environment`的设置中。
+
++
+
+测试属性源比操作系统环境加载的属性、Java系统属性、应用通过 `@PropertySource` 或编程方式声明的属性有更高
+优先级。因此，测试属性源可以被用来可选地覆盖系统或者应用定义的属性源。此外，内联属性比在资源路径中加载的属性
+有更高的优先级。
+
++
+
+下述示例演示了如何通过类路径声明一个属性文件。
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@ContextConfiguration
+	**@TestPropertySource**("/test.properties")
+	public class MyIntegrationTests {
+		// class body...
+	}
+----
+
++
+
+下述示例演示了如何声明 _内联_ 的属性。
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@ContextConfiguration
+	**@TestPropertySource**(properties = { "timezone = GMT", "port: 4242" })
+	public class MyIntegrationTests {
+		// class body...
+	}
+----
+
+* `@DirtiesContext`
+
++
+
+指示Spring的 `ApplicationContext` 在测试执行期间（例如： 以某种方式被修改或遭到破坏—— 例如单例的
+状态被改变）已经 __变脏__ ，不管测试是否通过都应该关闭。 一旦应用上下文被标记为 __dirty__ ，它应该从
+框架的缓存中清除并关闭。 因此， 接下来Spring容器将会为后续的依赖相同配置元数据的测试进行重建。
+
++
+
+`@DirtiesContext` 在同一个测试类中可以同时用作类级别的和方法级别的注解。在这种场景下，整个类已经所有加注了
+这个注解的方法之后， `ApplicationContext` 都被标记为 __dirty__ 。 如果 `ClassMode` 设置为 `AFTER_EACH_TEST_METHOD` 
+,在类中的每一个测试方法之后，上下文将被标记为 __dirty__ 。
+
++
+
+下述的示例针对各种配置场景解释了上下文何时变脏：
+
++
+
+** 当前的测试类之后，类上声明，类模式设置为 `AFTER_CLASS` （例如：默认的类模式）。
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	**@DirtiesContext**
+	public class ContextDirtyingTests {
+		// 一些导致spring容器变脏的测试
+	}
+----
+
++
+
+** 当前测试类的每一个测试方法之后，类上声明，类模式设置为 `AFTER_EACH_TEST_METHOD` 。
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	**@DirtiesContext**(**classMode** = ClassMode.AFTER_EACH_TEST_METHOD)
+	public class ContextDirtyingTests {
+		// 一些导致spring容器变脏的测试
+	}
+----
+
++
+
+** 当前的测试之后，在方法上声明。
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	**@DirtiesContext**
+	@Test
+	public void testProcessWhichDirtiesAppCtx() {
+		// 一些导致spring容器变脏的测试
+	}
+----
+
++
+
+如果一个测试的上下文通过 `@ContextHierarchy` 被配置为上下文层次中的一部分， 可以使用 `@DirtiesContext`
+注解，  通过 `hierarchyMode` 标志来控制上下文缓存的清理。 默认情况下，将使用一个 __EXHAUSTIVE__ 的算法清理
+当前测试中通用的上下文缓存，不仅包括当前级别而且包括所有其他的共享一个祖先的上下文层次。所有的住留在通用祖先上下
+文的子层次中的 ++ApplicationContext++s 将从缓存中清除并关闭。 如果 __EXHAUSTIVE__ 的算法在特定的用例中清理
+过度，可以选择更简单的 __CURRENT_LEVEL__ 算法来替换，参考如下。
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@ContextHierarchy({
+		@ContextConfiguration("/parent-config.xml"),
+		@ContextConfiguration("/child-config.xml")
+	})
+	public class BaseTests {
+		// class body...
+	}
+
+	public class ExtendedTests extends BaseTests {
+
+		@Test
+		@DirtiesContext(**hierarchyMode = HierarchyMode.CURRENT_LEVEL**)
+		public void test() {
+			// 一些导致子上下文变脏的逻辑
+		}
+	}
+----
+
++
+
+进一步了解 `EXHAUSTIVE` 和 `CURRENT_LEVEL` 算法的详情，清参考 `DirtiesContext.HierarchyMode` javadocs。
+
+* `@TestExecutionListeners`
+
++
+
+定义类级别的元数据配置， 在 `TestContextManager` 中注册 ++TestExecutionListener++s 。 典型情况下，
+`@TestExecutionListeners` 与  `@ContextConfiguration` 联合使用。
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@ContextConfiguration
+	**@TestExecutionListeners**({CustomTestExecutionListener.class, AnotherTestExecutionListener.class})
+	public class CustomTestExecutionListenerTests {
+		// class body...
+	}
+----
+
++
+
+`@TestExecutionListeners` 默认情况下支持监听器 __inherited__ 。 参考javadocs查看示例和进一步的详情。
+
+* `@TransactionConfiguration`
+
++
+
+为事务性测试配置类级别的元数据。具体来说，如果在在测试中有多个 `PlatformTransactionManager` 类型的bean,
+并且期望的 `PlatformTransactionManager` 的bean名不是 "transactionManager"， `PlatformTransactionManager` 
+的bean名应该被显式地指定来驱动事务。另外，你可以改变 `defaultRollback` 标志为 `false`。 典型情况下，
+`@TransactionConfiguration` 和 `@ContextConfiguration` 被联合使用。
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@ContextConfiguration
+	**@TransactionConfiguration**(**transactionManager** = "txMgr", **defaultRollback** = false)
+	public class CustomConfiguredTransactionalTests {
+		// class body...
+	}
+----
+
++
+
+[NOTE]
+====
+
+如果默认的传统对你的测试配置够用的话，你可以避免 与  `@TransactionConfiguration`  一起使用。换句话说
+如果你只有一个事务管理器——或者你有多个事务管理器，但是事务管理器的名字都是 "transactionManager" 或者通过
+`TransactionManagementConfigurer` 进行了指定 —— 并且你想事务自动回滚，那么你无需使用`@TransactionConfiguration` 
+注解你的测试类。
+====
+
++
+
+* `@Rollback`
+
++
+
+指示注解的测试方法执行完成之后事务是否应该 __rolled back__。 如果设置为 `true` ，事务将会回滚，
+否则，事务将会提交。 使用 `@Rollback` 能够覆盖在类级别配置的默认的回滚标志。
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	**@Rollback**(false)
+	@Test
+	public void testProcessWithoutRollback() {
+		// ...
+	}
+----
+
+* `@BeforeTransaction`
+
++
+
+指示一个 `public void` 方法在事务启动之前执行，这个方法是通过 `@Transactional` 注解配置事务的。
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	**@BeforeTransaction**
+	public void beforeTransaction() {
+		// 在事务启动之前执行的逻辑
+	}
+----
+
+* `@AfterTransaction`
+
++
+
+指示一个 `public void` 方法在事务执行结束之后执行，这个方法是通过 `@Transactional` 注解配置事务的。
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	**@AfterTransaction**
+	public void afterTransaction() {
+		// 事务执行结束后的逻辑
+	}
+----
+
+* `@Sql`
+
++
+
+在集成测试中用来对给定的数据库配置要执行的SQL脚本，这个注解用在类级别或者是方法级别。
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Test
+	**@Sql**({"/test-schema.sql", "/test-user-data.sql"})
+	public void userTest {
+		// 执行依赖的测试数据库和测试数据的代码
+	}
+----
+
++
+
+参阅 <<testcontext-executing-sql-declaratively>>  查看详情。
+
+* `@SqlConfig`
+
++
+
+定义用来决定如何解析和执行通过 `@Sql` 注解配置的SQL脚本的元数据。
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Test
+	@Sql(
+		scripts = "/test-user-data.sql",
+		config = **@SqlConfig**(commentPrefix = "`", separator = "@@")
+	)
+	public void userTest {
+		// 依赖测试数据的代码
+	}
+----
+
+* `@SqlGroup`
+
++
+
+这是一个容器注解，用来聚合若干个 `@Sql` 注解。 可以自然地用来声明若干个内置的 `@Sql` 注解。 也可以用来结合
+Java8 可重复注解的支持，用来在类或者是方法上声明多次 `@Sql` 注解， 这种情况，将隐式生成这个容器注解。
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Test
+	**@SqlGroup**({
+		@Sql(scripts = "/test-schema.sql", config = @SqlConfig(commentPrefix = "`")),
+		@Sql("/test-user-data.sql")
+	)}
+	public void userTest {
+		// 使用测试数据库和测试数据的执行代码
+	}
+----
+
+
+[[integration-testing-annotations-standard]]
+===== 标准注解支持
+下述的注解对所有的Spring TestContext框架配置支持标准的语义。这些注解并非是在测试中专用的，而是可以用在
+Spring框架的任何地方。
+
+* `@Autowired`
+* `@Qualifier`
+* `@Resource` (javax.annotation) _if JSR-250 is present_
+* `@Inject` (javax.inject) _if JSR-330 is present_
+* `@Named` (javax.inject) _if JSR-330 is present_
+* `@PersistenceContext` (javax.persistence) _if JPA is present_
+* `@PersistenceUnit` (javax.persistence) _if JPA is present_
+* `@Required`
+* `@Transactional`
+
+.JSR-250 声明周期注解
+[NOTE]
+====
+在Spring TestContext框架中，  `@PostConstruct` 和 `@PreDestroy` 可以以标准的语义被用在任何配置
+在 `@ApplicationContext` 应用组件中; 然而，生命周期注解在实际的测试类中使用是受限的。 
+
+如果测试类中的一个方法增加了 `@PostConstruct` 注解，这个方法将会在测试框架（例如，加注了JUnit的 `@Before`
+注解的方法）中的任何 __before__ 方法之前被执行，并且它会被应用在测试类的每一个测试方法中。另一方面，如果一个
+测试类中的方法加注了 `@PreDestroy` 注解， 这个方法将 __绝对__ 不会执行。 因此，在测试类中建议使用测试框架
+的生命周期回调而非 `@PostConstruct` 和 `@PreDestroy` 注解。
+====
+
+
+[[integration-testing-annotations-junit]]
+===== Spring JUnit 测试注解
+下述的注解 __仅仅__ 支持联合 <<testcontext-junit4-runner,SpringJUnit4ClassRunner>> 或者是
+<<testcontext-support-classes-junit4,JUnit>> 的支持类。
+
+* `@IfProfileValue`
+
++
+
+指示增加了该注解的测试对特定的测试环境可用。 如果配置的 `ProfileValueSource` 对提供的 `name` 返回
+了匹配的 `value`, 这个测试即可用。 这个注解可以用在整个类上，也可以被用在独立的方法上。在类级别使用将覆盖
+方法级别的配置。
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	**@IfProfileValue**(**name**="java.vendor", **value**="Oracle Corporation")
+	@Test
+	public void testProcessWhichRunsOnlyOnOracleJvm() {
+		// 一些仅应该在Oracle公司的JAVA JVM上运行的逻辑
+	}
+----
+
++
+
+可选地，你可以用一组 `values` （拥有 __OR__ 语义）列表来配置 `@IfProfileValue` 注解，在JUnit环境中
+以此来达到类似TestNG对 __test group__ 的支持。
+考虑如下的示例：
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	**@IfProfileValue**(**name**="test-groups", **values**={"unit-tests", "integration-tests"})
+	@Test
+	public void testProcessWhichRunsForUnitOrIntegrationTestGroups() {
+		// 一些仅能运行单元和集成测试组的逻辑
+	}
+----
+
++
+
+* `@ProfileValueSourceConfiguration`
+
++
+
+类级别的注解，用来指定搜索 __profile values__ 的 `ProfileValueSource` 的类型，这些 __profile values__
+来源于 `@IfProfileValue` 注解的配置。如果测试中没有声明 `@ProfileValueSourceConfiguration` 注解，默认
+将使用 `SystemProfileValueSource` 注解。
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	**@ProfileValueSourceConfiguration**(CustomProfileValueSource.class)
+	public class CustomProfileValueSourceTests {
+		// class body...
+	}
+----
+
+* `@Timed`
+
++
+
+指示一个注解的方法必须在指定的时间周期内（以毫秒为单位）完成执行。如果执行时间超过了指定的时间周期，测试将
+失败。
+
++
+
+时间周期包括测试方法本身的执行，任何测试的重复（参阅 `@Repeat` 注解）执行，也包括任何测试夹具的 
+__set up__ 或者 __tear down__ 方法。
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	**@Timed**(millis=1000)
+	public void testProcessWithOneSecondTimeout() {
+		// 一些执行时间不会超过1妙的代码逻辑
+	}
+----
+
++
+
+Spring的 `@Timed` 注解与JUnit的 `@Test(timeout=...)`支持有不同的语义。具体来说，归因于JUnit处理
+测试执行超时（在一个独立的 `Thread` 中执行测试方法的时间）的方式， 如果测试花费太长的时间，那么
+`@Test(timeout=...)` 注解会强制测试失败。 然而，Spring的 @Timed 注解不会强制测试失败，而是在失败之前
+等待测试完成执行。
+
+* `@Repeat`
+
++
+
+指示重复执行增加了该注解的方法。执行的次数在该注解中指定。
+
++
+
+多次执行的方法包括测试方法本身， 测试夹具的 __set up__ 方法和 __tear down__ 方法。
+
++
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	**@Repeat**(10)
+	@Test
+	public void testProcessRepeatedly() {
+		// ...
+	}
+----
+
+
+[[integration-testing-annotations-meta]]
+===== 测试元注解的支持
+在Spring 4.0中的测试套件中，使用类似 <<beans-meta-annotations,meta-annotations>> 测试相关的注解来创建
+自定义的 _组合的注解_ 并降低重复配置成为可能。
+
+下述的每一个注解在联合 <<testcontext-framework,TestContext framework>> 使用时，都可以作为元注解。
+
+* `@ContextConfiguration`
+* `@ContextHierarchy`
+* `@ActiveProfiles`
+* `@TestPropertySource`
+* `@DirtiesContext`
+* `@WebAppConfiguration`
+* `@TestExecutionListeners`
+* `@Transactional`
+* `@BeforeTransaction`
+* `@AfterTransaction`
+* `@TransactionConfiguration`
+* `@Rollback`
+* `@Sql`
+* `@SqlConfig`
+* `@SqlGroup`
+* `@Repeat`
+* `@Timed`
+* `@IfProfileValue`
+* `@ProfileValueSourceConfiguration`
+
+例如，如果我们发现正在重复配置基于JUnit的测试套件……
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RunWith(SpringJUnit4ClassRunner.class)
+	@ContextConfiguration({"/app-config.xml", "/test-data-access-config.xml"})
+	@ActiveProfiles("dev")
+	@Transactional
+	public class OrderRepositoryTests { }
+
+	@RunWith(SpringJUnit4ClassRunner.class)
+	@ContextConfiguration({"/app-config.xml", "/test-data-access-config.xml"})
+	@ActiveProfiles("dev")
+	@Transactional
+	public class UserRepositoryTests { }
+----
+
+我们可以通过引入一个自定义的 _组合注解_ 来削减上述重复的配置，这个组合注解可以集中管理通用的测试配
+置，如下所示：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Target(ElementType.TYPE)
+	@Retention(RetentionPolicy.RUNTIME)
+	@ContextConfiguration({"/app-config.xml", "/test-data-access-config.xml"})
+	@ActiveProfiles("dev")
+	@Transactional
+	public @interface TransactionalDevTest { }
+----
+
+我们可以使用我们的自定义 `@TransactionalDevTest` 注解简化独立测试类的配置，如下所示：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RunWith(SpringJUnit4ClassRunner.class)
+	@TransactionalDevTest
+	public class OrderRepositoryTests { }
+
+	@RunWith(SpringJUnit4ClassRunner.class)
+	@TransactionalDevTest
+	public class UserRepositoryTests { }
+----
+
+
+

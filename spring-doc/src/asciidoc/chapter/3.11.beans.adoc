@@ -1,0 +1,79 @@
+[[beans-java]]
+=== 基于Java（Java-based）的容器配置
+
+
+
+[[beans-java-basic-concepts]]
+==== 基本概念: @Bean and @Configuration
+
+Spring新的Java配置支持中核心构件是 `@Configuration` 注释类和 `@Bean` 注释方法。
+
+`@Bean` 注释是用来表示一个方法实例化，配置和初始化一个由Spring IoC容器管理的新的对象。对于那些熟悉Spring的 `<beans/>` XML 配置，
+`@Bean` 注释和 `<bean/>` 一样起着同样的作用。你可以使用 `@Bean` 注释任何Spring `@Component` 的方法，但是，
+最经常使用的是 `@Configuration` 注释bean。
+
+用 `@Configuration` 注释一个类表明它的主要目的是作为bean定义的来源。此外， `@Configuration` 注释的类允许inter-bean依赖关系
+在相同的类中，通过简单地调用其他 `@Bean` 方法被定义。最简单的 `@Configuration` 类定义如下：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Configuration
+	public class AppConfig {
+
+		@Bean
+		public MyService myService() {
+			return new MyServiceImpl();
+		}
+
+	}
+----
+
+上面的 `AppConfig` 类相当于下面的Spring `<beans/>` XML：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<beans>
+		<bean id="myService" class="com.acme.services.MyServiceImpl"/>
+	</beans>
+----
+
+The `@Bean` and `@Configuration` annotations will be discussed in depth in the sections
+below. First, however, we'll cover the various ways of creating a spring container using
+Java-based configuration.
+
+.Full @Configuration vs 'lite' @Beans mode?
+****
+When `@Bean` methods are declared within classes that are __not__ annotated with
+`@Configuration` they are referred to as being processed in a 'lite' mode. For example,
+bean methods declared in a `@Component` or even in a __plain old class__ will be
+considered 'lite'.
+
+Unlike full `@Configuration`, lite `@Bean` methods cannot easily declare inter-bean
+dependencies. Usually one `@Bean` method should not invoke another `@Bean` method when
+operating in 'lite' mode.
+
+Only using `@Bean` methods within `@Configuration` classes is a recommended approach of
+ensuring that 'full' mode is always used. This will prevent the same `@Bean` method from
+accidentally being invoked multiple times and helps to reduce subtle bugs that can be
+hard to track down when operating in 'lite' mode.
+****
+
+
+[[beans-java-instantiating-container]]
+==== Instantiating the Spring container using AnnotationConfigApplicationContext
+The sections below document Spring's `AnnotationConfigApplicationContext`, new in Spring
+3.0. This versatile `ApplicationContext` implementation is capable of accepting not only
+`@Configuration` classes as input, but also plain `@Component` classes and classes
+annotated with JSR-330 metadata.
+
+When `@Configuration` classes are provided as input, the `@Configuration` class itself
+is registered as a bean definition, and all declared `@Bean` methods within the class
+are also registered as bean definitions.
+
+When `@Component` and JSR-330 classes are provided, they are registered as bean
+definitions, and it is assumed that DI metadata such as `@Autowired` or `@Inject` are
+used within those classes where necessary.
+
+

@@ -1,0 +1,60 @@
+[[cache-spel-context]]
+===== Available caching SpEL evaluation context
+
+Each `SpEL` expression evaluates again a dedicated
+<<expressions-language-ref,`context`>>. In addition to the build in parameters, the
+framework provides dedicated caching related metadata such as the argument names. The
+next table lists the items made available to the context so one can use them for key and
+conditional computations:
+
+[[cache-spel-context-tbl]]
+.Cache SpEL available metadata
+|===
+| Name| Location| Description| Example
+
+| methodName
+| root object
+| The name of the method being invoked
+| `#root.methodName`
+
+| method
+| root object
+| The method being invoked
+| `#root.method.name`
+
+| target
+| root object
+| The target object being invoked
+| `#root.target`
+
+| targetClass
+| root object
+| The class of the target being invoked
+| `#root.targetClass`
+
+| args
+| root object
+| The arguments (as array) used for invoking the target
+| `#root.args[0]`
+
+| caches
+| root object
+| Collection of caches against which the current method is executed
+| `#root.caches[0].name`
+
+| __argument name__
+| evaluation context
+| Name of any of the method argument. If for some reason the names are not available
+  (ex: no debug information), the argument names are also available under the `a<#arg>`
+  where __#arg__ stands for the argument index (starting from 0).
+| `iban` or `a0` (one can also use `p0` or `p<#arg>` notation as an alias).
+
+| result
+| evaluation context
+| The result of the method call (the value to be cached). Only available in `unless`
+  expressions, `cache put` expressions (to compute the `key`), or `cache evict`
+  expressions (when `beforeInvocation` is `false`).
+| `#result`
+|===
+
+

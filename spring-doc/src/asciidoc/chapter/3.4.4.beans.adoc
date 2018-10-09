@@ -1,0 +1,154 @@
+[[beans-factory-scopes-custom]]
+==== Custom scopes
+The bean scoping mechanism is extensible; You can define your own
+scopes, or even redefine existing scopes, although the latter is considered bad practice
+and you __cannot__ override the built-in `singleton` and `prototype` scopes.
+
+
+[[beans-factory-scopes-custom-creating]]
+===== Creating a custom scope
+To integrate your custom scope(s) into the Spring container, you need to implement the
+`org.springframework.beans.factory.config.Scope` interface, which is described in this
+section. For an idea of how to implement your own scopes, see the `Scope`
+implementations that are supplied with the Spring Framework itself and the
+{javadoc-baseurl}/org/springframework/beans/factory/config/Scope.html[`Scope` javadocs],
+which explains the methods you need to implement in more detail.
+
+The `Scope` interface has four methods to get objects from the scope, remove them from
+the scope, and allow them to be destroyed.
+
+The following method returns the object from the underlying scope. The session scope
+implementation, for example, returns the session-scoped bean (and if it does not exist,
+the method returns a new instance of the bean, after having bound it to the session for
+future reference).
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	Object get(String name, ObjectFactory objectFactory)
+----
+
+The following method removes the object from the underlying scope. The session scope
+implementation for example, removes the session-scoped bean from the underlying session.
+The object should be returned, but you can return null if the object with the specified
+name is not found.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	Object remove(String name)
+----
+
+The following method registers the callbacks the scope should execute when it is
+destroyed or when the specified object in the scope is destroyed. Refer to the javadocs
+or a Spring scope implementation for more information on destruction callbacks.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	void registerDestructionCallback(String name, Runnable destructionCallback)
+----
+
+The following method obtains the conversation identifier for the underlying scope. This
+identifier is different for each scope. For a session scoped implementation, this
+identifier can be the session identifier.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	String getConversationId()
+----
+
+
+[[beans-factory-scopes-custom-using]]
+===== Using a custom scope
+After you write and test one or more custom `Scope` implementations, you need to make
+the Spring container aware of your new scope(s). The following method is the central
+method to register a new `Scope` with the Spring container:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	void registerScope(String scopeName, Scope scope);
+----
+
+This method is declared on the `ConfigurableBeanFactory` interface, which is available
+on most of the concrete `ApplicationContext` implementations that ship with Spring via
+the BeanFactory property.
+
+The first argument to the `registerScope(..)` method is the unique name associated with
+a scope; examples of such names in the Spring container itself are `singleton` and
+`prototype`. The second argument to the `registerScope(..)` method is an actual instance
+of the custom `Scope` implementation that you wish to register and use.
+
+Suppose that you write your custom `Scope` implementation, and then register it as below.
+
+[NOTE]
+====
+The example below uses `SimpleThreadScope` which is included with Spring, but not
+registered by default. The instructions would be the same for your own custom `Scope`
+implementations.
+====
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	Scope threadScope = new SimpleThreadScope();
+	beanFactory.registerScope("thread", threadScope);
+----
+
+You then create bean definitions that adhere to the scoping rules of your custom `Scope`:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="..." class="..." scope="thread">
+----
+
+With a custom `Scope` implementation, you are not limited to programmatic registration
+of the scope. You can also do the `Scope` registration declaratively, using the
+`CustomScopeConfigurer` class:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns:aop="http://www.springframework.org/schema/aop"
+		xsi:schemaLocation="http://www.springframework.org/schema/beans
+			http://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.springframework.org/schema/aop
+			http://www.springframework.org/schema/aop/spring-aop.xsd">
+
+		<bean class="org.springframework.beans.factory.config.CustomScopeConfigurer">
+			<property name="scopes">
+				<map>
+					<entry key="thread">
+						<bean class="org.springframework.context.support.SimpleThreadScope"/>
+					</entry>
+				</map>
+			</property>
+		</bean>
+
+		<bean id="bar" class="x.y.Bar" scope="thread">
+			<property name="name" value="Rick"/>
+			<aop:scoped-proxy/>
+		</bean>
+
+		<bean id="foo" class="x.y.Foo">
+			<property name="bar" ref="bar"/>
+		</bean>
+
+	</beans>
+----
+
+[NOTE]
+====
+When you place `<aop:scoped-proxy/>` in a `FactoryBean` implementation, it is the factory
+bean itself that is scoped, not the object returned from `getObject()`.
+====
+
+
+
+

@@ -1,0 +1,124 @@
+[[jms-receiving]]
+=== Receiving a message
+
+
+
+[[jms-receiving-sync]]
+==== Synchronous Reception
+While JMS is typically associated with asynchronous processing, it is possible to
+consume messages synchronously. The overloaded `receive(..)` methods provide this
+functionality. During a synchronous receive, the calling thread blocks until a message
+becomes available. This can be a dangerous operation since the calling thread can
+potentially be blocked indefinitely. The property `receiveTimeout` specifies how long
+the receiver should wait before giving up waiting for a message.
+
+
+
+[[jms-asynchronousMessageReception]]
+==== Asynchronous Reception - Message-Driven POJOs
+
+[NOTE]
+====
+Spring also supports annotated-listener endpoints through the use of the `@JmsListener`
+annotation and provides an open infrastructure to register endpoints programmatically. This
+is by far the most convenient way to setup an asynchronous receiver, see
+<<jms-annotated-support>> for more details.
+====
+
+In a fashion similar to a Message-Driven Bean (MDB) in the EJB world, the Message-Driven
+POJO (MDP) acts as a receiver for JMS messages. The one restriction (but see also below
+for the discussion of the `MessageListenerAdapter` class) on an MDP is that it must
+implement the `javax.jms.MessageListener` interface. Please also be aware that in the
+case where your POJO will be receiving messages on multiple threads, it is important to
+ensure that your implementation is thread-safe.
+
+Below is a simple implementation of an MDP:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	import javax.jms.JMSException;
+	import javax.jms.Message;
+	import javax.jms.MessageListener;
+	import javax.jms.TextMessage;
+
+	public class ExampleListener implements MessageListener {
+
+		public void onMessage(Message message) {
+			if (message instanceof TextMessage) {
+				try {
+					System.out.println(((TextMessage) message).getText());
+				}
+				catch (JMSException ex) {
+					throw new RuntimeException(ex);
+				}
+			}
+			else {
+				throw new IllegalArgumentException("Message must be of type TextMessage");
+			}
+		}
+
+	}
+----
+
+Once you've implemented your `MessageListener`, it's time to create a message listener
+container.
+
+Find below an example of how to define and configure one of the message listener
+containers that ships with Spring (in this case the `DefaultMessageListenerContainer`).
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<!-- this is the Message Driven POJO (MDP) -->
+	<bean id="messageListener" class="jmsexample.ExampleListener" />
+
+	<!-- and this is the message listener container -->
+	<bean id="jmsContainer" class="org.springframework.jms.listener.DefaultMessageListenerContainer">
+		<property name="connectionFactory" ref="connectionFactory"/>
+		<property name="destination" ref="destination"/>
+		**<property name="messageListener" ref="messageListener" />**
+	</bean>
+----
+
+Please refer to the Spring javadocs of the various message listener containers for a full
+description of the features supported by each implementation.
+
+
+
+[[jms-receiving-async-session-aware-message-listener]]
+==== the SessionAwareMessageListener interface
+
+The `SessionAwareMessageListener` interface is a Spring-specific interface that provides
+a similar contract to the JMS `MessageListener` interface, but also provides the message
+handling method with access to the JMS `Session` from which the `Message` was received.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package org.springframework.jms.listener;
+
+	public interface SessionAwareMessageListener {
+
+		void onMessage(Message message, Session session) throws JMSException;
+
+	}
+----
+
+You can choose to have your MDPs implement this interface (in preference to the standard
+JMS `MessageListener` interface) if you want your MDPs to be able to respond to any
+received messages (using the `Session` supplied in the `onMessage(Message, Session)`
+method). All of the message listener container implementations that ship with Spring
+have support for MDPs that implement either the `MessageListener` or
+`SessionAwareMessageListener` interface. Classes that implement the
+`SessionAwareMessageListener` come with the caveat that they are then tied to Spring
+through the interface. The choice of whether or not to use it is left entirely up to you
+as an application developer or architect.
+
+Please note that the `'onMessage(..)'` method of the `SessionAwareMessageListener`
+interface throws `JMSException`. In contrast to the standard JMS `MessageListener`
+interface, when using the `SessionAwareMessageListener` interface, it is the
+responsibility of the client code to handle any exceptions thrown.
+
+
+

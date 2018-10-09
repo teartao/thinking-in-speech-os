@@ -1,0 +1,85 @@
+[[view-document-configsubclasspdf]]
+===== Subclassing for PDF views
+The PDF version of the word list is even simpler. This time, the class extends
+`org.springframework.web.servlet.view.document.AbstractPdfView` and implements the
+`buildPdfDocument()` method as follows:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package pdf;
+
+	// imports omitted for brevity
+
+	public class PDFPage extends AbstractPdfView {
+
+		protected void buildPdfDocument(Map model, Document doc, PdfWriter writer,
+			HttpServletRequest req, HttpServletResponse resp) throws Exception {
+			List words = (List) model.get("wordList");
+			for (int i=0; i<words.size(); i++) {
+				doc.add( new Paragraph((String) words.get(i)));
+			}
+		}
+
+	}
+----
+
+Once again, amend the controller to return the `pdf` view with `return new
+ModelAndView("pdf", map);`, and reload the URL in your application. This time a PDF
+document should appear listing each of the words in the model map.
+
+
+
+
+[[view-jasper-reports]]
+=== JasperReports
+JasperReports ( http://jasperreports.sourceforge.net[]) is a powerful open-source
+reporting engine that supports the creation of report designs using an easily understood
+XML file format. JasperReports is capable of rendering reports in four different
+formats: CSV, Excel, HTML and PDF.
+
+
+
+[[view-jasper-reports-dependencies]]
+==== Dependencies
+Your application will need to include the latest release of JasperReports, which at the
+time of writing was 0.6.1. JasperReports itself depends on the following projects:
+
+* BeanShell
+* Commons BeanUtils
+* Commons Collections
+* Commons Digester
+* Commons Logging
+* iText
+* POI
+
+JasperReports also requires a JAXP compliant XML parser.
+
+
+
+[[view-jasper-reports-configuration]]
+==== Configuration
+To configure JasperReports views in your Spring container configuration you need to
+define a `ViewResolver` to map view names to the appropriate view class depending on
+which format you want your report rendered in.
+
+
+[[view-jasper-reports-configuration-resolver]]
+===== Configuring the ViewResolver
+
+Typically, you will use the `ResourceBundleViewResolver` to map view names to view
+classes and files in a properties file.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="viewResolver" class="org.springframework.web.servlet.view.ResourceBundleViewResolver">
+		<property name="basename" value="views"/>
+	</bean>
+----
+
+Here we've configured an instance of the `ResourceBundleViewResolver` class that will
+look for view mappings in the resource bundle with base name `views`. (The content of
+this file is described in the next section.)
+
+

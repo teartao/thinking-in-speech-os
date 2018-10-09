@@ -1,0 +1,101 @@
+[[context-functionality-resources]]
+==== Convenient access to low-level resources
+For optimal usage and understanding of application contexts, users should generally
+familiarize themselves with Spring's `Resource` abstraction, as described in the chapter
+<<resources>>.
+
+An application context is a `ResourceLoader`, which can be used to load ++Resource++s. A
+`Resource` is essentially a more feature rich version of the JDK class `java.net.URL`,
+in fact, the implementations of the `Resource` wrap an instance of `java.net.URL` where
+appropriate. A `Resource` can obtain low-level resources from almost any location in a
+transparent fashion, including from the classpath, a filesystem location, anywhere
+describable with a standard URL, and some other variations. If the resource location
+string is a simple path without any special prefixes, where those resources come from is
+specific and appropriate to the actual application context type.
+
+You can configure a bean deployed into the application context to implement the special
+callback interface, `ResourceLoaderAware`, to be automatically called back at
+initialization time with the application context itself passed in as the
+`ResourceLoader`. You can also expose properties of type `Resource`, to be used to
+access static resources; they will be injected into it like any other properties. You
+can specify those `Resource` properties as simple String paths, and rely on a special
+JavaBean `PropertyEditor` that is automatically registered by the context, to convert
+those text strings to actual `Resource` objects when the bean is deployed.
+
+The location path or paths supplied to an `ApplicationContext` constructor are actually
+resource strings, and in simple form are treated appropriately to the specific context
+implementation. `ClassPathXmlApplicationContext` treats a simple location path as a
+classpath location. You can also use location paths (resource strings) with special
+prefixes to force loading of definitions from the classpath or a URL, regardless of the
+actual context type.
+
+
+
+[[context-create]]
+==== web 应用程序中 ApplicationContext 的便利实例化
+
+你可以声明式地创建 `ApplicationContext` 实例，比如通过 `ContextLoader`。当然你也可以编程式地创建 `ApplicationContext` 实例，只需要使用一个 `ApplicationContext` 实现。
+
+你可以使用 `ContextLoaderListener` 来注册一个 `ApplicationContext`，如下：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<context-param>
+		<param-name>contextConfigLocation</param-name>
+		<param-value>/WEB-INF/daoContext.xml /WEB-INF/applicationContext.xml</param-value>
+	</context-param>
+
+	<listener>
+		<listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+	</listener>
+----
+
+该监听器会检查 `contextConfigLocation` 参数。如果该参数不存在，监听器会使用 `/WEB-INF/applicationContext.xml` 作为默认值。如果该参数__存在__，该监听器通过使用预置的分隔符（逗号，分号和空白符）来分隔字符串，并使用分隔后的值作为要查找的应用上下文的路径。同时支持 Ant 风格的路径模式。比如 `/WEB-INF/*Context.xml` 表示位于 "WEB-INF" 目录下且名称以 "Context.xml" 作为结尾的所有文件，`/WEB-INF/**/*Context.xml` 表示 "WEB-INF" 下的任意子目录下的所有这类文件。
+
+
+
+[[context-deploy-rar]]
+==== Deploying a Spring ApplicationContext as a Java EE RAR file
+It is possible to deploy a Spring ApplicationContext as a RAR file, encapsulating the
+context and all of its required bean classes and library JARs in a Java EE RAR deployment
+unit. This is the equivalent of bootstrapping a standalone ApplicationContext, just hosted
+in Java EE environment, being able to access the Java EE servers facilities. RAR deployment
+is  more natural alternative to scenario of deploying a headless WAR file, in effect, a WAR
+file without any HTTP entry points that is used only for bootstrapping a Spring
+ApplicationContext in a Java EE environment.
+
+RAR deployment is ideal for application contexts that do not need HTTP entry points but
+rather consist only of message endpoints and scheduled jobs. Beans in such a context can
+use application server resources such as the JTA transaction manager and JNDI-bound JDBC
+DataSources and JMS ConnectionFactory instances, and may also register with the
+platform's JMX server - all through Spring's standard transaction management and JNDI
+and JMX support facilities. Application components can also interact with the
+application server's JCA WorkManager through Spring's `TaskExecutor` abstraction.
+
+Check out the JavaDoc of the
+{javadoc-baseurl}/org/springframework/jca/context/SpringContextResourceAdapter.html[`SpringContextResourceAdapter`]
+class for the configuration details involved in RAR deployment.
+
+__For a simple deployment of a Spring ApplicationContext as a Java EE RAR file:__ package
+all application classes into a RAR file, which is a standard JAR file with a different
+file extension. Add all required library JARs into the root of the RAR archive. Add a
+"META-INF/ra.xml" deployment descriptor (as shown in ++SpringContextResourceAdapter++'s
+JavaDoc) and the corresponding Spring XML bean definition file(s) (typically
+"META-INF/applicationContext.xml"), and drop the resulting RAR file into your
+application server's deployment directory.
+
+[NOTE]
+====
+Such RAR deployment units are usually self-contained; they do not expose components to
+the outside world, not even to other modules of the same application. Interaction with a
+RAR-based ApplicationContext usually occurs through JMS destinations that it shares with
+other modules. A RAR-based ApplicationContext may also, for example, schedule some jobs,
+reacting to new files in the file system (or the like). If it needs to allow synchronous
+access from the outside, it could for example export RMI endpoints, which of course may
+be used by other application modules on the same machine.
+====
+
+
+
+

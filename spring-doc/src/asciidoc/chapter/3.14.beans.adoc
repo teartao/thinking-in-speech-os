@@ -1,0 +1,222 @@
+[[context-introduction]]
+=== ApplicationContext 的附加功能
+
+我们在本章的介绍中讨论过，`org.springframework.beans.factory` 包提供了管理和操作 bean 的基本功能，包括编程方式。`org.springframework.context` 包增加了 {javadoc-baseurl}/org/springframework/context/ApplicationContext.html[`ApplicationContext`] 接口。它继承了 `BeanFactory` 接口，除了扩展其他接口外还提供了更为 __application
+framework-oriented style__ 的附加功能。很多人通过完全的声明方式来使用 `ApplicationContext`，而非编程式地创建它，但是还可以依靠类似 `ContextLoader` 这样的的支持类来自动初始化 `ApplicationContext`，并将它作为 Java EE web 应用程序的普通的启动过程的一部分。
+
+在更为面向框架的风格上，为了增强 `BeanFactory` 的功能，context 包还提供了以下功能：
+
+* 通过 `MessageSource` 接口，__访问 i18n 样式的信息__。
+* 通过 `ResourceLoader` 接口，__访问资源__，比如 URL 和文件。
+* __Event publication__ to beans implementing the `ApplicationListener` interface,
+  through the use of the `ApplicationEventPublisher` interface.
+* 通过 `HierarchicalBeanFactory` 接口，__加载多个（分层）上下文__，这样使得每一个上下文可以关注特定的层，比如 web 层。
+
+
+
+[[context-functionality-messagesource]]
+==== Internationalization using MessageSource
+
+The `ApplicationContext` interface extends an interface called `MessageSource`, and
+therefore provides internationalization (i18n) functionality. Spring also provides the
+interface `HierarchicalMessageSource`, which can resolve messages hierarchically.
+Together these interfaces provide the foundation upon which Spring effects message
+resolution. The methods defined on these interfaces include:
+
+* `String getMessage(String code, Object[] args, String default, Locale loc)`: The basic
+  method used to retrieve a message from the `MessageSource`. When no message is found
+  for the specified locale, the default message is used. Any arguments passed in become
+  replacement values, using the `MessageFormat` functionality provided by the standard
+  library.
+* `String getMessage(String code, Object[] args, Locale loc)`: Essentially the same as
+  the previous method, but with one difference: no default message can be specified; if
+  the message cannot be found, a `NoSuchMessageException` is thrown.
+* `String getMessage(MessageSourceResolvable resolvable, Locale locale)`: All properties
+  used in the preceding methods are also wrapped in a class named
+  `MessageSourceResolvable`, which you can use with this method.
+
+When an `ApplicationContext` is loaded, it automatically searches for a `MessageSource`
+bean defined in the context. The bean must have the name `messageSource`. If such a bean
+is found, all calls to the preceding methods are delegated to the message source. If no
+message source is found, the `ApplicationContext` attempts to find a parent containing a
+bean with the same name. If it does, it uses that bean as the `MessageSource`. If the
+`ApplicationContext` cannot find any source for messages, an empty
+`DelegatingMessageSource` is instantiated in order to be able to accept calls to the
+methods defined above.
+
+Spring provides two `MessageSource` implementations, `ResourceBundleMessageSource` and
+`StaticMessageSource`. Both implement `HierarchicalMessageSource` in order to do nested
+messaging. The `StaticMessageSource` is rarely used but provides programmatic ways to
+add messages to the source. The `ResourceBundleMessageSource` is shown in the following
+example:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<beans>
+		<bean id="messageSource"
+				class="org.springframework.context.support.ResourceBundleMessageSource">
+			<property name="basenames">
+				<list>
+					<value>format</value>
+					<value>exceptions</value>
+					<value>windows</value>
+				</list>
+			</property>
+		</bean>
+	</beans>
+----
+
+In the example it is assumed you have three resource bundles defined in your classpath
+called `format`, `exceptions` and `windows`. Any request to resolve a message will be
+handled in the JDK standard way of resolving messages through ResourceBundles. For the
+purposes of the example, assume the contents of two of the above resource bundle files
+are...
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	# in format.properties
+	message=Alligators rock!
+----
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	# in exceptions.properties
+	argument.required=The '{0}' argument is required.
+----
+
+A program to execute the `MessageSource` functionality is shown in the next example.
+Remember that all `ApplicationContext` implementations are also `MessageSource`
+implementations and so can be cast to the `MessageSource` interface.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public static void main(String[] args) {
+		MessageSource resources = new ClassPathXmlApplicationContext("beans.xml");
+		String message = resources.getMessage("message", null, "Default", null);
+		System.out.println(message);
+	}
+----
+
+The resulting output from the above program will be...
+
+[literal]
+[subs="verbatim,quotes"]
+----
+Alligators rock!
+----
+
+So to summarize, the `MessageSource` is defined in a file called `beans.xml`, which
+exists at the root of your classpath. The `messageSource` bean definition refers to a
+number of resource bundles through its `basenames` property. The three files that are
+passed in the list to the `basenames` property exist as files at the root of your
+classpath and are called `format.properties`, `exceptions.properties`, and
+`windows.properties` respectively.
+
+The next example shows arguments passed to the message lookup; these arguments will be
+converted into Strings and inserted into placeholders in the lookup message.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<beans>
+
+		<!-- this MessageSource is being used in a web application -->
+		<bean id="messageSource" class="org.springframework.context.support.ResourceBundleMessageSource">
+			<property name="basename" value="exceptions"/>
+		</bean>
+
+		<!-- lets inject the above MessageSource into this POJO -->
+		<bean id="example" class="com.foo.Example">
+			<property name="messages" ref="messageSource"/>
+		</bean>
+
+	</beans>
+----
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class Example {
+
+		private MessageSource messages;
+
+		public void setMessages(MessageSource messages) {
+			this.messages = messages;
+		}
+
+		public void execute() {
+			String message = this.messages.getMessage("argument.required",
+				new Object [] {"userDao"}, "Required", null);
+			System.out.println(message);
+		}
+
+	}
+----
+
+The resulting output from the invocation of the `execute()` method will be...
+
+[literal]
+[subs="verbatim,quotes"]
+----
+The userDao argument is required.
+----
+
+With regard to internationalization (i18n), Spring's various `MessageResource`
+implementations follow the same locale resolution and fallback rules as the standard JDK
+`ResourceBundle`. In short, and continuing with the example `messageSource` defined
+previously, if you want to resolve messages against the British (`en-GB`) locale, you
+would create files called `format_en_GB.properties`, `exceptions_en_GB.properties`, and
+`windows_en_GB.properties` respectively.
+
+Typically, locale resolution is managed by the surrounding environment of the
+application. In this example, the locale against which (British) messages will be
+resolved is specified manually.
+
+[literal]
+[subs="verbatim,quotes"]
+----
+# in exceptions_en_GB.properties
+argument.required=Ebagum lad, the '{0}' argument is required, I say, required.
+----
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public static void main(final String[] args) {
+		MessageSource resources = new ClassPathXmlApplicationContext("beans.xml");
+		String message = resources.getMessage("argument.required",
+			new Object [] {"userDao"}, "Required", Locale.UK);
+		System.out.println(message);
+	}
+----
+
+The resulting output from the running of the above program will be...
+
+[literal]
+[subs="verbatim,quotes"]
+----
+Ebagum lad, the 'userDao' argument is required, I say, required.
+----
+
+You can also use the `MessageSourceAware` interface to acquire a reference to any
+`MessageSource` that has been defined. Any bean that is defined in an
+`ApplicationContext` that implements the `MessageSourceAware` interface is injected with
+the application context's `MessageSource` when the bean is created and configured.
+
+[NOTE]
+====
+__As an alternative to `ResourceBundleMessageSource`, Spring provides a
+`ReloadableResourceBundleMessageSource` class. This variant supports the same bundle
+file format but is more flexible than the standard JDK based
+`ResourceBundleMessageSource` implementation.__ In particular, it allows for reading
+files from any Spring resource location (not just from the classpath) and supports hot
+reloading of bundle property files (while efficiently caching them in between). Check
+out the `ReloadableResourceBundleMessageSource` javadocs for details.
+====
+
+
+

@@ -1,0 +1,102 @@
+[[aop-schema-advice]]
+==== Declaring advice
+The same five advice kinds are supported as for the @AspectJ style, and they have
+exactly the same semantics.
+
+
+[[aop-schema-advice-before]]
+===== Before advice
+Before advice runs before a matched method execution. It is declared inside an
+`<aop:aspect>` using the <aop:before> element.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<aop:aspect id="beforeExample" ref="aBean">
+
+		<aop:before
+			pointcut-ref="dataAccessOperation"
+			method="doAccessCheck"/>
+
+		...
+
+	</aop:aspect>
+----
+
+Here `dataAccessOperation` is the id of a pointcut defined at the top ( `<aop:config>`)
+level. To define the pointcut inline instead, replace the `pointcut-ref` attribute with
+a `pointcut` attribute:
+
+[source,xml,indent=0]
+[subs="verbatim"]
+----
+	<aop:aspect id="beforeExample" ref="aBean">
+
+		<aop:before
+			pointcut="execution(* com.xyz.myapp.dao.*.*(..))"
+			method="doAccessCheck"/>
+
+		...
+
+	</aop:aspect>
+----
+
+As we noted in the discussion of the @AspectJ style, using named pointcuts can
+significantly improve the readability of your code.
+
+The method attribute identifies a method ( `doAccessCheck`) that provides the body of
+the advice. This method must be defined for the bean referenced by the aspect element
+containing the advice. Before a data access operation is executed (a method execution
+join point matched by the pointcut expression), the "doAccessCheck" method on the aspect
+bean will be invoked.
+
+
+[[aop-schema-advice-after-returning]]
+===== After returning advice
+After returning advice runs when a matched method execution completes normally. It is
+declared inside an `<aop:aspect>` in the same way as before advice. For example:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<aop:aspect id="afterReturningExample" ref="aBean">
+
+		<aop:after-returning
+			pointcut-ref="dataAccessOperation"
+			method="doAccessCheck"/>
+
+		...
+
+	</aop:aspect>
+----
+
+Just as in the @AspectJ style, it is possible to get hold of the return value within the
+advice body. Use the returning attribute to specify the name of the parameter to which
+the return value should be passed:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<aop:aspect id="afterReturningExample" ref="aBean">
+
+		<aop:after-returning
+			pointcut-ref="dataAccessOperation"
+			returning="retVal"
+			method="doAccessCheck"/>
+
+		...
+
+	</aop:aspect>
+----
+
+The doAccessCheck method must declare a parameter named `retVal`. The type of this
+parameter constrains matching in the same way as described for @AfterReturning. For
+example, the method signature may be declared as:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public void doAccessCheck(Object retVal) {...
+----
+
+

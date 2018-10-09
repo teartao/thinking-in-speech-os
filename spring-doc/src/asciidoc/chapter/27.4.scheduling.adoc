@@ -1,0 +1,64 @@
+[[scheduling-task-scheduler-implementations]]
+==== TaskScheduler实现
+
+As with Spring's `TaskExecutor` abstraction, the primary benefit of the `TaskScheduler`
+is that code relying on scheduling behavior need not be coupled to a particular
+scheduler implementation. The flexibility this provides is particularly relevant when
+running within Application Server environments where threads should not be created
+directly by the application itself. For such cases, Spring provides a
+`TimerManagerTaskScheduler` that delegates to a CommonJ TimerManager instance, typically
+configured with a JNDI-lookup.
+
+A simpler alternative, the `ThreadPoolTaskScheduler`, can be used whenever external
+thread management is not a requirement. Internally, it delegates to a
+`ScheduledExecutorService` instance. `ThreadPoolTaskScheduler` actually implements
+Spring's `TaskExecutor` interface as well, so that a single instance can be used for
+asynchronous execution __as soon as possible__ as well as scheduled, and potentially
+recurring, executions.
+
+
+
+
+[[scheduling-annotation-support]]
+=== 调度与异步执行的注解支持
+Spring provides annotation support for both task scheduling and asynchronous method
+execution.
+
+
+
+[[scheduling-enable-annotation-support]]
+==== 启用调度注解
+To enable support for `@Scheduled` and `@Async` annotations add `@EnableScheduling` and
+`@EnableAsync` to one of your `@Configuration` classes:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Configuration
+	@EnableAsync
+	@EnableScheduling
+	public class AppConfig {
+	}
+----
+
+You are free to pick and choose the relevant annotations for your application. For
+example, if you only need support for `@Scheduled`, simply omit `@EnableAsync`. For more
+fine-grained control you can additionally implement the `SchedulingConfigurer` and/or
+`AsyncConfigurer` interfaces. See the javadocs for full details.
+
+If you prefer XML configuration use the `<task:annotation-driven>` element.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<task:annotation-driven executor="myExecutor" scheduler="myScheduler"/>
+	<task:executor id="myExecutor" pool-size="5"/>
+	<task:scheduler id="myScheduler" pool-size="10"/>
+----
+
+Notice with the above XML that an executor reference is provided for handling those
+tasks that correspond to methods with the `@Async` annotation, and the scheduler
+reference is provided for managing those methods annotated with `@Scheduled`.
+
+
+

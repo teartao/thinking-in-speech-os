@@ -1,0 +1,54 @@
+[[dynamic-language-beans]]
+=== Defining beans that are backed by dynamic languages
+This section describes exactly how you define Spring managed beans in any of the
+supported dynamic languages.
+
+Please note that this chapter does not attempt to explain the syntax and idioms of the
+supported dynamic languages. For example, if you want to use Groovy to write certain of
+the classes in your application, then the assumption is that you already know Groovy. If
+you need further details about the dynamic languages themselves, please
+consult <<dynamic-language-resources>> at the end of this chapter.
+
+
+
+[[dynamic-language-beans-concepts]]
+==== Common concepts
+The steps involved in using dynamic-language-backed beans are as follows:
+
+* Write the test for the dynamic language source code (naturally)
+* __Then__ write the dynamic language source code itself :)
+* Define your dynamic-language-backed beans using the appropriate `<lang:language/>`
+  element in the XML configuration (you can of course define such beans programmatically
+  using the Spring API - although you will have to consult the source code for
+  directions on how to do this as this type of advanced configuration is not covered in
+  this chapter). Note this is an iterative step. You will need at least one bean
+  definition per dynamic language source file (although the same dynamic language source
+  file can of course be referenced by multiple bean definitions).
+
+The first two steps (testing and writing your dynamic language source files) are beyond
+the scope of this chapter. Refer to the language specification and / or reference manual
+for your chosen dynamic language and crack on with developing your dynamic language
+source files. You __will__ first want to read the rest of this chapter though, as
+Spring's dynamic language support does make some (small) assumptions about the contents
+of your dynamic language source files.
+
+
+[[dynamic-language-beans-concepts-xml-language-element]]
+===== The <lang:language/> element
+The final step involves defining dynamic-language-backed bean definitions, one for each
+bean that you want to configure (this is no different from normal JavaBean
+configuration). However, instead of specifying the fully qualified classname of the
+class that is to be instantiated and configured by the container, you use the
+`<lang:language/>` element to define the dynamic language-backed bean.
+
+Each of the supported languages has a corresponding `<lang:language/>` element:
+
+* `<lang:jruby/>` (JRuby)
+* `<lang:groovy/>` (Groovy)
+* `<lang:bsh/>` (BeanShell)
+
+The exact attributes and child elements that are available for configuration depends on
+exactly which language the bean has been defined in (the language-specific sections
+below provide the full lowdown on this).
+
+

@@ -1,0 +1,88 @@
+[[portlet-ann-requestparam]]
+==== Binding request parameters to method parameters with @RequestParam
+
+The `@RequestParam` annotation is used to bind request parameters to a method parameter
+in your controller.
+
+The following code snippet from the PetPortal sample application shows the usage:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Controller
+	@RequestMapping("EDIT")
+	@SessionAttributes("site")
+	public class PetSitesEditController {
+
+		// ...
+
+		public void removeSite(@RequestParam("site") String site, ActionResponse response) {
+			this.petSites.remove(site);
+			response.setRenderParameter("action", "list");
+		}
+
+		// ...
+
+	}
+----
+
+Parameters using this annotation are required by default, but you can specify that a
+parameter is optional by setting `@RequestParam`'s `required` attribute to `false`
+(e.g., `@RequestParam(value="id", required=false)`).
+
+
+
+[[portlet-ann-modelattrib]]
+==== Providing a link to data from the model with @ModelAttribute
+
+`@ModelAttribute` has two usage scenarios in controllers. When placed on a method
+parameter, `@ModelAttribute` is used to map a model attribute to the specific, annotated
+method parameter (see the `populateSite()` method below). This is how the controller
+gets a reference to the object holding the data entered in the form. In addition, the
+parameter can be declared as the specific type of the form backing object rather than as
+a generic `java.lang.Object`, thus increasing type safety.
+
+`@ModelAttribute` is also used at the method level to provide __reference data__ for the
+model (see the `getPetSites()` method below). For this usage the method signature can
+contain the same types as documented above for the `@RequestMapping` annotation.
+
+[NOTE]
+====
+`@ModelAttribute` annotated methods will be executed __before__ the chosen
+`@RequestMapping` annotated handler method. They effectively pre-populate the implicit
+model with specific attributes, often loaded from a database. Such an attribute can then
+already be accessed through `@ModelAttribute` annotated handler method parameters in the
+chosen handler method, potentially with binding and validation applied to it.
+====
+
+The following code snippet shows these two usages of this annotation:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Controller
+	@RequestMapping("EDIT")
+	@SessionAttributes("site")
+	public class PetSitesEditController {
+
+		// ...
+
+		@ModelAttribute("petSites")
+		public Properties getPetSites() {
+			return this.petSites;
+		}
+
+		@RequestMapping(params = "action=add") // action phase
+		public void populateSite( @ModelAttribute("site") PetSite petSite, BindingResult result, SessionStatus status, ActionResponse response) {
+			new PetSiteValidator().validate(petSite, result);
+			if (!result.hasErrors()) {
+				this.petSites.put(petSite.getName(), petSite.getUrl());
+				status.setComplete();
+				response.setRenderParameter("action", "list");
+			}
+		}
+	}
+----
+
+
+

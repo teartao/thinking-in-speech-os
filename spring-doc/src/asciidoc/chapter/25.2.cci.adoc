@@ -1,0 +1,44 @@
+[[cci-config-connectionfactory]]
+==== ConnectionFactory configuration in Spring
+
+In order to make connections to the EIS, you need to obtain a `ConnectionFactory` from
+the application server if you are in a managed mode, or directly from Spring if you are
+in a non-managed mode.
+
+In a managed mode, you access a `ConnectionFactory` from JNDI; its properties will be
+configured in the application server.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<jee:jndi-lookup id="eciConnectionFactory" jndi-name="eis/cicseci"/>
+----
+
+In non-managed mode, you must configure the `ConnectionFactory` you want to use in the
+configuration of Spring as a JavaBean. The `LocalConnectionFactoryBean` class offers
+this setup style, passing in the `ManagedConnectionFactory` implementation of your
+connector, exposing the application-level CCI `ConnectionFactory`.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="eciManagedConnectionFactory" class="com.ibm.connector2.cics.ECIManagedConnectionFactory">
+		<property name="serverName" value="TXSERIES"/>
+		<property name="connectionURL" value="tcp://localhost/"/>
+		<property name="portNumber" value="2006"/>
+	</bean>
+
+	<bean id="eciConnectionFactory" class="org.springframework.jca.support.LocalConnectionFactoryBean">
+		<property name="managedConnectionFactory" ref="eciManagedConnectionFactory"/>
+	</bean>
+----
+
+[NOTE]
+====
+You can't directly instantiate a specific `ConnectionFactory`. You need to go through
+the corresponding implementation of the `ManagedConnectionFactory` interface for your
+connector. This interface is part of the JCA SPI specification.
+====
+
+
+

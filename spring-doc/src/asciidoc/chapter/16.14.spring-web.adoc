@@ -1,0 +1,56 @@
+[[mvc-default-servlet-handler]]
+==== 回退到“默认”的 Servlet 来提供资源服务
+
+支持将 `DispatcherServlet` 映射到 "/"（即覆盖了容器默认 Servlet 的映射），同时支持将静态资源请求交给容器默认的 Servlet 来处理。它配置了一个将 URL 映射到 "/**" 的 `DefaultServletHttpRequestHandler`，并且该处理器的优先级相比其他 URL 映射而言是最低的。
+
+如果你使用的是 `<mvc:annotation-driven>`，或者设置了自定义的 `HandlerMapping` 实例，你需要确保该处理器的 `order` 属性的值比 `DefaultServletHttpRequestHandler` 的 `order` 属性的值（`Integer.MAXVALUE`）更小。
+
+使用默认的设置来启用该特性：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+    @Configuration
+    @EnableWebMvc
+    public class WebConfig extends WebMvcConfigurerAdapter {
+
+        @Override
+        public void configureDefaultServletHandling(DefaultServletHandlerConfigurer configurer) {
+            configurer.enable();
+        }
+
+    }
+----
+
+或者使用 XML 配置:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<mvc:default-servlet-handler/>
+----
+
+需要注意的是，覆盖了 "/" Servlet 映射后，应该通过名称而非路径来查找默认 Servlet 的 `RequestDispatcher`。`DefaultServletHttpRequestHandler` 尝试在启动时自动检测容器默认的 Servlet，这里它使用的大多数主要的 Servlet 容器（包括 Tomcat、GlassFish、JBoss、Resin、Weblogic、和 WebSphere）的一系列已知的名称。如果使用了一个不同的名称来自定义配置默认的 Servlet，或者使用的是一个不同的 Servlet 容器，其默认的 Servlet 名称是未知的，那么必须显式提供默认的 Servlet 名称，如下例所示：
+ 
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Configuration
+	@EnableWebMvc
+	public class WebConfig extends WebMvcConfigurerAdapter {
+
+		@Override
+		public void configureDefaultServletHandling(DefaultServletHandlerConfigurer configurer) {
+			configurer.enable("myCustomDefaultServlet");
+		}
+
+	}
+----
+
+或者使用 XML 配置:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<mvc:default-servlet-handler default-servlet-name="myCustomDefaultServlet"/>
+----

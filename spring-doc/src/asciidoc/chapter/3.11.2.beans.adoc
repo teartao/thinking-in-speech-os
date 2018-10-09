@@ -1,0 +1,69 @@
+[[beans-java-instantiating-container-web]]
+===== 使用AnnotationConfigWebApplicationContext支持Web应用
+
+`AnnotationConfigWebApplicationContext`是一个`AnnotationConfigApplicationContext`的`WebApplicationContext`变种。这个实现可以用于当配置Spring `ContextLoaderListener` servlet监听，Spring MVC的`DispatcherServlet`等等。下面是一个`web.xml`的片段，配置了一个典型的Spring MVC web应用，注意`contextClass`的context-param和init-param：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<web-app>
+		<!-- 配置ContextLoaderListener使用AnnotationConfigWebApplicationContext
+            替换默认的XmlWebApplicationContext -->
+		<context-param>
+			<param-name>contextClass</param-name>
+			<param-value>
+				org.springframework.web.context.support.AnnotationConfigWebApplicationContext
+			</param-value>
+		</context-param>
+
+		<!-- 配置多个路径必须使用逗号或空格分隔的全限定名称的@Configuration注解类，
+            也可以使用包名来自动扫描组件 -->
+		<context-param>
+			<param-name>contextConfigLocation</param-name>
+			<param-value>com.acme.AppConfig</param-value>
+		</context-param>
+
+		<!-- 像平常一样使用ContextLoaderListener启动根应用上下文 -->
+		<listener>
+			<listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+		</listener>
+
+		<!-- 像平常一样定义Spring MVC DispatcherServlet -->
+		<servlet>
+			<servlet-name>dispatcher</servlet-name>
+			<servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+			<!-- 配置DispatcherServlet使用AnnotationConfigWebApplicationContext
+				替换默认的XmlWebApplicationContext -->
+			<init-param>
+				<param-name>contextClass</param-name>
+				<param-value>
+					org.springframework.web.context.support.AnnotationConfigWebApplicationContext
+				</param-value>
+			</init-param>
+			<!-- 同上面一样配置路径 -->
+			<init-param>
+				<param-name>contextConfigLocation</param-name>
+				<param-value>com.acme.web.MvcConfig</param-value>
+			</init-param>
+		</servlet>
+
+		<!-- 将所有/app/* 的请求映射到dispatcher -->
+		<servlet-mapping>
+			<servlet-name>dispatcher</servlet-name>
+			<url-pattern>/app/*</url-pattern>
+		</servlet-mapping>
+	</web-app>
+----
+
+
+
+[[beans-java-bean-annotation]]
+==== 使用@Bean注解
+
+`@Bean`是一个方法级别的注解，类似于XML`<bean/>`元素。
+这个注解支持一些由`<bean/>`提供的属性，例如：
+<<beans-factory-lifecycle-initializingbean,init-method>>,
+<<beans-factory-lifecycle-disposablebean,destroy-method>>,
+<<beans-factory-autowire,autowiring>> 和 `name`.
+
+你可以在使用`@Configuration`或`@Component`的注解类中使用`@Bean`注解。

@@ -1,0 +1,82 @@
+[[portlet-introduction-controller]]
+==== Controllers - MVC的C层
+默认的静态处理器是一个非常简单的 `Controller` 接口,只提供了两个方法:
+
+* `void handleActionRequest(request,response)`
+* `ModelAndView handleRenderRequest(request,response)`
+
+这个框架的实现层包含了很多相似的控制器, 例如 `AbstractController`, `SimpleFormController` 等等。数据绑定、命令对象的使用、模型处理和视图解析在servlet框架中都是一样的.
+
+
+
+[[portlet-introduction-view]]
+==== Views - MVC的V层
+All the view rendering capabilities of the servlet framework are used directly via a
+special bridge servlet named `ViewRendererServlet`. By using this servlet, the portlet
+request is converted into a servlet request and the view can be rendered using the
+entire normal servlet infrastructure. This means all the existing renderers, such as
+JSP, Velocity, etc., can still be used within the portlet.
+
+
+
+[[portlet-introduction-scope]]
+==== Web-scoped beans
+Spring Portlet MVC supports beans whose lifecycle is scoped to the current HTTP request
+or HTTP `Session` (both normal and global). This is not a specific feature of Spring
+Portlet MVC itself, but rather of the `WebApplicationContext` container(s) that Spring
+Portlet MVC uses. These bean scopes are described in detail in
+<<beans-factory-scopes-other>>
+
+
+
+
+[[portlet-dispatcher]]
+=== The DispatcherPortlet
+
+Portlet MVC is a request-driven web MVC framework, designed around a portlet that
+dispatches requests to controllers and offers other functionality facilitating the
+development of portlet applications. Spring's `DispatcherPortlet` however, does more
+than just that. It is completely integrated with the Spring `ApplicationContext` and
+allows you to use every other feature Spring has.
+
+Like ordinary portlets, the `DispatcherPortlet` is declared in the `portlet.xml` file of
+your web application:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<portlet>
+		<portlet-name>sample</portlet-name>
+		<portlet-class>org.springframework.web.portlet.DispatcherPortlet</portlet-class>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>view</portlet-mode>
+		</supports>
+		<portlet-info>
+			<title>Sample Portlet</title>
+		</portlet-info>
+	</portlet>
+----
+
+The `DispatcherPortlet` now needs to be configured.
+
+In the Portlet MVC framework, each `DispatcherPortlet` has its own
+`WebApplicationContext`, which inherits all the beans already defined in the Root
+`WebApplicationContext`. These inherited beans can be overridden in the portlet-specific
+scope, and new scope-specific beans can be defined local to a given portlet instance.
+
+The framework will, on initialization of a `DispatcherPortlet`, look for a file named
+`[portlet-name]-portlet.xml` in the `WEB-INF` directory of your web application and
+create the beans defined there (overriding the definitions of any beans defined with the
+same name in the global scope).
+
+The config location used by the `DispatcherPortlet` can be modified through a portlet
+initialization parameter (see below for details).
+
+The Spring `DispatcherPortlet` has a few special beans it uses, in order to be able to
+process requests and render the appropriate views. These beans are included in the
+Spring framework and can be configured in the `WebApplicationContext`, just as any other
+bean would be configured. Each of those beans is described in more detail below. Right
+now, we'll just mention them, just to let you know they exist and to enable us to go on
+talking about the `DispatcherPortlet`. For most of the beans, defaults are provided so
+you don't have to worry about configuring them.

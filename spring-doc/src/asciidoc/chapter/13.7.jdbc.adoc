@@ -1,0 +1,125 @@
+[[jdbc-statements-executing]]
+==== Executing statements
+Executing an SQL statement requires very little code. You need a `DataSource` and a
+`JdbcTemplate`, including the convenience methods that are provided with the
+`JdbcTemplate`. The following example shows what you need to include for a minimal but
+fully functional class that creates a new table:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	import javax.sql.DataSource;
+	import org.springframework.jdbc.core.JdbcTemplate;
+
+	public class ExecuteAStatement {
+
+		private JdbcTemplate jdbcTemplate;
+
+		public void setDataSource(DataSource dataSource) {
+			this.jdbcTemplate = new JdbcTemplate(dataSource);
+		}
+
+		public void doExecute() {
+			this.jdbcTemplate.execute("create table mytable (id integer, name varchar(100))");
+		}
+	}
+----
+
+
+
+[[jdbc-statements-querying]]
+==== Running queries
+Some query methods return a single value. To retrieve a count or a specific value from
+one row, use `queryForObject(..)`. The latter converts the returned JDBC `Type` to the
+Java class that is passed in as an argument. If the type conversion is invalid, then an
+`InvalidDataAccessApiUsageException` is thrown. Here is an example that contains two
+query methods, one for an `int` and one that queries for a `String`.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	import javax.sql.DataSource;
+	import org.springframework.jdbc.core.JdbcTemplate;
+
+	public class RunAQuery {
+
+		private JdbcTemplate jdbcTemplate;
+
+		public void setDataSource(DataSource dataSource) {
+			this.jdbcTemplate = new JdbcTemplate(dataSource);
+		}
+
+		public int getCount() {
+			return this.jdbcTemplate.queryForObject("select count(*) from mytable", Integer.class);
+		}
+
+		public String getName() {
+			return this.jdbcTemplate.queryForObject("select name from mytable", String.class);
+		}
+
+		public void setDataSource(DataSource dataSource) {
+			this.dataSource = dataSource;
+		}
+	}
+----
+
+In addition to the single result query methods, several methods return a list with an
+entry for each row that the query returned. The most generic method is
+`queryForList(..)` which returns a `List` where each entry is a `Map` with each entry in
+the map representing the column value for that row. If you add a method to the above
+example to retrieve a list of all the rows, it would look like this:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	private JdbcTemplate jdbcTemplate;
+
+	public void setDataSource(DataSource dataSource) {
+		this.jdbcTemplate = new JdbcTemplate(dataSource);
+	}
+
+	public List<Map<String, Object>> getList() {
+		return this.jdbcTemplate.queryForList("select * from mytable");
+	}
+----
+
+The list returned would look something like this:
+
+[literal]
+[subs="verbatim,quotes"]
+----
+[{name=Bob, id=1}, {name=Mary, id=2}]
+----
+
+
+
+[[jdbc-updates]]
+==== Updating the database
+The following example shows a column updated for a certain primary key. In this example,
+an SQL statement has placeholders for row parameters. The parameter values can be passed
+in as varargs or alternatively as an array of objects. Thus primitives should be wrapped
+in the primitive wrapper classes explicitly or using auto-boxing.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	import javax.sql.DataSource;
+
+	import org.springframework.jdbc.core.JdbcTemplate;
+
+	public class ExecuteAnUpdate {
+
+		private JdbcTemplate jdbcTemplate;
+
+		public void setDataSource(DataSource dataSource) {
+			this.jdbcTemplate = new JdbcTemplate(dataSource);
+		}
+
+		public void setName(int id, String name) {
+			this.jdbcTemplate.update("update mytable set name = ? where id = ?", name, id);
+		}
+	}
+----
+
+
+

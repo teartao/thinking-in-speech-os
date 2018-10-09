@@ -1,0 +1,214 @@
+[[aop-pointcuts-examples]]
+===== Examples
+Spring AOP users are likely to use the `execution` pointcut designator the most often.
+The format of an execution expression is:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	execution(modifiers-pattern? ret-type-pattern declaring-type-pattern? name-pattern(param-pattern)
+				throws-pattern?)
+----
+
+All parts except the returning type pattern (ret-type-pattern in the snippet above),
+name pattern, and parameters pattern are optional. The returning type pattern determines
+what the return type of the method must be in order for a join point to be matched. Most
+frequently you will use `*` as the returning type pattern, which matches any return
+type. A fully-qualified type name will match only when the method returns the given
+type. The name pattern matches the method name. You can use the `*` wildcard as all or
+part of a name pattern. The parameters pattern is slightly more complex: `()` matches a
+method that takes no parameters, whereas `(..)` matches any number of parameters (zero
+or more). The pattern `(*)` matches a method taking one parameter of any type,
+`(*,String)` matches a method taking two parameters, the first can be of any type, the
+second must be a String. Consult the
+http://www.eclipse.org/aspectj/doc/released/progguide/semantics-pointcuts.html[Language
+Semantics] section of the AspectJ Programming Guide for more information.
+
+Some examples of common pointcut expressions are given below.
+
+* the execution of any public method:
+
+[source,java,indent=0]
+[subs="verbatim"]
+----
+	execution(public * *(..))
+----
+
+* the execution of any method with a name beginning with "set":
+
+[source,java,indent=0]
+[subs="verbatim"]
+----
+	execution(* set*(..))
+----
+
+* the execution of any method defined by the `AccountService` interface:
+
+[source,java,indent=0]
+[subs="verbatim"]
+----
+	execution(* com.xyz.service.AccountService.*(..))
+----
+
+* the execution of any method defined in the service package:
+
+[source,java,indent=0]
+[subs="verbatim"]
+----
+	execution(* com.xyz.service.*.*(..))
+----
+
+* the execution of any method defined in the service package or a sub-package:
+
+[source,java,indent=0]
+[subs="verbatim"]
+----
+	execution(* com.xyz.service..*.*(..))
+----
+
+* any join point (method execution only in Spring AOP) within the service package:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	within(com.xyz.service.*)
+----
+
+* any join point (method execution only in Spring AOP) within the service package or a
+  sub-package:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	within(com.xyz.service..*)
+----
+
+* any join point (method execution only in Spring AOP) where the proxy implements the
+  `AccountService` interface:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	this(com.xyz.service.AccountService)
+----
+
+[NOTE]
+====
+'this' is more commonly used in a binding form :- see the following section on advice
+for how to make the proxy object available in the advice body.
+====
+
+* any join point (method execution only in Spring AOP) where the target object
+  implements the `AccountService` interface:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	target(com.xyz.service.AccountService)
+----
+
+[NOTE]
+====
+'target' is more commonly used in a binding form :- see the following section on advice
+for how to make the target object available in the advice body.
+====
+
+* any join point (method execution only in Spring AOP) which takes a single parameter,
+  and where the argument passed at runtime is `Serializable`:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	args(java.io.Serializable)
+----
+
+[NOTE]
+====
+'args' is more commonly used in a binding form :- see the following section on advice
+for how to make the method arguments available in the advice body.
+====
+
+Note that the pointcut given in this example is different to `execution(*
+*(java.io.Serializable))`: the args version matches if the argument passed at runtime is
+Serializable, the execution version matches if the method signature declares a single
+parameter of type `Serializable`.
+
+* any join point (method execution only in Spring AOP) where the target object has an
+  `@Transactional` annotation:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@target(org.springframework.transaction.annotation.Transactional)
+----
+
+[NOTE]
+====
+'@target' can also be used in a binding form :- see the following section on advice for
+how to make the annotation object available in the advice body.
+====
+
+* any join point (method execution only in Spring AOP) where the declared type of the
+  target object has an `@Transactional` annotation:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@within(org.springframework.transaction.annotation.Transactional)
+----
+
+[NOTE]
+====
+'@within' can also be used in a binding form :- see the following section on advice for
+how to make the annotation object available in the advice body.
+====
+
+* any join point (method execution only in Spring AOP) where the executing method has an
+  `@Transactional` annotation:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@annotation(org.springframework.transaction.annotation.Transactional)
+----
+
+[NOTE]
+====
+'@annotation' can also be used in a binding form :- see the following section on advice
+for how to make the annotation object available in the advice body.
+====
+
+* any join point (method execution only in Spring AOP) which takes a single parameter,
+  and where the runtime type of the argument passed has the `@Classified` annotation:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@args(com.xyz.security.Classified)
+----
+
+[NOTE]
+====
+'@args' can also be used in a binding form :- see the following section on advice for
+how to make the annotation object(s) available in the advice body.
+====
+
+* any join point (method execution only in Spring AOP) on a Spring bean named
+  '++tradeService++':
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	bean(tradeService)
+----
+
+* any join point (method execution only in Spring AOP) on Spring beans having names that
+  match the wildcard expression '++*Service++':
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	bean(*Service)
+----
+
+

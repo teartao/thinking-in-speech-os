@@ -1,0 +1,171 @@
+[[core-convert-programmatic-usage]]
+==== Using a ConversionService programmatically
+To work with a ConversionService instance programmatically, simply inject a reference to
+it like you would for any other bean:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Service
+	public class MyService {
+
+		@Autowired
+		public MyService(ConversionService conversionService) {
+			this.conversionService = conversionService;
+		}
+
+		public void doIt() {
+			this.conversionService.convert(...)
+		}
+	}
+----
+
+For most use cases, the `convert` method specifying the _targetType_ can be used but it
+will not work with more complex types such as a collection of a parameterized element.
+If you want to convert a `List` of `Integer` to a `List` of `String` programmatically,
+for instance, you need to provide a formal definition of the source and target types.
+
+Fortunately, `TypeDescriptor` provides various options to make that straightforward:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	DefaultConversionService cs = new DefaultConversionService();
+
+	List<Integer> input = ....
+	cs.convert(input,
+		TypeDescriptor.forObject(input), // List<Integer> type descriptor
+		TypeDescriptor.collection(List.class, TypeDescriptor.valueOf(String.class)));
+----
+
+Note that `DefaultConversionService` registers converters automatically which are
+appropriate for most environments. This includes collection converters, scalar
+converters, and also basic `Object` to `String` converters. The same converters can
+be registered with any `ConverterRegistry` using the _static_ `addDefaultConverters`
+method on the `DefaultConversionService` class.
+
+Converters for value types will be reused for arrays and collections, so there is
+no need to create a specific converter to convert from a `Collection` of `S` to a
+`Collection` of `T`, assuming that standard collection handling is appropriate.
+
+
+
+
+[[format]]
+=== Spring Field Formatting
+As discussed in the previous section, <<core-convert, `core.convert`>> is a
+general-purpose type conversion system. It provides a unified ConversionService API as
+well as a strongly-typed Converter SPI for implementing conversion logic from one type
+to another. A Spring Container uses this system to bind bean property values. In
+addition, both the Spring Expression Language (SpEL) and DataBinder use this system to
+bind field values. For example, when SpEL needs to coerce a `Short` to a `Long` to
+complete an `expression.setValue(Object bean, Object value)` attempt, the core.convert
+system performs the coercion.
+
+Now consider the type conversion requirements of a typical client environment such as a
+web or desktop application. In such environments, you typically convert __from String__
+to support the client postback process, as well as back __to String__ to support the
+view rendering process. In addition, you often need to localize String values. The more
+general __core.convert__ Converter SPI does not address such __formatting__ requirements
+directly. To directly address them, Spring 3 introduces a convenient Formatter SPI that
+provides a simple and robust alternative to PropertyEditors for client environments.
+
+In general, use the Converter SPI when you need to implement general-purpose type
+conversion logic; for example, for converting between a java.util.Date and and
+java.lang.Long. Use the Formatter SPI when you're working in a client environment, such
+as a web application, and need to parse and print localized field values. The
+ConversionService provides a unified type conversion API for both SPIs.
+
+
+
+[[format-Formatter-SPI]]
+==== Formatter SPI
+The Formatter SPI to implement field formatting logic is simple and strongly typed:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package org.springframework.format;
+
+	public interface Formatter<T> extends Printer<T>, Parser<T> {
+	}
+----
+
+Where Formatter extends from the Printer and Parser building-block interfaces:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface Printer<T> {
+		String print(T fieldValue, Locale locale);
+	}
+----
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	import java.text.ParseException;
+
+	public interface Parser<T> {
+		T parse(String clientValue, Locale locale) throws ParseException;
+	}
+----
+
+To create your own Formatter, simply implement the Formatter interface above.
+Parameterize T to be the type of object you wish to format, for example,
+`java.util.Date`. Implement the `print()` operation to print an instance of T for
+display in the client locale. Implement the `parse()` operation to parse an instance of
+T from the formatted representation returned from the client locale. Your Formatter
+should throw a ParseException or IllegalArgumentException if a parse attempt fails. Take
+care to ensure your Formatter implementation is thread-safe.
+
+Several Formatter implementations are provided in `format` subpackages as a convenience.
+The `number` package provides a `NumberFormatter`, `CurrencyFormatter`, and
+`PercentFormatter` to format `java.lang.Number` objects using a `java.text.NumberFormat`.
+The `datetime` package provides a `DateFormatter` to format `java.util.Date` objects with
+a `java.text.DateFormat`. The `datetime.joda` package provides comprehensive datetime
+formatting support based on the http://joda-time.sourceforge.net[Joda Time library].
+
+Consider `DateFormatter` as an example `Formatter` implementation:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package org.springframework.format.datetime;
+
+	public final class DateFormatter implements Formatter<Date> {
+
+		private String pattern;
+
+		public DateFormatter(String pattern) {
+			this.pattern = pattern;
+		}
+
+		public String print(Date date, Locale locale) {
+			if (date == null) {
+				return "";
+			}
+			return getDateFormat(locale).format(date);
+		}
+
+		public Date parse(String formatted, Locale locale) throws ParseException {
+			if (formatted.length() == 0) {
+				return null;
+			}
+			return getDateFormat(locale).parse(formatted);
+		}
+
+		protected DateFormat getDateFormat(Locale locale) {
+			DateFormat dateFormat = new SimpleDateFormat(this.pattern, locale);
+			dateFormat.setLenient(false);
+			return dateFormat;
+		}
+
+	}
+----
+
+The Spring team welcomes community-driven `Formatter` contributions; see
+https://jira.spring.io/browse/SPR[jira.spring.io] to contribute.
+
+
+

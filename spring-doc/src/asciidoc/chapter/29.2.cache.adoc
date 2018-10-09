@@ -1,0 +1,57 @@
+[[cache-annotations]]
+=== 声明式缓存注解
+对于缓存声明，抽象提供了一组 Java 注解：
+
+* `@Cacheable` 缓存数据
+* `@CacheEvict` 驱逐数据
+* `@CachePut` 更新缓存而不影响方法执行
+* `@Caching` 重新组合要应用于方法的多个高速缓存操作
+* `@CacheConfig` 在类级别共享一些常见的缓存相关设置
+
+让我们仔细看看每个注解。
+
+[[cache-annotations-cacheable]]
+==== @Cacheable 注解
+
+顾名思义，`@Cacheable` 用于标记可缓存的方法 - 即将结果存储到缓存中的方法，以便随后（具有相同参数）的调用时，使用高速缓存中的值不必实际执行方法。在其最简单的形式中，注解声明需要提供方法相关的缓存名称：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Cacheable("books")
+	public Book findBook(ISBN isbn) {...}
+----
+
+在上面的代码段中，方法 `findBook` 与 `books` 命名的缓存关联。每次调用该方法时，将检查缓存以查看调用是否已被执行而不必重复执行。在大多数情况下，只需要声明一个缓存，注解允许指定多个名称，以便使用多个缓存。在这种情况下，在执行该方法之前将检查每个缓存 - 如果至少有一个缓存被命中，那么将返回相关的值：
+
+[NOTE]
+====
+即使没有真正执行缓存方法，所有其他不包含该缓存值的缓存也将被更新。
+====
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Cacheable({"books", "isbns"})
+	public Book findBook(ISBN isbn) {...}
+----
+
+
+[[cache-annotations-cacheable-default-key]]
+===== 默认键值生成
+由于缓存基本上是键值存储，所以缓存方法的每个调用都需要被转换成用于缓存访问的合适的键。一个开箱即用的缓存抽象使用简单的基于以下算法 `KeyGenerator`：
+
+* 如果没有参数，返回 `SimpleKey.EMPTY`。
+* 如果只给出一个参数，返回该实例。
+* 如果给出了一个参数，返回一个`SimpleKey`包含所有参数。
+
+这种方法对于大多数用例都很好用; 只要参数具有__自然键__ 并实现有效`hashCode()`和`equals()`方法。如果不是这样，就需要改变键值策略。
+
+要提供不同的默认密钥生成器，需要实现 `org.springframework.cache.interceptor.KeyGenerator` 接口。
+
+[NOTE]
+====
+随着Spring 4.0的发布，默认的密钥生成策略发生了变化。早期版本的Spring使用的键值生成策略，对于多个键值参数，只考虑`hashCode()`参数而不是`equals()`; 这可能会导致意外的键值碰撞（参见 https://jira.spring.io/browse/SPR-10237[SPR-10237]）。新的 `SimpleKeyGenerator` 对这种场景使用复合键。如果要继续使用以前的关键策略，可以配置不推荐的 `org.springframework.cache.interceptor.DefaultKeyGenerator` 类或创建基于哈希的自定义`KeyGenerator`实现。
+====
+
+

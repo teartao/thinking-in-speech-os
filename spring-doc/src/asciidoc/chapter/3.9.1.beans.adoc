@@ -1,0 +1,103 @@
+[[beans-scanning-autodetection]]
+==== Automatically detecting classes and registering bean definitions
+Spring can automatically detect stereotyped classes and register corresponding
+++BeanDefinition++s with the `ApplicationContext`. For example, the following two classes
+are eligible for such autodetection:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Service
+	public class SimpleMovieLister {
+
+		private MovieFinder movieFinder;
+
+		@Autowired
+		public SimpleMovieLister(MovieFinder movieFinder) {
+			this.movieFinder = movieFinder;
+		}
+
+	}
+----
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Repository
+	public class JpaMovieFinder implements MovieFinder {
+		// implementation elided for clarity
+	}
+----
+
+To autodetect these classes and register the corresponding beans, you need to add
+`@ComponentScan` to your `@Configuration` class, where the `basePackages` attribute
+is a common parent package for the two classes. (Alternatively, you can specify a
+comma-separated list that includes the parent package of each class.)
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Configuration
+	@ComponentScan(basePackages = "org.example")
+	public class AppConfig  {
+    	...
+	}
+----
+
+[NOTE]
+====
+for concision, the above may have used the `value` attribute of the
+annotation, i.e. `ComponentScan("org.example")`
+====
+
+The following is an alternative using XML
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns:context="http://www.springframework.org/schema/context"
+		xsi:schemaLocation="http://www.springframework.org/schema/beans
+			http://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.springframework.org/schema/context
+			http://www.springframework.org/schema/context/spring-context.xsd">
+
+		<context:component-scan base-package="org.example"/>
+
+	</beans>
+----
+
+[TIP]
+====
+
+The use of `<context:component-scan>` implicitly enables the functionality of
+`<context:annotation-config>`. There is usually no need to include the
+`<context:annotation-config>` element when using `<context:component-scan>`.
+====
+
+[NOTE]
+====
+The scanning of classpath packages requires the presence of corresponding directory
+entries in the classpath. When you build JARs with Ant, make sure that you do __not__
+activate the files-only switch of the JAR task. Also, classpath directories may not
+get exposed based on security policies in some environments, e.g. standalone apps on
+JDK 1.7.0_45 and higher (which requires 'Trusted-Library' setup in your manifests; see
+http://stackoverflow.com/questions/19394570/java-jre-7u45-breaks-classloader-getresources).
+====
+
+Furthermore, the `AutowiredAnnotationBeanPostProcessor` and
+`CommonAnnotationBeanPostProcessor` are both included implicitly when you use the
+component-scan element. That means that the two components are autodetected __and__
+wired together - all without any bean configuration metadata provided in XML.
+
+[NOTE]
+====
+You can disable the registration of `AutowiredAnnotationBeanPostProcessor` and
+`CommonAnnotationBeanPostProcessor` by including the __annotation-config__ attribute
+with a value of false.
+====
+
+
+

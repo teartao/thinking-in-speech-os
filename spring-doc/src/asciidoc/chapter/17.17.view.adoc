@@ -1,0 +1,59 @@
+[[view-jasper-reports-configuration-views]]
+===== Configuring the Views
+
+The Spring Framework contains five different `View` implementations for JasperReports,
+four of which correspond to one of the four output formats supported by JasperReports,
+and one that allows for the format to be determined at runtime:
+
+[[view-jasper-reports-configuration-views-classes]]
+.JasperReports View classes
+|===
+| Class Name| Render Format
+
+| `JasperReportsCsvView`
+| CSV
+
+| `JasperReportsHtmlView`
+| HTML
+
+| `JasperReportsPdfView`
+| PDF
+
+| `JasperReportsXlsView`
+| Microsoft Excel
+
+| `JasperReportsMultiFormatView`
+| The view is <<view-jasper-reports-configuration-multiformat-view,decided upon at
+  runtime>>
+|===
+
+Mapping one of these classes to a view name and a report file is a matter of adding the
+appropriate entries in the resource bundle configured in the previous section as shown
+here:
+
+[literal]
+[subs="verbatim,quotes"]
+----
+simpleReport.(class)=org.springframework.web.servlet.view.jasperreports.JasperReportsPdfView
+simpleReport.url=/WEB-INF/reports/DataSourceReport.jasper
+----
+
+Here you can see that the view with name `simpleReport` is mapped to the
+`JasperReportsPdfView` class, causing the output of this report to be rendered in PDF
+format. The `url` property of the view is set to the location of the underlying report
+file.
+
+
+[[view-jasper-reports-configuration-report-files]]
+===== About Report Files
+JasperReports has two distinct types of report file: the design file, which has a
+`.jrxml` extension, and the compiled report file, which has a `.jasper` extension.
+Typically, you use the JasperReports Ant task to compile your `.jrxml` design file into
+a `.jasper` file before deploying it into your application. With the Spring Framework
+you can map either of these files to your report file and the framework will take care
+of compiling the `.jrxml` file on the fly for you. You should note that after a `.jrxml`
+file is compiled by the Spring Framework, the compiled report is cached for the lifetime
+of the application. Thus, to make changes to the file you will need to restart your
+application.
+
+

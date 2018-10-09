@@ -1,0 +1,84 @@
+[[view-velocity-createtemplates]]
+==== 创建模板
+你所有的模板需要放置在前面的`*Configurer` bean所指明的目录中. 本文档没有涵盖创建那两种语言的模板的细
+节--请到他们的相关网站查看相关信息. 如果你像推荐地那样使用视图处理器, 那么视图的逻辑名称和模板文件名称
+的对应关系就像JSP文件的`InternalResourceViewResolver`相似. 所以如果你的控制器返回一个ModelAndView
+的对象, 包含一个名为"welcome"的视图名称, 那么处理器就会适当地去寻找`/WEB-INF/freemarker/welcome.ftl`
+或者`/WEB-INF/velocity/welcome.vm`.
+
+
+
+[[view-velocity-advancedconfig]]
+==== 高级配置
+上面指明的基础配置对于大多数的应用需求是满足的, 但是额外的配置选项对于不寻常或高级的需求是可用的.
+
+
+[[view-velocity-example-velocityproperties]]
+===== velocity.properties
+这个文件完全是可选的, 但是如果指定了, 所包含的值是直接传递给Velocity的运行时来配置velocity的. 只有在
+高级配置中才会需要, 如果指定了这个文件, 请在上面配置的`VelocityConfigurer` bean中指定位置.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="velocityConfig" class="org.springframework.web.servlet.view.velocity.VelocityConfigurer">
+		<property name="configLocation" value="/WEB-INF/velocity.properties"/>
+	</bean>
+----
+
+备选地, 你可以直接将velocity属性配置在Velocity配置bean定义中, 使用下面的行内配置即可.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="velocityConfig" class="org.springframework.web.servlet.view.velocity.VelocityConfigurer">
+		<property name="velocityProperties">
+			<props>
+				<prop key="resource.loader">file</prop>
+				<prop key="file.resource.loader.class">
+					org.apache.velocity.runtime.resource.loader.FileResourceLoader
+				</prop>
+				<prop key="file.resource.loader.path">${webapp.root}/WEB-INF/velocity</prop>
+				<prop key="file.resource.loader.cache">false</prop>
+			</props>
+		</property>
+	</bean>
+----
+
+请参看
+{javadoc-baseurl}/org/springframework/ui/velocity/VelocityEngineFactory.html[API文档]了解
+Spring对于Velocity的配置, 或者Velocity文档中的例子或者它自己关于`'velocity.properties'`文件的描述.
+
+
+[[views-freemarker]]
+===== FreeMarker
+FreeMarker的'Settings'和'SharedVariables'都可以直接通过在Spring里面配置`FreeMarkerConfigurer` bean
+的合适的properties来传递给Spring管理的FreeMarker的`Configuration`对象. `freemarkerSettings`属性
+需要一个`java.util.Properties`对象, `freemarkerVariables`属性需要一个`java.util.Map`对象.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="freemarkerConfig" class="org.springframework.web.servlet.view.freemarker.FreeMarkerConfigurer">
+		<property name="templateLoaderPath" value="/WEB-INF/freemarker/"/>
+		<property name="freemarkerVariables">
+			<map>
+				<entry key="xml_escape" value-ref="fmXmlEscape"/>
+			</map>
+		</property>
+	</bean>
+
+	<bean id="fmXmlEscape" class="freemarker.template.utility.XmlEscape"/>
+----
+
+查看FreeMarker的文档了解`Configuration`对象详细的设置和变量.
+
+
+
+[[view-velocity-forms]]
+==== 绑定支持和表单处理
+Spring对于JSP的使用提供了一个标签库包含(通常还有其他)一个`<spring:bind/>`标签. 这个标签主要是用来
+开启表单中显示后台对象的值以及在web中或者业务层的`Validator`失败的时候显示结果. 从版本1.1开始, Spring
+已经开始在Velocity和FreeMarker开启同样的方法支持, 通过添加方便的宏来生成表单的输入域.
+
+

@@ -1,0 +1,106 @@
+[[jmx-naming-properties]]
+==== Reading ObjectNames from Properties
+
+You can configure your own `KeyNamingStrategy` instance and configure it to read
+++ObjectName++s from a `Properties` instance rather than use bean key. The
+`KeyNamingStrategy` will attempt to locate an entry in the `Properties` with a key
+corresponding to the bean key. If no entry is found or if the `Properties` instance is
+`null` then the bean key itself is used.
+
+The code below shows a sample configuration for the `KeyNamingStrategy`:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<beans>
+
+		<bean id="exporter" class="org.springframework.jmx.export.MBeanExporter">
+			<property name="beans">
+				<map>
+					<entry key="testBean" value-ref="testBean"/>
+				</map>
+			</property>
+			<property name="namingStrategy" ref="namingStrategy"/>
+		</bean>
+
+		<bean id="testBean" class="org.springframework.jmx.JmxTestBean">
+			<property name="name" value="TEST"/>
+			<property name="age" value="100"/>
+		</bean>
+
+		<bean id="namingStrategy" class="org.springframework.jmx.export.naming.KeyNamingStrategy">
+			<property name="mappings">
+				<props>
+					<prop key="testBean">bean:name=testBean1</prop>
+				</props>
+			</property>
+			<property name="mappingLocations">
+				<value>names1.properties,names2.properties</value>
+			</property>
+		</bean>
+
+	</beans>
+----
+
+Here an instance of `KeyNamingStrategy` is configured with a `Properties` instance that
+is merged from the `Properties` instance defined by the mapping property and the
+properties files located in the paths defined by the mappings property. In this
+configuration, the `testBean` bean will be given the `ObjectName` `bean:name=testBean1`
+since this is the entry in the `Properties` instance that has a key corresponding to the
+bean key.
+
+If no entry in the `Properties` instance can be found then the bean key name is used as
+the `ObjectName`.
+
+
+
+[[jmx-naming-metadata]]
+==== Using the MetadataNamingStrategy
+
+The `MetadataNamingStrategy` uses the `objectName` property of the `ManagedResource`
+attribute on each bean to create the `ObjectName`. The code below shows the
+configuration for the `MetadataNamingStrategy`:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<beans>
+
+		<bean id="exporter" class="org.springframework.jmx.export.MBeanExporter">
+			<property name="beans">
+				<map>
+					<entry key="testBean" value-ref="testBean"/>
+				</map>
+			</property>
+			<property name="namingStrategy" ref="namingStrategy"/>
+		</bean>
+
+		<bean id="testBean" class="org.springframework.jmx.JmxTestBean">
+			<property name="name" value="TEST"/>
+			<property name="age" value="100"/>
+		</bean>
+
+		<bean id="namingStrategy" class="org.springframework.jmx.export.naming.MetadataNamingStrategy">
+			<property name="attributeSource" ref="attributeSource"/>
+		</bean>
+
+		<bean id="attributeSource"
+				class="org.springframework.jmx.export.annotation.AnnotationJmxAttributeSource"/>
+
+	</beans>
+----
+
+If no `objectName` has been provided for the `ManagedResource` attribute, then an
+`ObjectName` will be created with the following
+format:__[fully-qualified-package-name]:type=[short-classname],name=[bean-name]__. For
+example, the generated `ObjectName` for the following bean would be:
+__com.foo:type=MyClass,name=myBean__.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="myBean" class="com.foo.MyClass"/>
+----
+
+
+

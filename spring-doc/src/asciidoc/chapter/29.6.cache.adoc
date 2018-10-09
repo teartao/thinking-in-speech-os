@@ -1,0 +1,72 @@
+[[cache-annotations-put]]
+==== @CachePut annotation
+
+For cases where the cache needs to be updated without interfering with the method
+execution, one can use the `@CachePut` annotation. That is, the method will always be
+executed and its result placed into the cache (according to the `@CachePut` options). It
+supports the same options as `@Cacheable` and should be used for cache population rather
+than method flow optimization:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@CachePut(value="book", key="#isbn")
+	public Book updateBook(ISBN isbn, BookDescriptor descriptor)
+----
+
+
+[IMPORTANT]
+====
+Note that using `@CachePut` and `@Cacheable` annotations on the same method is generally
+strongly discouraged because they have different behaviors. While the latter causes the
+method execution to be skipped by using the cache, the former forces the execution in
+order to execute a cache update. This leads to unexpected behavior and with the exception of
+specific corner-cases (such as annotations having conditions that exclude them from each
+other), such declaration should be avoided. Note also that such condition should not rely
+on the result object (i.e. the `#result` variable) as these are validated upfront to confirm
+the exclusion.
+====
+
+
+[[cache-annotations-evict]]
+==== @CacheEvict annotation
+
+The cache abstraction allows not just population of a cache store but also eviction.
+This process is useful for removing stale or unused data from the cache. Opposed to
+`@Cacheable`, annotation `@CacheEvict` demarcates methods that perform cache
+__eviction__, that is methods that act as triggers for removing data from the cache.
+Just like its sibling, `@CacheEvict` requires specifying one (or multiple) caches
+that are affected by the action, allows a custom cache and key resolution or a
+condition to be specified but in addition, features an extra parameter
+`allEntries` which indicates whether a cache-wide eviction needs to be performed
+rather then just an entry one (based on the key):
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@CacheEvict(value="books", **allEntries=true**)
+	public void loadBooks(InputStream batch)
+----
+
+This option comes in handy when an entire cache region needs to be cleared out - rather
+then evicting each entry (which would take a long time since it is inefficient), all the
+entries are removed in one operation as shown above. Note that the framework will ignore
+any key specified in this scenario as it does not apply (the entire cache is evicted not
+just one entry).
+
+One can also indicate whether the eviction should occur after (the default) or before
+the method executes through the `beforeInvocation` attribute. The former provides the
+same semantics as the rest of the annotations - once the method completes successfully,
+an action (in this case eviction) on the cache is executed. If the method does not
+execute (as it might be cached) or an exception is thrown, the eviction does not occur.
+The latter ( `beforeInvocation=true`) causes the eviction to occur always, before the
+method is invoked - this is useful in cases where the eviction does not need to be tied
+to the method outcome.
+
+It is important to note that void methods can be used with `@CacheEvict` - as the
+methods act as triggers, the return values are ignored (as they don't interact with the
+cache) - this is not the case with `@Cacheable` which adds/updates data into the cache
+and thus requires a result.
+
+
+

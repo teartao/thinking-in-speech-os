@@ -1,0 +1,19 @@
+[[integration-testing-support-jdbc]]
+==== JDBC 测试支持
+`org.springframework.test.jdbc` 包包含了 `JdbcTestUtils`工具类，它是个JDBC相关的功能工具集，主要用来
+应对简化标准化数据库的测试场景。 `JdbcTestUtils` 工具类提供了下列静态工具方法。
+
+* `countRowsInTable(..)`: 对指定的表进行行计数
+* `countRowsInTableWhere(..)`: 使用提供的`WHERE` 条件对指定的表进行行计数
+* `deleteFromTables(..)`: 对指定的表删除所有的行
+* `deleteFromTableWhere(..)`: 使用提供的`WHERE` 条件对指定的表删除记录
+* `dropTables(..)`: 删除指定的表
+
+__注意，<<testcontext-support-classes-junit4,`AbstractTransactionalJUnit4SpringContextTests`>>
+和<<testcontext-support-classes-testng, `AbstractTransactionalTestNGSpringContextTests`>>中提供
+的便利方法是委托给了前述 `JdbcTestUtils` 工具类中的方法。__ 
+
+`spring-jdbc` 模块提供了对配置和启动一个嵌入式数据库的支持，它可以用来在集成测试用与数据库进行交互。详情
+请参阅<<jdbc-embedded-database-support>> 和 <<jdbc-embedded-database-dao-testing>>相关章节。
+
+

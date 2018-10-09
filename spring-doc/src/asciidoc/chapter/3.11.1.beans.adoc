@@ -1,0 +1,114 @@
+[[beans-java-instantiating-container-contstructor]]
+===== Simple construction
+In much the same way that Spring XML files are used as input when instantiating a
+`ClassPathXmlApplicationContext`, `@Configuration` classes may be used as input when
+instantiating an `AnnotationConfigApplicationContext`. This allows for completely
+XML-free usage of the Spring container:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public static void main(String[] args) {
+		ApplicationContext ctx = new AnnotationConfigApplicationContext(AppConfig.class);
+		MyService myService = ctx.getBean(MyService.class);
+		myService.doStuff();
+	}
+----
+
+As mentioned above, `AnnotationConfigApplicationContext` is not limited to working only
+with `@Configuration` classes. Any `@Component` or JSR-330 annotated class may be supplied
+as input to the constructor. For example:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public static void main(String[] args) {
+		ApplicationContext ctx = new AnnotationConfigApplicationContext(MyServiceImpl.class, Dependency1.class, Dependency2.class);
+		MyService myService = ctx.getBean(MyService.class);
+		myService.doStuff();
+	}
+----
+
+The above assumes that `MyServiceImpl`, `Dependency1` and `Dependency2` use Spring
+dependency injection annotations such as `@Autowired`.
+
+
+[[beans-java-instantiating-container-register]]
+===== Building the container programmatically using register(Class<?>...)
+
+An `AnnotationConfigApplicationContext` may be instantiated using a no-arg constructor
+and then configured using the `register()` method. This approach is particularly useful
+when programmatically building an `AnnotationConfigApplicationContext`.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public static void main(String[] args) {
+		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+		ctx.register(AppConfig.class, OtherConfig.class);
+		ctx.register(AdditionalConfig.class);
+		ctx.refresh();
+		MyService myService = ctx.getBean(MyService.class);
+		myService.doStuff();
+	}
+----
+
+
+[[beans-java-instantiating-container-scan]]
+===== Enabling component scanning with scan(String...)
+
+To enable component scanning, just annotate your `@Configuration` class as follows:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Configuration
+	@ComponentScan(basePackages = "com.acme")
+	public class AppConfig  {
+    	...
+	}
+----
+
+[TIP]
+====
+
+Experienced Spring users will be familiar with the XML declaration equivalent from
+Spring's `context:` namespace
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<beans>
+		<context:component-scan base-package="com.acme"/>
+	</beans>
+----
+====
+
+
+In the example above, the `com.acme` package will be scanned, looking for any
+`@Component`-annotated classes, and those classes will be registered as Spring bean
+definitions within the container. `AnnotationConfigApplicationContext` exposes the
+`scan(String...)` method to allow for the same component-scanning functionality:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public static void main(String[] args) {
+		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+		ctx.scan("com.acme");
+		ctx.refresh();
+		MyService myService = ctx.getBean(MyService.class);
+	}
+----
+
+[NOTE]
+====
+Remember that `@Configuration` classes are <<beans-meta-annotations,meta-annotated>>
+with `@Component`, so they are candidates for component-scanning! In the example above,
+assuming that `AppConfig` is declared within the `com.acme` package (or any package
+underneath), it will be picked up during the call to `scan()`, and upon `refresh()` all
+its `@Bean` methods will be processed and registered as bean definitions within the
+container.
+====
+
+

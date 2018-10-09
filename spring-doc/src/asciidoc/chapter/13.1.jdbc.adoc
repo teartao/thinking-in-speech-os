@@ -1,0 +1,8 @@
+[[jdbc-choose-style]]
+==== 选择一个访问JDBC数据库的方法
+你可以选择多个方法去访问JDBC数据库。除了JdbcTemplate和优化了数据库元数据的SimpleJdbcInsert和SimplejdbcCall之外，RDBMS对象则使用了类似JDOQuery设计风格的更为面向对象的方式。一旦你开始使用其中的一种方法，你可以在一个功能里混合使用不同的方法。值得注意的是，所有的方法都需要JDBC 2.0-compliant驱动的支持，一些高级特性甚至需要JDBC 3.0的支持。
+
+* __JdbcTemplate__是经典的，也是最流行的Spring JDBC方式。这是最低层次的访问方式，所有其他的方法底层都调用了JdbcTemplate。
+* __NamedParameterJdbcTemplate__包装了`JdbcTemplate`，它提供了可命名的参数方式代替了传统的JDBC"?"占位符。当你在一个语句中有多个参数时，这种方法提供了更好的文档，使用起来也更方便。
+* __SimpleJdbcInsert和SimpleJdbcCall__优化了数据库元数据来减少必需的配置。这种方式简化了编码，你只需要提供表名或者存储过程和列名对应的参数。但只有当数据库提供适当的元数据时才能正常工作。如果数据库没有提供，你就不得不提供显示的参数配置。
+* __RDBMS对象包含了MappingSqlQuery,SqlUpdate和StoredProcedure__，它需要你在初始化数据访问层的时候提供一个可重用的线程安全的对象。这种方式类似于JDO查询，其中，你需要定义查询字符串，声明参数和编译查询语句。一旦你这样做了，使用传递的参数的execute方法就可以多次调用。

@@ -1,0 +1,150 @@
+[[format-FormatterRegistry-SPI]]
+==== FormatterRegistry SPI
+The FormatterRegistry is an SPI for registering formatters and converters.
+`FormattingConversionService` is an implementation of FormatterRegistry suitable for
+most environments. This implementation may be configured programmatically or
+declaratively as a Spring bean using `FormattingConversionServiceFactoryBean`. Because
+this implementation also implements `ConversionService`, it can be directly configured
+for use with Spring's DataBinder and the Spring Expression Language (SpEL).
+
+Review the FormatterRegistry SPI below:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package org.springframework.format;
+
+	public interface FormatterRegistry extends ConverterRegistry {
+
+		void addFormatterForFieldType(Class<?> fieldType, Printer<?> printer, Parser<?> parser);
+
+		void addFormatterForFieldType(Class<?> fieldType, Formatter<?> formatter);
+
+		void addFormatterForFieldType(Formatter<?> formatter);
+
+		void addFormatterForAnnotation(AnnotationFormatterFactory<?, ?> factory);
+
+	}
+----
+
+As shown above, Formatters can be registered by fieldType or annotation.
+
+The FormatterRegistry SPI allows you to configure Formatting rules centrally, instead of
+duplicating such configuration across your Controllers. For example, you might want to
+enforce that all Date fields are formatted a certain way, or fields with a specific
+annotation are formatted in a certain way. With a shared FormatterRegistry, you define
+these rules once and they are applied whenever formatting is needed.
+
+
+
+[[format-FormatterRegistrar-SPI]]
+==== FormatterRegistrar SPI
+The FormatterRegistrar is an SPI for registering formatters and converters through the
+FormatterRegistry:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package org.springframework.format;
+
+	public interface FormatterRegistrar {
+
+		void registerFormatters(FormatterRegistry registry);
+
+	}
+----
+
+A FormatterRegistrar is useful when registering multiple related converters and
+formatters for a given formatting category, such as Date formatting. It can also be
+useful where declarative registration is insufficient. For example when a formatter
+needs to be indexed under a specific field type different from its own <T> or when
+registering a Printer/Parser pair. The next section provides more information on
+converter and formatter registration.
+
+
+
+[[format-configuring-formatting-mvc]]
+==== Configuring Formatting in Spring MVC
+In a Spring MVC application, you may configure a custom ConversionService instance
+explicitly as an attribute of the `annotation-driven` element of the MVC namespace. This
+ConversionService will then be used anytime a type conversion is required during
+Controller model binding. If not configured explicitly, Spring MVC will automatically
+register default formatters and converters for common types such as numbers and dates.
+
+To rely on default formatting rules, no custom configuration is required in your Spring
+MVC config XML:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:mvc="http://www.springframework.org/schema/mvc"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="
+			http://www.springframework.org/schema/beans
+			http://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.springframework.org/schema/mvc
+			http://www.springframework.org/schema/mvc/spring-mvc.xsd">
+
+		<mvc:annotation-driven/>
+
+	</beans>
+----
+
+With this one-line of configuration, default formatters for Numbers and Date types will
+be installed, including support for the @NumberFormat and @DateTimeFormat annotations.
+Full support for the Joda Time formatting library is also installed if Joda Time is
+present on the classpath.
+
+To inject a ConversionService instance with custom formatters and converters registered,
+set the conversion-service attribute and then specify custom converters, formatters, or
+FormatterRegistrars as properties of the FormattingConversionServiceFactoryBean:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:mvc="http://www.springframework.org/schema/mvc"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="
+			http://www.springframework.org/schema/beans
+			http://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.springframework.org/schema/mvc
+			http://www.springframework.org/schema/mvc/spring-mvc.xsd">
+
+		<mvc:annotation-driven conversion-service="conversionService"/>
+
+		<bean id="conversionService"
+				class="org.springframework.format.support.FormattingConversionServiceFactoryBean">
+			<property name="converters">
+				<set>
+					<bean class="org.example.MyConverter"/>
+				</set>
+			</property>
+			<property name="formatters">
+				<set>
+					<bean class="org.example.MyFormatter"/>
+					<bean class="org.example.MyAnnotationFormatterFactory"/>
+				</set>
+			</property>
+			<property name="formatterRegistrars">
+				<set>
+					<bean class="org.example.MyFormatterRegistrar"/>
+				</set>
+			</property>
+		</bean>
+
+	</beans>
+----
+
+[NOTE]
+====
+See <<format-FormatterRegistrar-SPI>> and the `FormattingConversionServiceFactoryBean`
+for more information on when to use FormatterRegistrars.
+====
+
+
+
+

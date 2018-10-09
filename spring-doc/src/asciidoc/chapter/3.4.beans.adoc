@@ -1,0 +1,70 @@
+[[beans-factory-scopes]]
+
+=== Bean作用域
+
+当你创建一个 bean 的定义，实际上是创建了一个产生真实实例的__配方(recipe)__。bean 定义是一个配方(recipe)这种概念是很重要的，它的意思是指，和class一样，你可以从一个配方(recipe)创建多个对象实例。
+
+You can control not only the various dependencies and configuration values that are to
+be plugged into an object that is created from a particular bean definition, but also
+the __scope__ of the objects created from a particular bean definition. This approach is
+powerful and flexible in that you can __choose__ the scope of the objects you create
+through configuration instead of having to bake in the scope of an object at the Java
+class level. Beans can be defined to be deployed in one of a number of scopes: out of
+the box, the Spring Framework supports five scopes, three of which are available only if
+you use a web-aware `ApplicationContext`.
+
+你不仅可以控制被插入到一个从特定 bean 定义创建的对象的各种依赖和配置值，还可以控制从这个特定 bean 定义创建的对象的__作用域(scope)__。这种方法是强大而灵活的，你可以__选择(choose)__通过配置创建的对象作用域而不必在 Java class level 的作用域(scope)预热。Bean 可以被多种作用域之一定义：Spring 框架支持五种开箱即用的作用域，其中三种仅在基于 web 的 `ApplicationContext` 中使用。
+
+下面的作用域是开箱即用的。同时你也可以创建
+<<beans-factory-scopes-custom,自定义作用域.>>
+
+[[beans-factory-scopes-tbl]]
+.Bean作用域
+|===
+| 作用域| 描述
+
+| <<beans-factory-scopes-singleton,singleton>>
+| (默认的) 每个 String IoC 容器作用域中一个 bean 定义只对应一个对象实例。
+
+| <<beans-factory-scopes-prototype,prototype>>
+| 一个 bean 定义对应多个对象实例。
+
+| <<beans-factory-scopes-request,request>>
+| 一个 bean 定义作用于 HTTP `request` 生命周期；是指每个 HTTP request 拥有自己的通过一个 bean 定义创建的实例。仅在基于 web 的 Spring `ApplicationContext` 中有效。
+
+| <<beans-factory-scopes-session,session>>
+| 一个 bean 定义作用于 HTTP `session` 生命周期。仅在基于 web 的 Spring `ApplicationContext` 中有效。
+
+| <<beans-factory-scopes-global-session,global session>>
+| 一个 bean 定义作用于全局的 HTTP `session` 生命周期。仅在 portlet context 中使用才有效。仅在基于 web 的 Spring `ApplicationContext` 中有效。
+
+| <<beans-factory-scopes-application,application>>
+| 一个 bean 定义作用于整个 `ServletContext` 生命周期。仅在基于 web 的 Spring `ApplicationContext` 中有效。
+|===
+
+[NOTE]
+====
+从 Spring 3.0 开始，新增了一个__thread scope__，但是默认是不被注册的。要获取更多相关信息，请看文档
+{javadoc-baseurl}/org/springframework/context/support/SimpleThreadScope.html[`SimpleThreadScope`]。
+要了解关于如何注册这个作用域或者其它自定义的作用域，请看
+<<beans-factory-scopes-custom-using, 自定义 bean 作用域>>.
+====
+
+[[beans-factory-scopes-singleton]]
+==== 单例作用域
+仅管理一个单例 bean 的共享实例，并且所有通过 id 或者 ids 获得 bean 定义的请求，都会从 Spring 容器中得到同一个特定的 bean 实例。
+
+换句话说，当你定义一个 bean 定义，并且它的作用域为单例的，Spring IoC 容器就会__精确地(exactly)__创建__一个(one)__对象实例。这个实例被存储在一个包含很多单例 bean 的缓存中。并且__所有的后来的请求和引用(all subsequent requests and references)__都会返回缓存的对象。
+
+image::images/singleton.png[width=400]
+
+Spring 中单例 bean 的概念与四人帮(GoF)设计模式一书中的定义是不同的。GoF 中的单例是硬编码方式的对象的作用域以至于每个特定的类在__每个类加载器(per ClassLoader)__中有__且仅有一个(and only one)__实例。Spring 单例作用域更好的描述了__每个容器和每个 bean(per container and per bean)__。它的意思是说，如果你在一个 Spring 容器中定义了一个特定类的 bean，然后这个 Spring 容器就会创建一个__且仅仅一个(and only one)_通过指定 bean 定义的实例。__单例作用域在 Spring 中是默认的作用域(The singleton scope is the default scope in Spring)__。在 XML 中定义一个单例的 bean，你需要写如下的配置，例如：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="accountService" class="com.foo.DefaultAccountService"/>
+
+	<!-- 通过显示的冗余配置是等价的 (单例作用域是默认的) -->
+	<bean id="accountService" class="com.foo.DefaultAccountService" scope="singleton"/>
+----

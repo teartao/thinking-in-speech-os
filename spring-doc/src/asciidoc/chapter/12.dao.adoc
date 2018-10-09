@@ -1,0 +1,112 @@
+[[dao]]
+== DAO 支持
+
+
+
+
+[[dao-introduction]]
+=== 介绍
+Spring中对数据访问对象(DAO)的支持旨在简化Spring与数据访问技术的操作，使JDBC、Hibernate、JPA和JDO等采用统一的方式访问。
+这就允许使用者在各种持久化技术之间能够相对轻松的进行切换，同时，使用者也不必担心每种不同技术造成的异常处理的差异。
+
+
+
+
+[[dao-exceptions]]
+=== 一致的异常层次结构
+Spring提供了一个方便地从特定技术异常（如`SQLException`）转换为以`DataAccessException`作为根异常的自身异常层次结构中的类。
+异常层次结构中的类将原始异常进行了包装，所以，我们不用担心发生错误后异常信息丢失的问题。
+
+除了JDBC异常以外，Spring也可以包装特定的Hibernate异常，可以将所有的checked异常（支持Hibernate 3.0以前的版本）转换为
+一组集中的运行时异常，JDO和JPA异常也可以同样包装。这就允许使用者不必在DAO中写大量的烦人的死板的catch和throw语句以及对
+应的异常声明 ，就可以处理绝大多数不可恢复的只能在特定层处理的持久化异常。（使用者也还可以再需要的地方捕获和处理异常。）
+如上所述，JDBC异常（包括特定的数据库方言）也会转换为同样的级别，这就意味着使用者可以使用一个一致的编程模型来使用JDBC。
+
+Spring支持的各种ORM框架的模板类都支持上面的特性。如果使用者基于拦截器的类，那么程序必须关心如何处理`HibernateExceptions` 和`JDOExceptions`异常,
+最好是分别委托给`SessionFactoryUtils`的`convertHibernateAccessException(..)`或`convertJdoAccessException()`方法。这两个方法可以将异常转换为与
+`org.springframework.dao`异常层次结构相兼容的异常类。就异常而言，虽然牺牲了通用的DAO抽象特性，但因为`JDOExceptions`异常是unchecked，它们也可以被简单的抛出。
+Spring提供的异常层次结构如下图所示。（请注意图中的类层次结构只是整个`DataAccessException`的一个子集。）
+
+image::images/DataAccessException.gif[width=400]
+
+
+
+
+[[dao-annotations]]
+=== 用于配置DAO或库类的注解
+确保自定义的数据访问对象（DAO）或库类提供的异常转换的最好方法就是使用`@Repository`注解。这一注解同样允许组件扫描来发现和配置自定义DAO和库，而不用提供XML配置信息。
+
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	**@Repository**
+	public class SomeMovieFinder implements MovieFinder {
+		// ...
+	}
+----
+
+任何DAO或者库实现都依赖所使用的持久化技术来需要访问某个持久化资源；例如，一个基于JDBC的库需要访问一个JDBC数据源`DataSource`；一个基于JPA的库需要访问一个`EntityManager`。
+完成这一操作的最简单的方式使用`@Autowired,`, `@Inject`, `@Resource` 或`@PersistenceContext`等这样的资源依赖注入的注解。下面有一个JPA库的例子：
+
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Repository
+	public class JpaMovieFinder implements MovieFinder {
+
+		@PersistenceContext
+		private EntityManager entityManager;
+
+		// ...
+
+	}
+----
+
+如果你使用了经典Hibernate的API，那么就可以注入SessionFactory：
+
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Repository
+	public class HibernateMovieFinder implements MovieFinder {
+
+		private SessionFactory sessionFactory;
+
+		@Autowired
+		public void setSessionFactory(SessionFactory sessionFactory) {
+			this.sessionFactory = sessionFactory;
+		}
+
+		// ...
+
+	}
+----
+
+在最后一个例子中，我们将介绍对典型JDBC的支持。你可以将`DataSource`注入到已创建的`JdbcTemplate`的初始化方法中，然后其他数据访问支持类（如`SimpleJdbcCall` 等）就可以使用这个数据源`DataSource`了。
+
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Repository
+	public class JdbcMovieFinder implements MovieFinder {
+
+		private JdbcTemplate jdbcTemplate;
+
+		@Autowired
+		public void init(DataSource dataSource) {
+			this.jdbcTemplate = new JdbcTemplate(dataSource);
+		}
+
+		// ...
+
+	}
+----
+
+[NOTE]
+====
+要想详细了解如何配置程序的上下文才能发挥这些注解的优势，请参阅每种持久化技术的具体的白皮书。
+====

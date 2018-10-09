@@ -1,0 +1,95 @@
+[[aop-ataspectj]]
+=== @AspectJ 支持
+@AspectJ 是一种使用普通Java类注解来声明AOP切面的方式。@AspectJ方式是http://www.eclipse.org/aspectj[AspectJ 项目]的AspectJ 5 版本的新特性。
+Spring使用AspectJ 提供的一个切点解析和匹配的包，来支持拦截和AspectJ 5的相同的注解。AOP运行时还是纯Spring AOP,而不用依赖AspectJ的编译器和编织器。
+[NOTE]
+====
+使用AspectJ编译器和编织器能使用AspectJ语言的全部功能，详见<<aop-using-aspectj>>章节。
+====
+
+
+
+[[aop-aspectj-support]]
+==== 开启 @AspectJ 支持
+要在Spring中使用@AspectJ切面，需要开启Spring对@AspectJ的支持以及使用__autoproxying__ bean类。
+自动代理是指如果Spring判定一个bean被一个或多个切面通知，它将自动为一个bean生产一个代理，来拦截方法调用并保证通知按需执行。
+
+@AspectJ支持XML和JAVA两种方式的配置。必须保证AspectJ的`aspectjweaver.jar`在应用程序（要求Spring 1.6.8版本及以上）的类路径中。这个lib包可以从AspectJ发布包中的lib目录）的类路径中。这个lib包可以从AspectJ发布包中的lib目录 或者Maven中央仓库中获取。
+
+
+[[aop-enable-aspectj-java]]
+===== 开启 @AspectJ 的Java配置方式
+要使@AspectJ支持Java的 `@Configuration`方式，需要添加`@EnableAspectJAutoProxy`注解:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+    @Configuration
+	@EnableAspectJAutoProxy
+	public class AppConfig {
+
+	}
+----
+
+
+[[aop-enable-aspectj-xml]]
+===== 开启 @AspectJ 的XML配置方式
+要使用@AspectJ的XML 配置方式，需要使用`aop:aspectj-autoproxy`元素:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<aop:aspectj-autoproxy/>
+----
+
+这就假定你使用了<<xsd-config>>描述的模式支持。可以参考<<xsd-config-body-schemas-aop>>来了解如何在AOP命名空间中导入这个标签。
+
+
+[[aop-at-aspectj]]
+==== 声明一个切面
+
+开启@AspectJ的支持以后,Spring将会自动检测应用程序的上下文中定义的任何一个bean是否包含 `@Aspect` 注解，如果包含将会用这个bean配置Spring AOP.
+下面的例子展示了一个not-very-useful切面所需的最基本的定义信息：
+
+一个应用程序上下文中定义的一个普通bean，指向了一个带有`@Aspect`注解的bean类：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="myAspect" class="org.xyz.NotVeryUsefulAspect">
+		<!-- configure properties of aspect here as normal -->
+	</bean>
+----
+
+`NotVeryUsefulAspect` 的类定义中使用了`org.aspectj.lang.annotation.Aspect`注解;
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package org.xyz;
+	import org.aspectj.lang.annotation.Aspect;
+
+	@Aspect
+	public class NotVeryUsefulAspect {
+
+	}
+----
+
+
+使用了`@Aspect`注解切面的类和其它类一样，可以有方法和属性。也可以包含切点、通知和
+引入声明 (inter-type)。
+.Autodetecting 切面通过组件扫描
+[NOTE]
+====
+既可以通过Spring的XML配置文件将普通bean注册为切面类，也可以通过扫描类路径来自动识别切面类，就像Spring管理的其他bean一样。
+但是要注意 __@Aspect__ 注解__不__能用于类路径自动识别：为了达到这个目标，你需要另外一个 __@Component__ 注解。（或者使用满足Spring组件扫描规则的自定义注解。）
+====
+
+.Advising切面和其它切面呢?
+[NOTE]
+====
+
+在Spring AOP中，一个注解__不__可能作用于定义这个切面的类本身。一个类上面的__@Aspect__注解标明这是一个切面，并将它从自动代理中排除。
+====
+
+

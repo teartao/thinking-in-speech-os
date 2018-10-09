@@ -1,0 +1,97 @@
+[[portlet-handlermapping-portletmode]]
+==== PortletModeHandlerMapping
+
+This is a simple handler mapping that maps incoming requests based on the current mode
+of the portlet (e.g. 'view', 'edit', 'help'). An example:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean class="org.springframework.web.portlet.handler.PortletModeHandlerMapping">
+		<property name="portletModeMap">
+			<map>
+				<entry key="view" value-ref="viewHandler"/>
+				<entry key="edit" value-ref="editHandler"/>
+				<entry key="help" value-ref="helpHandler"/>
+			</map>
+		</property>
+	</bean>
+----
+
+
+
+[[portlet-handlermapping-parameter]]
+==== ParameterHandlerMapping
+
+If we need to navigate around to multiple controllers without changing portlet mode, the
+simplest way to do this is with a request parameter that is used as the key to control
+the mapping.
+
+`ParameterHandlerMapping` uses the value of a specific request parameter to control the
+mapping. The default name of the parameter is `'action'`, but can be changed using the
+`'parameterName'` property.
+
+The bean configuration for this mapping will look something like this:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean class="org.springframework.web.portlet.handler.ParameterHandlerMapping">
+		<property name="parameterMap">
+			<map>
+				<entry key="add" value-ref="addItemHandler"/>
+				<entry key="edit" value-ref="editItemHandler"/>
+				<entry key="delete" value-ref="deleteItemHandler"/>
+			</map>
+		</property>
+	</bean>
+----
+
+
+
+[[portlet-handlermapping-portletmodeparameter]]
+==== PortletModeParameterHandlerMapping
+
+The most powerful built-in handler mapping, `PortletModeParameterHandlerMapping`
+combines the capabilities of the two previous ones to allow different navigation within
+each portlet mode.
+
+Again the default name of the parameter is "action", but can be changed using the
+`parameterName` property.
+
+By default, the same parameter value may not be used in two different portlet modes.
+This is so that if the portal itself changes the portlet mode, the request will no
+longer be valid in the mapping. This behavior can be changed by setting the
+`allowDupParameters` property to true. However, this is not recommended.
+
+The bean configuration for this mapping will look something like this:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean class="org.springframework.web.portlet.handler.PortletModeParameterHandlerMapping">
+		<property name="portletModeParameterMap">
+			<map>
+				<entry key="view"> <!-- 'view' portlet mode -->
+					<map>
+						<entry key="add" value-ref="addItemHandler"/>
+						<entry key="edit" value-ref="editItemHandler"/>
+						<entry key="delete" value-ref="deleteItemHandler"/>
+					</map>
+				</entry>
+				<entry key="edit"> <!-- 'edit' portlet mode -->
+					<map>
+						<entry key="prefs" value-ref="prefsHandler"/>
+						<entry key="resetPrefs" value-ref="resetPrefsHandler"/>
+					</map>
+				</entry>
+			</map>
+		</property>
+	</bean>
+----
+
+This mapping can be chained ahead of a `PortletModeHandlerMapping`, which can then
+provide defaults for each mode and an overall default as well.
+
+
+

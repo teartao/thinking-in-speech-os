@@ -1,0 +1,126 @@
+[[views-form-macros-input]]
+====== Input Fields
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<!-- the Name field example from above using form macros in VTL -->
+	...
+	Name:
+	#springFormInput("command.name" "")<br>
+	#springShowErrors("<br>" "")<br>
+----
+
+The formInput macro takes the path parameter (command.name) and an additional attributes
+parameter which is empty in the example above. The macro, along with all other form
+generation macros, performs an implicit spring bind on the path parameter. The binding
+remains valid until a new bind occurs so the showErrors macro doesn't need to pass the
+path parameter again - it simply operates on whichever field a bind was last created for.
+
+The showErrors macro takes a separator parameter (the characters that will be used to
+separate multiple errors on a given field) and also accepts a second parameter, this
+time a class name or style attribute. Note that FreeMarker is able to specify default
+values for the attributes parameter, unlike Velocity, and the two macro calls above
+could be expressed as follows in FTL:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<@spring.formInput "command.name"/>
+	<@spring.showErrors "<br>"/>
+----
+
+Output is shown below of the form fragment generating the name field, and displaying a
+validation error after the form was submitted with no value in the field. Validation
+occurs through Spring's Validation framework.
+
+The generated HTML looks like this:
+
+[source,jsp,indent=0]
+[subs="verbatim,quotes"]
+----
+	Name:
+	<input type="text" name="name" value="">
+	<br>
+		<b>required</b>
+	<br>
+	<br>
+----
+
+The formTextarea macro works the same way as the formInput macro and accepts the same
+parameter list. Commonly, the second parameter (attributes) will be used to pass style
+information or rows and cols attributes for the textarea.
+
+[[views-form-macros-select]]
+====== Selection Fields
+Four selection field macros can be used to generate common UI value selection inputs in
+your HTML forms.
+
+* formSingleSelect
+* formMultiSelect
+* formRadioButtons
+* formCheckboxes
+
+Each of the four macros accepts a Map of options containing the value for the form
+field, and the label corresponding to that value. The value and the label can be the
+same.
+
+An example of radio buttons in FTL is below. The form backing object specifies a default
+value of 'London' for this field and so no validation is necessary. When the form is
+rendered, the entire list of cities to choose from is supplied as reference data in the
+model under the name 'cityMap'.
+
+[source,jsp,indent=0]
+[subs="verbatim,quotes"]
+----
+	...
+	Town:
+	<@spring.formRadioButtons "command.address.town", cityMap, "" /><br><br>
+----
+
+This renders a line of radio buttons, one for each value in `cityMap` using the
+separator "". No additional attributes are supplied (the last parameter to the macro is
+missing). The cityMap uses the same String for each key-value pair in the map. The map's
+keys are what the form actually submits as POSTed request parameters, map values are the
+labels that the user sees. In the example above, given a list of three well known cities
+and a default value in the form backing object, the HTML would be
+
+[source,jsp,indent=0]
+[subs="verbatim,quotes"]
+----
+	Town:
+	<input type="radio" name="address.town" value="London">London</input>
+	<input type="radio" name="address.town" value="Paris" checked="checked">Paris</input>
+	<input type="radio" name="address.town" value="New York">New York</input>
+----
+
+If your application expects to handle cities by internal codes for example, the map of
+codes would be created with suitable keys like the example below.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	protected Map referenceData(HttpServletRequest request) throws Exception {
+		Map cityMap = new LinkedHashMap();
+		cityMap.put("LDN", "London");
+		cityMap.put("PRS", "Paris");
+		cityMap.put("NYC", "New York");
+
+		Map m = new HashMap();
+		m.put("cityMap", cityMap);
+		return m;
+	}
+----
+
+The code would now produce output where the radio values are the relevant codes but the
+user still sees the more user friendly city names.
+
+[source,jsp,indent=0]
+[subs="verbatim,quotes"]
+----
+	Town:
+	<input type="radio" name="address.town" value="LDN">London</input>
+	<input type="radio" name="address.town" value="PRS" checked="checked">Paris</input>
+	<input type="radio" name="address.town" value="NYC">New York</input>
+----
+
+

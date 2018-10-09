@@ -1,0 +1,118 @@
+[[jms-annotated-method-signature]]
+==== Annotated endpoint method signature
+
+So far, we have been injecting a simple `String` in our endpoint but it can actually
+have a very flexible method signature. Let's rewrite it to inject the `Order` with
+a custom header:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Component
+	public class MyService {
+
+    	@JmsListener(destination = "myDestination")
+    	public void processOrder(Order order, @Header("order_type") String orderType) {
+        	...
+    	}
+	}
+----
+
+These are the main elements you can inject in JMS listener endpoints:
+
+* The raw `javax.jms.Message` or any of its subclasses (provided of course that it
+  matches the incoming message type).
+* The `javax.jms.Session` for optional access to the native JMS API e.g. for sending
+  a custom reply.
+* The `org.springframework.messaging.Message` representing the incoming JMS message.
+  Note that this message holds both the custom and the standard headers (as defined
+  by `JmsHeaders`).
+* `@Header`-annotated method arguments to extract a specific header value, including
+  standard JMS headers.
+* `@Headers`-annotated argument that must also be assignable to `java.util.Map` for
+  getting access to all headers.
+* A non-annotated element that is not one of the supported types (i.e. `Message` and
+  `Session`) is considered to be the payload. You can make that explicit by annotating
+  the parameter with `@Payload`. You can also turn on validation by adding an extra
+  `@Valid`.
+
+The ability to inject Spring's `Message` abstraction is particularly useful to benefit
+from all the information stored in the transport-specific message without relying on
+transport-specific API.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@JmsListener(destination = "myDestination")
+	public void processOrder(Message<Order> order) { ... }
+----
+
+Handling of method arguments is provided by `DefaultMessageHandlerMethodFactory` which can be
+further customized to support additional method arguments. The conversion and validation
+support can be customized there as well.
+
+For instance, if we want to make sure our `Order` is valid before processing it, we can
+annotate the payload with `@Valid` and configure the necessary validator as follows:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Configuration
+	@EnableJms
+	public class AppConfig implements JmsListenerConfigurer {
+
+    	@Override
+    	public void configureJmsListeners(JmsListenerEndpointRegistrar registrar) {
+        	registrar.setMessageHandlerMethodFactory(myJmsHandlerMethodFactory());
+    	}
+
+    	@Bean
+    	public DefaultMessageHandlerMethodFactory myHandlerMethodFactory() {
+        	DefaultMessageHandlerMethodFactory factory = new DefaultMessageHandlerMethodFactory();
+        	factory.setValidator(myValidator());
+        	return factory;
+    	}
+	}
+----
+
+[[jms-annotated-reply]]
+==== Reply management
+
+The existing support in <<jms-receiving-async-message-listener-adapter,MessageListenerAdapter>>
+already allows your method to have a non-`void` return type. When that's the case, the result of
+the invocation is encapsulated in a `javax.jms.Message` sent either in the destination specified
+in the `JMSReplyTo` header of the original message or in the default destination configured on
+the listener. That default destination can now be set using the `@SendTo` annotation of the
+messaging abstraction.
+
+Assuming our `processOrder` method should now return an `OrderStatus`, it is possible to write it
+as follow to automatically send a reply:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@JmsListener(destination = "myDestination")
+	@SendTo("status")
+	public OrderStatus processOrder(Order order) {
+    	// order processing
+    	return status;
+	}
+----
+
+If you need to set additional headers in a transport-independent manner, you could return a
+`Message` instead, something like:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@JmsListener(destination = "myDestination")
+	@SendTo("status")
+	public Message<OrderStatus> processOrder(Order order) {
+    	// order processing
+    	return MessageBuilder
+        	    .withPayload(status)
+            	.setHeader("code", 1234)
+            	.build();
+	}
+----
+

@@ -1,0 +1,101 @@
+[[beans-factory-placeholderconfigurer]]
+===== Example: the Class name substitution PropertyPlaceholderConfigurer
+
+You use the `PropertyPlaceholderConfigurer` to externalize property values from a bean
+definition in a separate file using the standard Java `Properties` format. Doing so
+enables the person deploying an application to customize environment-specific properties
+such as database URLs and passwords, without the complexity or risk of modifying the
+main XML definition file or files for the container.
+
+Consider the following XML-based configuration metadata fragment, where a `DataSource`
+with placeholder values is defined. The example shows properties configured from an
+external `Properties` file. At runtime, a `PropertyPlaceholderConfigurer` is applied to
+the metadata that will replace some properties of the DataSource. The values to replace
+are specified as __placeholders__ of the form `${property-name}` which follows the Ant /
+log4j / JSP EL style.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="locations" value="classpath:com/foo/jdbc.properties"/>
+	</bean>
+
+	<bean id="dataSource" destroy-method="close"
+			class="org.apache.commons.dbcp.BasicDataSource">
+		<property name="driverClassName" value="${jdbc.driverClassName}"/>
+		<property name="url" value="${jdbc.url}"/>
+		<property name="username" value="${jdbc.username}"/>
+		<property name="password" value="${jdbc.password}"/>
+	</bean>
+----
+
+The actual values come from another file in the standard Java `Properties` format:
+
+[literal]
+[subs="verbatim,quotes"]
+----
+jdbc.driverClassName=org.hsqldb.jdbcDriver
+jdbc.url=jdbc:hsqldb:hsql://production:9002
+jdbc.username=sa
+jdbc.password=root
+----
+
+Therefore, the string `${jdbc.username}` is replaced at runtime with the value 'sa', and
+the same applies for other placeholder values that match keys in the properties file.
+The `PropertyPlaceholderConfigurer` checks for placeholders in most properties and
+attributes of a bean definition. Furthermore, the placeholder prefix and suffix can be
+customized.
+
+With the `context` namespace introduced in Spring 2.5, it is possible to configure
+property placeholders with a dedicated configuration element. One or more locations can
+be provided as a comma-separated list in the `location` attribute.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<context:property-placeholder location="classpath:com/foo/jdbc.properties"/>
+----
+
+The `PropertyPlaceholderConfigurer` not only looks for properties in the `Properties`
+file you specify. By default it also checks against the Java `System` properties if it
+cannot find a property in the specified properties files. You can customize this
+behavior by setting the `systemPropertiesMode` property of the configurer with one of
+the following three supported integer values:
+
+* __never__ (0): Never check system properties
+* __fallback__ (1): Check system properties if not resolvable in the specified
+  properties files. This is the default.
+* __override__ (2): Check system properties first, before trying the specified
+  properties files. This allows system properties to override any other property source.
+
+Consult the `PropertyPlaceholderConfigurer` javadocs for more information.
+
+[TIP]
+====
+
+You can use the `PropertyPlaceholderConfigurer` to substitute class names, which is
+sometimes useful when you have to pick a particular implementation class at runtime. For
+example:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="locations">
+			<value>classpath:com/foo/strategy.properties</value>
+		</property>
+		<property name="properties">
+			<value>custom.strategy.class=com.foo.DefaultStrategy</value>
+		</property>
+	</bean>
+
+	<bean id="serviceStrategy" class="${custom.strategy.class}"/>
+----
+
+If the class cannot be resolved at runtime to a valid class, resolution of the bean
+fails when it is about to be created, which is during the `preInstantiateSingletons()`
+phase of an `ApplicationContext` for a non-lazy-init bean.
+====
+
+

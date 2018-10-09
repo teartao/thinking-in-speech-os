@@ -1,0 +1,45 @@
+[[jdbc-client-component-initialization]]
+===== Initialization of Other Components that Depend on the Database
+A large class of applications can just use the database initializer with no further
+complications: those that do not use the database until after the Spring context has
+started. If your application is __not__ one of those then you might need to read the
+rest of this section.
+
+The database initializer depends on a data source instance and runs the scripts provided
+in its initialization callback (c.f. `init-method` in an XML bean definition or
+`InitializingBean`). If other beans depend on the same data source and also use the data
+source in an initialization callback then there might be a problem because the data has
+not yet been initialized. A common example of this is a cache that initializes eagerly
+and loads up data from the database on application startup.
+
+To get round this issue you two options: change your cache initialization strategy to a
+later phase, or ensure that the database initializer is initialized first.
+
+The first option might be easy if the application is in your control, and not otherwise.
+Some suggestions for how to implement this are
+
+* Make the cache initialize lazily on first usage, which improves application startup time
+* Have your cache or a separate component that initializes the cache implement
+  `Lifecycle` or `SmartLifecycle`. When the application context starts up a
+  `SmartLifecycle` can be automatically started if its `autoStartup` flag is set, and a
+  `Lifecycle` can be started manually by calling
+  `ConfigurableApplicationContext.start()` on the enclosing context.
+* Use a Spring `ApplicationEvent` or similar custom observer mechanism to trigger the
+  cache initialization. `ContextRefreshedEvent` is always published by the context when
+  it is ready for use (after all beans have been initialized), so that is often a useful
+  hook (this is how the `SmartLifecycle` works by default).
+
+The second option can also be easy. Some suggestions on how to implement this are
+
+* Rely on Spring BeanFactory default behavior, which is that beans are initialized in
+  registration order. You can easily arrange that by adopting the common practice of a
+  set of <import/> elements that order your application modules, and ensure that the
+  database and database initialization are listed first
+* Separate the datasource and the business components that use it and control their
+  startup order by putting them in separate ApplicationContext instances (e.g. parent
+  has the datasource and child has the business components). This structure is common in
+  Spring web applications, but can be more generally applied.
+
+
+
+

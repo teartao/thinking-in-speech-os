@@ -1,0 +1,60 @@
+[[portlet-handlermapping-interceptor]]
+==== Adding HandlerInterceptors
+
+Spring's handler mapping mechanism has a notion of handler interceptors, which can be
+extremely useful when you want to apply specific functionality to certain requests, for
+example, checking for a principal. Again Spring Portlet MVC implements these concepts in
+the same way as Web MVC.
+
+Interceptors located in the handler mapping must implement `HandlerInterceptor` from the
+`org.springframework.web.portlet` package. Just like the servlet version, this interface
+defines three methods: one that will be called before the actual handler will be
+executed ( `preHandle`), one that will be called after the handler is executed (
+`postHandle`), and one that is called after the complete request has finished (
+`afterCompletion`). These three methods should provide enough flexibility to do all
+kinds of pre- and post- processing.
+
+The `preHandle` method returns a boolean value. You can use this method to break or
+continue the processing of the execution chain. When this method returns `true`, the
+handler execution chain will continue. When it returns `false`, the `DispatcherPortlet`
+assumes the interceptor itself has taken care of requests (and, for example, rendered an
+appropriate view) and does not continue executing the other interceptors and the actual
+handler in the execution chain.
+
+The `postHandle` method is only called on a `RenderRequest`. The `preHandle` and
+`afterCompletion` methods are called on both an `ActionRequest` and a `RenderRequest`.
+If you need to execute logic in these methods for just one type of request, be sure to
+check what kind of request it is before processing it.
+
+
+
+[[portlet-handlermapping-interceptoradapter]]
+==== HandlerInterceptorAdapter
+
+As with the servlet package, the portlet package has a concrete implementation of
+`HandlerInterceptor` called `HandlerInterceptorAdapter`. This class has empty versions
+of all the methods so that you can inherit from this class and implement just one or two
+methods when that is all you need.
+
+
+
+[[portlet-handlermapping-parameterinterceptor]]
+==== ParameterMappingInterceptor
+
+The portlet package also has a concrete interceptor named `ParameterMappingInterceptor`
+that is meant to be used directly with `ParameterHandlerMapping` and
+`PortletModeParameterHandlerMapping`. This interceptor will cause the parameter that is
+being used to control the mapping to be forwarded from an `ActionRequest` to the
+subsequent `RenderRequest`. This will help ensure that the `RenderRequest` is mapped to
+the same Handler as the `ActionRequest`. This is done in the `preHandle` method of the
+interceptor, so you can still modify the parameter value in your handler to change where
+the `RenderRequest` will be mapped.
+
+Be aware that this interceptor is calling `setRenderParameter` on the `ActionResponse`,
+which means that you cannot call `sendRedirect` in your handler when using this
+interceptor. If you need to do external redirects then you will either need to forward
+the mapping parameter manually or write a different interceptor to handle this for you.
+
+
+
+

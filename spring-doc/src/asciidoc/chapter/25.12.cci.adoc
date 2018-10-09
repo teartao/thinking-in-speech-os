@@ -1,0 +1,127 @@
+[[cci-objects-mappring-record-example]]
+==== Example for MappingRecordOperation usage
+
+In this section, the usage of the `MappingRecordOperation` will be shown to access a
+database with the Blackbox CCI connector.
+
+[NOTE]
+====
+The original version of this connector is provided by the Java EE SDK (version 1.3),
+available from Oracle.
+====
+
+Firstly, some initializations on the CCI `InteractionSpec` must be done to specify which
+SQL request to execute. In this sample, we directly define the way to convert the
+parameters of the request to a CCI record and the way to convert the CCI result record
+to an instance of the `Person` class.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class PersonMappingOperation extends MappingRecordOperation {
+
+		public PersonMappingOperation(ConnectionFactory connectionFactory) {
+			setConnectionFactory(connectionFactory);
+			CciInteractionSpec interactionSpec = new CciConnectionSpec();
+			interactionSpec.setSql("select * from person where person_id=?");
+			setInteractionSpec(interactionSpec);
+		}
+
+		protected Record createInputRecord(RecordFactory recordFactory,
+				Object inputObject) throws ResourceException {
+			Integer id = (Integer) inputObject;
+			IndexedRecord input = recordFactory.createIndexedRecord("input");
+			input.add(new Integer(id));
+			return input;
+		}
+
+		protected Object extractOutputData(Record outputRecord)
+				throws ResourceException, SQLException {
+			ResultSet rs = (ResultSet) outputRecord;
+			Person person = null;
+			if (rs.next()) {
+				Person person = new Person();
+				person.setId(rs.getInt("person_id"));
+				person.setLastName(rs.getString("person_last_name"));
+				person.setFirstName(rs.getString("person_first_name"));
+			}
+			return person;
+		}
+	}
+----
+
+Then the application can execute the operation object, with the person identifier as
+argument. Note that operation object could be set up as shared instance, as it is
+thread-safe.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class MyDaoImpl extends CciDaoSupport implements MyDao {
+
+		public Person getPerson(int id) {
+			PersonMappingOperation query = new PersonMappingOperation(getConnectionFactory());
+			Person person = (Person) query.execute(new Integer(id));
+			return person;
+		}
+	}
+----
+
+The corresponding configuration of Spring beans could look as follows in non-managed mode:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="managedConnectionFactory"
+			class="com.sun.connector.cciblackbox.CciLocalTxManagedConnectionFactory">
+		<property name="connectionURL" value="jdbc:hsqldb:hsql://localhost:9001"/>
+		<property name="driverName" value="org.hsqldb.jdbcDriver"/>
+	</bean>
+
+	<bean id="targetConnectionFactory"
+			class="org.springframework.jca.support.LocalConnectionFactoryBean">
+		<property name="managedConnectionFactory" ref="managedConnectionFactory"/>
+	</bean>
+
+	<bean id="connectionFactory"
+			class="org.springframework.jca.cci.connection.ConnectionSpecConnectionFactoryAdapter">
+		<property name="targetConnectionFactory" ref="targetConnectionFactory"/>
+		<property name="connectionSpec">
+			<bean class="com.sun.connector.cciblackbox.CciConnectionSpec">
+				<property name="user" value="sa"/>
+				<property name="password" value=""/>
+			</bean>
+		</property>
+	</bean>
+
+	<bean id="component" class="MyDaoImpl">
+		<property name="connectionFactory" ref="connectionFactory"/>
+	</bean>
+----
+
+In managed mode (that is, in a Java EE environment), the configuration could look as
+follows:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<jee:jndi-lookup id="targetConnectionFactory" jndi-name="eis/blackbox"/>
+
+	<bean id="connectionFactory"
+			class="org.springframework.jca.cci.connection.ConnectionSpecConnectionFactoryAdapter">
+		<property name="targetConnectionFactory" ref="targetConnectionFactory"/>
+		<property name="connectionSpec">
+			<bean class="com.sun.connector.cciblackbox.CciConnectionSpec">
+				<property name="user" value="sa"/>
+				<property name="password" value=""/>
+			</bean>
+		</property>
+	</bean>
+
+	<bean id="component" class="MyDaoImpl">
+		<property name="connectionFactory" ref="connectionFactory"/>
+	</bean>
+----
+
+
+

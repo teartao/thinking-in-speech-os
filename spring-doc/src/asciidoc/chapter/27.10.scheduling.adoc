@@ -1,0 +1,61 @@
+[[scheduling-quartz-cron]]
+==== 使用触发器和SchedulerFactoryBean启动任务
+
+We've created job details and jobs. We've also reviewed the convenience bean that allows
+you to invoke a method on a specific object. Of course, we still need to schedule the
+jobs themselves. This is done using triggers and a `SchedulerFactoryBean`. Several
+triggers are available within Quartz and Spring offers two Quartz `FactoryBean`
+implementations with convenient defaults: `CronTriggerFactoryBean` and
+`SimpleTriggerFactoryBean`.
+
+Triggers need to be scheduled. Spring offers a `SchedulerFactoryBean` that exposes
+triggers to be set as properties. `SchedulerFactoryBean` schedules the actual jobs with
+those triggers.
+
+Find below a couple of examples:
+
+[source,xml,indent=0]
+[subs="verbatim"]
+----
+	<bean id="simpleTrigger" class="org.springframework.scheduling.quartz.SimpleTriggerFactoryBean">
+		<!-- see the example of method invoking job above -->
+		<property name="jobDetail" ref="jobDetail"/>
+		<!-- 10 seconds -->
+		<property name="startDelay" value="10000"/>
+		<!-- repeat every 50 seconds -->
+		<property name="repeatInterval" value="50000"/>
+	</bean>
+
+	<bean id="cronTrigger" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+		<property name="jobDetail" ref="exampleJob"/>
+		<!-- run every morning at 6 AM -->
+		<property name="cronExpression" value="0 0 6 * * ?"/>
+	</bean>
+----
+
+Now we've set up two triggers, one running every 50 seconds with a starting delay of 10
+seconds and one every morning at 6 AM. To finalize everything, we need to set up the
+`SchedulerFactoryBean`:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
+		<property name="triggers">
+			<list>
+				<ref bean="cronTrigger"/>
+				<ref bean="simpleTrigger"/>
+			</list>
+		</property>
+	</bean>
+----
+
+More properties are available for the `SchedulerFactoryBean` for you to set, such as the
+calendars used by the job details, properties to customize Quartz with, etc. Have a look
+at the
+{javadoc-baseurl}/org/springframework/scheduling/quartz/SchedulerFactoryBean.html[`SchedulerFactoryBean`
+javadocs] for more information.
+
+
+
+

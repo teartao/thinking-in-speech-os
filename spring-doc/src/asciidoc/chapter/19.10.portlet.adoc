@@ -1,0 +1,263 @@
+[[portlet-multipart]]
+=== Multipart (file upload) support
+Spring Portlet MVC has built-in multipart support to handle file uploads in portlet
+applications, just like Web MVC does. The design for the multipart support is done with
+pluggable `PortletMultipartResolver` objects, defined in the
+`org.springframework.web.portlet.multipart` package. Spring provides a
+`PortletMultipartResolver` for use with
+http://jakarta.apache.org/commons/fileupload[Commons FileUpload]. How uploading files is
+supported will be described in the rest of this section.
+
+By default, no multipart handling will be done by Spring Portlet MVC, as some developers
+will want to handle multiparts themselves. You will have to enable it yourself by adding
+a multipart resolver to the web application's context. After you have done that,
+`DispatcherPortlet` will inspect each request to see if it contains a multipart. If no
+multipart is found, the request will continue as expected. However, if a multipart is
+found in the request, the `PortletMultipartResolver` that has been declared in your
+context will be used. After that, the multipart attribute in your request will be
+treated like any other attribute.
+
+[NOTE]
+====
+Any configured `PortletMultipartResolver` bean __must__ have the following id (or name):
+" `portletMultipartResolver`". If you have defined your `PortletMultipartResolver` with
+any other name, then the `DispatcherPortlet` will __not__ find your
+`PortletMultipartResolver`, and consequently no multipart support will be in effect.
+====
+
+
+
+[[portlet-multipart-resolver]]
+==== Using the PortletMultipartResolver
+
+The following example shows how to use the `CommonsPortletMultipartResolver`:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="portletMultipartResolver"
+			class="org.springframework.web.portlet.multipart.CommonsPortletMultipartResolver">
+		<!-- one of the properties available; the maximum file size in bytes -->
+		<property name="maxUploadSize" value="100000"/>
+	</bean>
+----
+
+Of course you also need to put the appropriate jars in your classpath for the multipart
+resolver to work. In the case of the `CommonsMultipartResolver`, you need to use
+`commons-fileupload.jar`. Be sure to use at least version 1.1 of Commons FileUpload as
+previous versions do not support JSR-168 Portlet applications.
+
+Now that you have seen how to set Portlet MVC up to handle multipart requests, let's
+talk about how to actually use it. When `DispatcherPortlet` detects a multipart request,
+it activates the resolver that has been declared in your context and hands over the
+request. What the resolver then does is wrap the current `ActionRequest` in a
+`MultipartActionRequest` that has support for multipart file uploads. Using the
+`MultipartActionRequest` you can get information about the multiparts contained by this
+request and actually get access to the multipart files themselves in your controllers.
+
+Note that you can only receive multipart file uploads as part of an `ActionRequest`, not
+as part of a `RenderRequest`.
+
+
+
+[[portlet-multipart-forms]]
+==== Handling a file upload in a form
+After the `PortletMultipartResolver` has finished doing its job, the request will be
+processed like any other. To use the `PortletMultipartResolver`, create a form with an
+upload field (see example below), then let Spring bind the file onto your form (backing
+object). To actually let the user upload a file, we have to create a (JSP/HTML) form:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<h1>Please upload a file</h1>
+	<form method="post" action="<portlet:actionURL/>" enctype="multipart/form-data">
+		<input type="file" name="file"/>
+		<input type="submit"/>
+	</form>
+----
+
+As you can see, we've created a field named "file" that matches the property of the bean
+that holds the `byte[]` array. Furthermore we've added the encoding attribute (
+`enctype="multipart/form-data"`), which is necessary to let the browser know how to
+encode the multipart fields (do not forget this!).
+
+Just as with any other property that's not automagically convertible to a string or
+primitive type, to be able to put binary data in your objects you have to register a
+custom editor with the `PortletRequestDataBinder`. There are a couple of editors
+available for handling files and setting the results on an object. There's a
+`StringMultipartFileEditor` capable of converting files to Strings (using a user-defined
+character set), and there is a `ByteArrayMultipartFileEditor` which converts files to
+byte arrays. They function analogous to the `CustomDateEditor`.
+
+So, to be able to upload files using a form, declare the resolver, a mapping to a
+controller that will process the bean, and the controller itself.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="portletMultipartResolver"
+			class="org.springframework.web.portlet.multipart.CommonsPortletMultipartResolver"/>
+
+	<bean class="org.springframework.web.portlet.handler.PortletModeHandlerMapping">
+		<property name="portletModeMap">
+			<map>
+				<entry key="view" value-ref="fileUploadController"/>
+			</map>
+		</property>
+	</bean>
+
+	<bean id="fileUploadController" class="examples.FileUploadController">
+		<property name="commandClass" value="examples.FileUploadBean"/>
+		<property name="formView" value="fileuploadform"/>
+		<property name="successView" value="confirmation"/>
+	</bean>
+----
+
+After that, create the controller and the actual class to hold the file property.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class FileUploadController extends SimpleFormController {
+
+		public void onSubmitAction(ActionRequest request, ActionResponse response,
+				Object command, BindException errors) throws Exception {
+
+			// cast the bean
+			FileUploadBean bean = (FileUploadBean) command;
+
+			// let's see if there's content there
+			byte[] file = bean.getFile();
+			if (file == null) {
+				// hmm, that's strange, the user did not upload anything
+			}
+
+			// do something with the file here
+		}
+
+		protected void initBinder(PortletRequest request,
+				PortletRequestDataBinder binder) throws Exception {
+			// to actually be able to convert Multipart instance to byte[]
+			// we have to register a custom editor
+			binder.registerCustomEditor(byte[].class, new ByteArrayMultipartFileEditor());
+			// now Spring knows how to handle multipart object and convert
+		}
+
+	}
+
+	public class FileUploadBean {
+
+		private byte[] file;
+
+		public void setFile(byte[] file) {
+			this.file = file;
+		}
+
+		public byte[] getFile() {
+			return file;
+		}
+
+	}
+----
+
+As you can see, the `FileUploadBean` has a property of type `byte[]` that holds the
+file. The controller registers a custom editor to let Spring know how to actually
+convert the multipart objects the resolver has found to properties specified by the
+bean. In this example, nothing is done with the `byte[]` property of the bean itself,
+but in practice you can do whatever you want (save it in a database, mail it to
+somebody, etc).
+
+An equivalent example in which a file is bound straight to a String-typed property on a
+form backing object might look like this:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class FileUploadController extends SimpleFormController {
+
+		public void onSubmitAction(ActionRequest request, ActionResponse response,
+				Object command, BindException errors) throws Exception {
+
+			// cast the bean
+			FileUploadBean bean = (FileUploadBean) command;
+
+			// let's see if there's content there
+			String file = bean.getFile();
+			if (file == null) {
+				// hmm, that's strange, the user did not upload anything
+			}
+
+			// do something with the file here
+		}
+
+		protected void initBinder(PortletRequest request,
+				PortletRequestDataBinder binder) throws Exception {
+
+			// to actually be able to convert Multipart instance to a String
+			// we have to register a custom editor
+			binder.registerCustomEditor(String.class, new StringMultipartFileEditor());
+			// now Spring knows how to handle multipart objects and convert
+		}
+	}
+
+	public class FileUploadBean {
+
+		private String file;
+
+		public void setFile(String file) {
+			this.file = file;
+		}
+
+		public String getFile() {
+			return file;
+		}
+	}
+----
+
+Of course, this last example only makes (logical) sense in the context of uploading a
+plain text file (it wouldn't work so well in the case of uploading an image file).
+
+The third (and final) option is where one binds directly to a `MultipartFile` property
+declared on the (form backing) object's class. In this case one does not need to
+register any custom property editor because there is no type conversion to be performed.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class FileUploadController extends SimpleFormController {
+
+		public void onSubmitAction(ActionRequest request, ActionResponse response,
+				Object command, BindException errors) throws Exception {
+
+			// cast the bean
+			FileUploadBean bean = (FileUploadBean) command;
+
+			// let's see if there's content there
+			MultipartFile file = bean.getFile();
+			if (file == null) {
+				// hmm, that's strange, the user did not upload anything
+			}
+
+			// do something with the file here
+		}
+	}
+
+	public class FileUploadBean {
+
+		private MultipartFile file;
+
+		public void setFile(MultipartFile file) {
+			this.file = file;
+		}
+
+		public MultipartFile getFile() {
+			return file;
+		}
+
+	}
+----
+
+
+
+

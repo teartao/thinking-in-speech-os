@@ -1,0 +1,33 @@
+[[aop-prog]]
+=== 使用编程方式通过ProxyFactory创建AOP代理
+在Spring中用编程的方式创建AOP代理是很简单的. 这样就使得你可以使用Spring AOP而不需要依赖于Spring IoC.
+
+下面列举的就是为目标对象创建代理, 以及设置拦截器和通知器. 被目标对象实现的接口将会被自动代理:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	ProxyFactory factory = new ProxyFactory(myBusinessInterfaceImpl);
+	factory.addAdvice(myMethodInterceptor);
+	factory.addAdvisor(myAdvisor);
+	MyBusinessInterface tb = (MyBusinessInterface) factory.getProxy();
+----
+
+第一步是构造一个类型为`org.springframework.aop.framework.ProxyFactory`的对象. 你可以像上面例子
+那样创建的时候指定目标对象, 或者使用其他的替代的构造函数来指定需要代理的接口.
+
+你可以添加advice(把拦截器作为一种特殊的advice)和/或者通知器, 并且操控它们来为ProxyFactory的生命周期
+服务. 如果你添加了一个IntroductionInterceptionAroundAdvisor, 你就可以让代理支持实现附加的接口.
+
+在ProxyFactory中也有许多方便的方法(继承自`AdvisedSupport`), 他们允许你添加其他类型的advice, 比如
+前置或者抛出异常. AdvisedSupport是ProxyFactory和ProxyFactoryBean的父类.
+
+[TIP]
+====
+在IoC框架中集成AOP代理的创建在大多数应用中是最好的选择. 我们建议你在一般情况下使用AOP的Java代码来
+完成具体的配置.
+====
+
+
+
+

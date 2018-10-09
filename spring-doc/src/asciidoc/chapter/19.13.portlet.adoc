@@ -1,0 +1,72 @@
+[[portlet-ann-requestmapping-arguments]]
+==== Supported handler method arguments
+Handler methods which are annotated with `@RequestMapping` are allowed to have very
+flexible signatures. They may have arguments of the following types, in arbitrary order
+(except for validation results, which need to follow right after the corresponding
+command object, if desired):
+
+* Request and/or response objects (Portlet API). You may choose any specific
+  request/response type, e.g. PortletRequest / ActionRequest / RenderRequest. An
+  explicitly declared action/render argument is also used for mapping specific request
+  types onto a handler method (in case of no other information given that differentiates
+  between action and render requests).
+* Session object (Portlet API): of type PortletSession. An argument of this type will
+  enforce the presence of a corresponding session. As a consequence, such an argument
+  will never be `null`.
+* `org.springframework.web.context.request.WebRequest` or
+  `org.springframework.web.context.request.NativeWebRequest`. Allows for generic request
+  parameter access as well as request/session attribute access, without ties to the
+  native Servlet/Portlet API.
+* `java.util.Locale` for the current request locale (the portal locale in a Portlet
+  environment).
+* `java.util.TimeZone` / `java.time.ZoneId` for the current request time zone.
+* `java.io.InputStream` / `java.io.Reader` for access to the request's content. This
+  will be the raw InputStream/Reader as exposed by the Portlet API.
+* `java.io.OutputStream` / `java.io.Writer` for generating the response's content. This
+  will be the raw OutputStream/Writer as exposed by the Portlet API.
+* `@RequestParam` annotated parameters for access to specific Portlet request
+  parameters. Parameter values will be converted to the declared method argument type.
+* `java.util.Map` / `org.springframework.ui.Model` / `org.springframework.ui.ModelMap`
+  for enriching the implicit model that will be exposed to the web view.
+* Command/form objects to bind parameters to: as bean properties or fields, with
+  customizable type conversion, depending on `@InitBinder` methods and/or the
+  HandlerAdapter configuration - see the " `webBindingInitializer`" property on
+  `AnnotationMethodHandlerAdapter`. Such command objects along with their validation
+  results will be exposed as model attributes, by default using the non-qualified
+  command class name in property notation (e.g. "orderAddress" for type
+  "mypackage.OrderAddress"). Specify a parameter-level `ModelAttribute` annotation for
+  declaring a specific model attribute name.
+* `org.springframework.validation.Errors` /
+  `org.springframework.validation.BindingResult` validation results for a preceding
+  command/form object (the immediate preceding argument).
+* `org.springframework.web.bind.support.SessionStatus` status handle for marking form
+  processing as complete (triggering the cleanup of session attributes that have been
+  indicated by the `@SessionAttributes` annotation at the handler type level).
+
+The following return types are supported for handler methods:
+
+* A `ModelAndView` object, with the model implicitly enriched with command objects and
+  the results of `@ModelAttribute` annotated reference data accessor methods.
+* A `Model` object, with the view name implicitly determined through a
+  `RequestToViewNameTranslator` and the model implicitly enriched with command objects
+  and the results of `@ModelAttribute` annotated reference data accessor methods.
+* A `Map` object for exposing a model, with the view name implicitly determined through
+  a `RequestToViewNameTranslator` and the model implicitly enriched with command objects
+  and the results of `@ModelAttribute` annotated reference data accessor methods.
+* A `View` object, with the model implicitly determined through command objects and
+  `@ModelAttribute` annotated reference data accessor methods. The handler method may
+  also programmatically enrich the model by declaring a `Model` argument (see above).
+* A `String` value which is interpreted as view name, with the model implicitly
+  determined through command objects and `@ModelAttribute` annotated reference data
+  accessor methods. The handler method may also programmatically enrich the model by
+  declaring a `Model` argument (see above).
+* `void` if the method handles the response itself (e.g. by writing the response content
+  directly).
+* Any other return type will be considered a single model attribute to be exposed to the
+  view, using the attribute name specified through `@ModelAttribute` at the method level
+  (or the default attribute name based on the return type's class name otherwise). The
+  model will be implicitly enriched with command objects and the results of
+  `@ModelAttribute` annotated reference data accessor methods.
+
+
+

@@ -1,0 +1,63 @@
+[[aop-concise-proxy]]
+=== 简洁的代理定义
+特别是在定义事务代理的时候, 你有可能最后都会有许多相似的代理定义. 使用父子bean定义, 以及内部bean定义,
+可以创作出更加干净和简洁的代理定义.
+
+首先, 为代理定义一个父__模板__bean定义:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="txProxyTemplate" abstract="true"
+			class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
+		<property name="transactionManager" ref="transactionManager"/>
+		<property name="transactionAttributes">
+			<props>
+				<prop key="*">PROPAGATION_REQUIRED</prop>
+			</props>
+		</property>
+	</bean>
+----
+
+这并不能让它被实例化, 所以其实应该是未完成的. 然后每一个需要创建的代理都是它的子bean定义, 这些bean都
+包含一个target的内部bean定义, 景观target永远不会以它自己的方式使用.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="myService" parent="txProxyTemplate">
+		<property name="target">
+			<bean class="org.springframework.samples.MyServiceImpl">
+			</bean>
+		</property>
+	</bean>
+----
+
+当然可以覆盖父模板里面的属性, 就像这个例子一样, 覆盖事务的传播属性设置:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="mySpecialService" parent="txProxyTemplate">
+		<property name="target">
+			<bean class="org.springframework.samples.MySpecialServiceImpl">
+			</bean>
+		</property>
+		<property name="transactionAttributes">
+			<props>
+				<prop key="get*">PROPAGATION_REQUIRED,readOnly</prop>
+				<prop key="find*">PROPAGATION_REQUIRED,readOnly</prop>
+				<prop key="load*">PROPAGATION_REQUIRED,readOnly</prop>
+				<prop key="store*">PROPAGATION_REQUIRED</prop>
+			</props>
+		</property>
+	</bean>
+----
+
+记住, 在上面的例子中, 我们实际上是使用了<<beans-child-bean-definitions,前面>>介绍的__abstract__
+属性来把bean标记为__abstract__, 从而使得它不能被实例化的. 应用上下文(不是简单的bean工厂)默认将会
+预先实例化所有的单例. 所以这是很重要的(至少对单例bean来说), 如果你有一个(父)bean定义想用来仅仅作为
+模板, 并且这个定义指明了一个类, 你必须确保设置了__abstract__属性为__true__, 否则应用上下文将会尝试
+预先实例化它.
+
+

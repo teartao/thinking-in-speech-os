@@ -1,0 +1,101 @@
+[[remoting-caucho-protocols]]
+=== Using Hessian or Burlap to remotely call services via HTTP
+Hessian offers a binary HTTP-based remoting protocol. It is developed by Caucho and more
+information about Hessian itself can be found at http://www.caucho.com[].
+
+
+
+[[remoting-caucho-protocols-hessian]]
+==== Wiring up the DispatcherServlet for Hessian and co.
+
+Hessian communicates via HTTP and does so using a custom servlet. Using Spring's
+`DispatcherServlet` principles, as known from Spring Web MVC usage, you can easily wire
+up such a servlet exposing your services. First we'll have to create a new servlet in
+your application (this is an excerpt from `'web.xml'`):
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<servlet>
+		<servlet-name>remoting</servlet-name>
+		<servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+
+	<servlet-mapping>
+		<servlet-name>remoting</servlet-name>
+		<url-pattern>/remoting/*</url-pattern>
+	</servlet-mapping>
+----
+
+You're probably familiar with Spring's `DispatcherServlet` principles and if so, you
+know that now you'll have to create a Spring container configuration resource named
+`'remoting-servlet.xml'` (after the name of your servlet) in the `'WEB-INF'` directory.
+The application context will be used in the next section.
+
+Alternatively, consider the use of Spring's simpler `HttpRequestHandlerServlet`. This
+allows you to embed the remote exporter definitions in your root application context (by
+default in `'WEB-INF/applicationContext.xml'`), with individual servlet definitions
+pointing to specific exporter beans. Each servlet name needs to match the bean name of
+its target exporter in this case.
+
+
+
+[[remoting-caucho-protocols-hessian-server]]
+==== Exposing your beans by using the HessianServiceExporter
+
+In the newly created application context called `remoting-servlet.xml`, we'll create a
+`HessianServiceExporter` exporting your services:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="accountService" class="example.AccountServiceImpl">
+		<!-- any additional properties, maybe a DAO? -->
+	</bean>
+
+	<bean name="/AccountService" class="org.springframework.remoting.caucho.HessianServiceExporter">
+		<property name="service" ref="accountService"/>
+		<property name="serviceInterface" value="example.AccountService"/>
+	</bean>
+----
+
+Now we're ready to link in the service at the client. No explicit handler mapping is
+specified, mapping request URLs onto services, so `BeanNameUrlHandlerMapping` will be
+used: Hence, the service will be exported at the URL indicated through its bean name
+within the containing `DispatcherServlet`'s mapping (as defined above):
+`'http://HOST:8080/remoting/AccountService'`.
+
+Alternatively, create a `HessianServiceExporter` in your root application context (e.g.
+in `'WEB-INF/applicationContext.xml'`):
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean name="accountExporter" class="org.springframework.remoting.caucho.HessianServiceExporter">
+		<property name="service" ref="accountService"/>
+		<property name="serviceInterface" value="example.AccountService"/>
+	</bean>
+----
+
+In the latter case, define a corresponding servlet for this exporter in `'web.xml'`,
+with the same end result: The exporter getting mapped to the request path
+`/remoting/AccountService`. Note that the servlet name needs to match the bean name of
+the target exporter.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<servlet>
+		<servlet-name>accountExporter</servlet-name>
+		<servlet-class>org.springframework.web.context.support.HttpRequestHandlerServlet</servlet-class>
+	</servlet>
+
+	<servlet-mapping>
+		<servlet-name>accountExporter</servlet-name>
+		<url-pattern>/remoting/AccountService</url-pattern>
+	</servlet-mapping>
+----
+
+
+

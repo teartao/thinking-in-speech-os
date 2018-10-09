@@ -1,0 +1,109 @@
+[[aop-advice]]
+==== Declaring advice
+Advice is associated with a pointcut expression, and runs before, after, or around
+method executions matched by the pointcut. The pointcut expression may be either a
+simple reference to a named pointcut, or a pointcut expression declared in place.
+
+
+[[aop-advice-before]]
+===== Before advice
+Before advice is declared in an aspect using the `@Before` annotation:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	import org.aspectj.lang.annotation.Aspect;
+	import org.aspectj.lang.annotation.Before;
+
+	@Aspect
+	public class BeforeExample {
+
+		@Before("com.xyz.myapp.SystemArchitecture.dataAccessOperation()")
+		public void doAccessCheck() {
+			// ...
+		}
+
+	}
+----
+
+If using an in-place pointcut expression we could rewrite the above example as:
+
+[source,java,indent=0]
+[subs="verbatim"]
+----
+	import org.aspectj.lang.annotation.Aspect;
+	import org.aspectj.lang.annotation.Before;
+
+	@Aspect
+	public class BeforeExample {
+
+		@Before("execution(* com.xyz.myapp.dao.*.*(..))")
+		public void doAccessCheck() {
+			// ...
+		}
+
+	}
+----
+
+
+[[aop-advice-after-returning]]
+===== After returning advice
+After returning advice runs when a matched method execution returns normally. It is
+declared using the `@AfterReturning` annotation:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	import org.aspectj.lang.annotation.Aspect;
+	import org.aspectj.lang.annotation.AfterReturning;
+
+	@Aspect
+	public class AfterReturningExample {
+
+		@AfterReturning("com.xyz.myapp.SystemArchitecture.dataAccessOperation()")
+		public void doAccessCheck() {
+			// ...
+		}
+
+	}
+----
+
+[NOTE]
+====
+Note: it is of course possible to have multiple advice declarations, and other members
+as well, all inside the same aspect. We're just showing a single advice declaration in
+these examples to focus on the issue under discussion at the time.
+====
+
+Sometimes you need access in the advice body to the actual value that was returned. You
+can use the form of `@AfterReturning` that binds the return value for this:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	import org.aspectj.lang.annotation.Aspect;
+	import org.aspectj.lang.annotation.AfterReturning;
+
+	@Aspect
+	public class AfterReturningExample {
+
+		@AfterReturning(
+			pointcut="com.xyz.myapp.SystemArchitecture.dataAccessOperation()",
+			returning="retVal")
+		public void doAccessCheck(Object retVal) {
+			// ...
+		}
+
+	}
+----
+
+The name used in the `returning` attribute must correspond to the name of a parameter in
+the advice method. When a method execution returns, the return value will be passed to
+the advice method as the corresponding argument value. A `returning` clause also
+restricts matching to only those method executions that return a value of the specified
+type ( `Object` in this case, which will match any return value).
+
+Please note that it is __not__ possible to return a totally different reference when
+using after-returning advice.
+
+

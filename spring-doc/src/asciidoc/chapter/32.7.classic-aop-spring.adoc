@@ -1,0 +1,58 @@
+[[classic-aop-pfb-2]]
+==== JavaBean properties
+In common with most `FactoryBean` implementations provided with Spring, the
+`ProxyFactoryBean` class is itself a JavaBean. Its properties are used to:
+
+* Specify the target you want to proxy.
+* Specify whether to use CGLIB (see below and also <<aop-pfb-proxy-types>>).
+
+Some key properties are inherited from `org.springframework.aop.framework.ProxyConfig`
+(the superclass for all AOP proxy factories in Spring). These key properties include:
+
+* `proxyTargetClass`: `true` if the target class is to be proxied, rather than the
+  target class' interfaces. If this property value is set to `true`, then CGLIB proxies
+  will be created (but see also below <<aop-pfb-proxy-types>>).
+* `optimize`: controls whether or not aggressive optimizations are applied to proxies
+  __created via CGLIB__. One should not blithely use this setting unless one fully
+  understands how the relevant AOP proxy handles optimization. This is currently used
+  only for CGLIB proxies; it has no effect with JDK dynamic proxies.
+* `frozen`: if a proxy configuration is `frozen`, then changes to the configuration are
+  no longer allowed. This is useful both as a slight optimization and for those cases
+  when you don't want callers to be able to manipulate the proxy (via the `Advised`
+  interface) after the proxy has been created. The default value of this property is
+  `false`, so changes such as adding additional advice are allowed.
+* `exposeProxy`: determines whether or not the current proxy should be exposed in a
+  `ThreadLocal` so that it can be accessed by the target. If a target needs to obtain
+  the proxy and the `exposeProxy` property is set to `true`, the target can use the
+  `AopContext.currentProxy()` method.
+* `aopProxyFactory`: the implementation of `AopProxyFactory` to use. Offers a way of
+  customizing whether to use dynamic proxies, CGLIB or any other proxy strategy. The
+  default implementation will choose dynamic proxies or CGLIB appropriately. There
+  should be no need to use this property; it is intended to allow the addition of new
+  proxy types in Spring 1.1.
+
+Other properties specific to `ProxyFactoryBean` include:
+
+* `proxyInterfaces`: array of String interface names. If this isn't supplied, a CGLIB
+  proxy for the target class will be used (but see also below <<aop-pfb-proxy-types>>).
+* `interceptorNames`: String array of `Advisor`, interceptor or other advice names to
+  apply. Ordering is significant, on a first come-first served basis. That is to say
+  that the first interceptor in the list will be the first to be able to intercept the
+  invocation.
+
+The names are bean names in the current factory, including bean names from ancestor
+factories. You can't mention bean references here since doing so would result in the
+`ProxyFactoryBean` ignoring the singleton setting of the advice.
+
+You can append an interceptor name with an asterisk ( `*`). This will result in the
+application of all advisor beans with names starting with the part before the asterisk
+to be applied. An example of using this feature can be found in <<aop-global-advisors>>.
+
+*  singleton: whether or not the factory should return a single object, no matter how
+  often the `getObject()` method is called. Several `FactoryBean` implementations offer
+  such a method. The default value is `true`. If you	want to use stateful advice - for
+  example, for stateful mixins - use	prototype advices along with a singleton value of
+  `false`.
+
+
+

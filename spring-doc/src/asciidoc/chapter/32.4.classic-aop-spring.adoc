@@ -1,0 +1,133 @@
+[[classic-aop-api-advice-throws]]
+===== Throws advice
+__Throws advice__ is invoked after the return of the join point if the join point threw
+an exception. Spring offers typed throws advice. Note that this means that the
+`org.springframework.aop.ThrowsAdvice` interface does not contain any methods: It is a
+tag interface identifying that the given object implements one or more typed throws
+advice methods. These should be in the form of:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	afterThrowing([Method, args, target], subclassOfThrowable)
+----
+
+Only the last argument is required. The method signatures may have either one or four
+arguments, depending on whether the advice method is interested in the method and
+arguments. The following classes are examples of throws advice.
+
+The advice below is invoked if a `RemoteException` is thrown (including subclasses):
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class RemoteThrowsAdvice implements ThrowsAdvice {
+
+		public void afterThrowing(RemoteException ex) throws Throwable {
+			// Do something with remote exception
+		}
+
+	}
+----
+
+The following advice is invoked if a `ServletException` is thrown. Unlike the above
+advice, it declares 4 arguments, so that it has access to the invoked method, method
+arguments and target object:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class ServletThrowsAdviceWithArguments implements ThrowsAdvice {
+
+		public void afterThrowing(Method m, Object[] args, Object target, ServletException ex) {
+			// Do something with all arguments
+		}
+
+	}
+----
+
+The final example illustrates how these two methods could be used in a single class,
+which handles both `RemoteException` and `ServletException`. Any number of throws advice
+methods can be combined in a single class.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public static class CombinedThrowsAdvice implements ThrowsAdvice {
+
+		public void afterThrowing(RemoteException ex) throws Throwable {
+			// Do something with remote exception
+		}
+
+		public void afterThrowing(Method m, Object[] args, Object target, ServletException ex) {
+			// Do something with all arguments
+		}
+	}
+----
+
+__Note:__ If a throws-advice method throws an exception itself, it will override the
+original exception (i.e. change the exception thrown to the user). The overriding
+exception will typically be a RuntimeException; this is compatible with any method
+signature. However, if a throws-advice method throws a checked exception, it will have
+to match the declared exceptions of the target method and is hence to some degree
+coupled to specific target method signatures. __Do not throw an undeclared checked
+exception that is incompatible with the target method's signature!__
+
+[TIP]
+====
+
+Throws advice can be used with any pointcut.
+====
+
+
+[[classic-aop-api-advice-after-returning]]
+===== After Returning advice
+An after returning advice in Spring must implement the
+__org.springframework.aop.AfterReturningAdvice__ interface, shown below:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface AfterReturningAdvice extends Advice {
+
+		void afterReturning(Object returnValue, Method m, Object[] args,
+				Object target) throws Throwable;
+
+	}
+----
+
+An after returning advice has access to the return value (which it cannot modify),
+invoked method, methods arguments and target.
+
+The following after returning advice counts all successful method invocations that have
+not thrown exceptions:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class CountingAfterReturningAdvice implements AfterReturningAdvice {
+
+		private int count;
+
+		public void afterReturning(Object returnValue, Method m, Object[] args,
+				Object target) throws Throwable {
+			++count;
+		}
+
+		public int getCount() {
+			return count;
+		}
+
+	}
+----
+
+This advice doesn't change the execution path. If it throws an exception, this will be
+thrown up the interceptor chain instead of the return value.
+
+[TIP]
+====
+
+After returning advice can be used with any pointcut.
+====
+
+

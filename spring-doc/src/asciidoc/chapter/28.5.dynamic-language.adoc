@@ -1,0 +1,54 @@
+[[dynamic-language-beans-ctor-injection]]
+===== Understanding Constructor Injection in the context of dynamic-language-backed beans
+There is one __very__ important thing to be aware of with regard to Spring's dynamic
+language support. Namely, it is not (currently) possible to supply constructor arguments
+to dynamic-language-backed beans (and hence constructor-injection is not available for
+dynamic-language-backed beans). In the interests of making this special handling of
+constructors and properties 100% clear, the following mixture of code and configuration
+will __not__ work.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	// from the file 'Messenger.groovy'
+	package org.springframework.scripting.groovy;
+
+	import org.springframework.scripting.Messenger
+
+	class GroovyMessenger implements Messenger {
+
+		GroovyMessenger() {}
+
+		// this constructor is not available for Constructor Injection
+		GroovyMessenger(String message) {
+			this.message = message;
+		}
+
+		String message
+
+		String anotherMessage
+
+	}
+----
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<lang:groovy id="badMessenger"
+		script-source="classpath:Messenger.groovy">
+		<!-- this next constructor argument will *not* be injected into the GroovyMessenger -->
+		<!-- in fact, this isn't even allowed according to the schema -->
+		<constructor-arg value="This will *not* work" />
+
+		<!-- only property values are injected into the dynamic-language-backed object -->
+		<lang:property name="anotherMessage" value="Passed straight through to the dynamic-language-backed object" />
+
+	</lang>
+----
+
+In practice this limitation is not as significant as it first appears since setter
+injection is the injection style favored by the overwhelming majority of developers
+anyway (let's leave the discussion as to whether that is a good thing to another day).
+
+
+

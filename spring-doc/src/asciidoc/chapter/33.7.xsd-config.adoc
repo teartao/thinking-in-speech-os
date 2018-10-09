@@ -1,0 +1,165 @@
+[[xsd-config-body-schemas-context-pphc]]
+===== <property-placeholder/>
+
+This element activates the replacement of `${...}` placeholders, resolved against the
+specified properties file (as a <<resources,Spring resource location>>). This element is
+a convenience mechanism that sets up a<<beans-factory-placeholderconfigurer,
+`PropertyPlaceholderConfigurer`>> for you; if you need more control over the
+`PropertyPlaceholderConfigurer`, just define one yourself explicitly.
+
+
+[[xsd-config-body-schemas-context-ac]]
+===== <annotation-config/>
+
+Activates the Spring infrastructure for various annotations to be detected in bean
+classes: Spring's <<beans-required-annotation, `@Required`>> and
+<<beans-annotation-config, `@Autowired`>>, as well as JSR 250's `@PostConstruct`,
+`@PreDestroy` and `@Resource` (if available), and JPA's `@PersistenceContext` and
+`@PersistenceUnit` (if available). Alternatively, you can choose to activate the
+individual `BeanPostProcessors` for those annotations explicitly.
+
+[NOTE]
+====
+This element does __not__ activate processing of Spring's
+<<transaction-declarative-annotations, `@Transactional`>> annotation. Use the
+<<tx-decl-explained, `<tx:annotation-driven/>`>> element for that purpose.
+====
+
+
+[[xsd-config-body-schemas-context-component-scan]]
+===== <component-scan/>
+
+This element is detailed in <<beans-annotation-config>>.
+
+
+[[xsd-config-body-schemas-context-ltw]]
+===== <load-time-weaver/>
+
+This element is detailed in <<aop-aj-ltw>>.
+
+
+[[xsd-config-body-schemas-context-sc]]
+===== <spring-configured/>
+
+This element is detailed in <<aop-atconfigurable>>.
+
+
+[[xsd-config-body-schemas-context-mbe]]
+===== <mbean-export/>
+
+This element is detailed in <<jmx-context-mbeanexport>>.
+
+
+
+[[xsd-config-body-schemas-tool]]
+==== the tool schema
+
+The `tool` tags are for use when you want to add tooling-specific metadata to your
+custom configuration elements. This metadata can then be consumed by tools that are
+aware of this metadata, and the tools can then do pretty much whatever they want with it
+(validation, etc.).
+
+The `tool` tags are not documented in this release of Spring as they are currently
+undergoing review. If you are a third party tool vendor and you would like to contribute
+to this review process, then do mail the Spring mailing list. The currently supported
+`tool` tags can be found in the file `'spring-tool.xsd'` in the
+`'src/org/springframework/beans/factory/xml'` directory of the Spring source
+distribution.
+
+
+
+[[xsd-config-body-schemas-jdbc]]
+==== the jdbc schema
+
+The `jdbc` tags allow you to quickly configure an embedded database or initialize an
+existing data source. These tags are documented in <<jdbc-embedded-database-support>>
+and <<jdbc-intializing-datasource>> respectively.
+
+To use the tags in the `jdbc` schema, you need to have the following preamble at the top
+of your Spring XML configuration file; the text in the following snippet references the
+correct schema so that the tags in the `jdbc` namespace are available to you.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		__xmlns:jdbc="http://www.springframework.org/schema/jdbc"__ xsi:schemaLocation="
+			http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+			__http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc.xsd"__> <!-- bean definitions here -->
+
+	</beans>
+----
+
+
+
+[[xsd-config-body-schemas-cache]]
+==== the cache schema
+
+The `cache` tags can be used to enable support for Spring's `@CacheEvict`, `@CachePut`
+and `@Caching` annotations. It it also supports declarative XML-based caching. See
+<<cache-annotation-enable>> and <<cache-declarative-xml>> for details.
+
+To use the tags in the `cache` schema, you need to have the following preamble at the
+top of your Spring XML configuration file; the text in the following snippet references
+the correct schema so that the tags in the `cache` namespace are available to you.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		__xmlns:jdbc="http://www.springframework.org/schema/cache"__ xsi:schemaLocation="
+			http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+			__http://www.springframework.org/schema/cache http://www.springframework.org/schema/jdbc/spring-cache.xsd"__> <!-- bean definitions here -->
+
+	</beans>
+----
+
+
+
+[[xsd-config-body-schemas-beans]]
+==== the beans schema
+
+Last but not least we have the tags in the `beans` schema. These are the same tags that
+have been in Spring since the very dawn of the framework. Examples of the various tags
+in the `beans` schema are not shown here because they are quite comprehensively covered
+in <<beans-factory-properties-detailed>> (and indeed in that entire <<beans,chapter>>).
+
+One thing that is new to the beans tags themselves in Spring 2.0 is the idea of
+arbitrary bean metadata. In Spring 2.0 it is now possible to add zero or more key /
+value pairs to `<bean/>` XML definitions. What, if anything, is done with this extra
+metadata is totally up to your own custom logic (and so is typically only of use if you
+are writing your own custom tags as described in the appendix entitled
+<<extensible-xml>>).
+
+Find below an example of the `<meta/>` tag in the context of a surrounding `<bean/>`
+(please note that without any logic to interpret it the metadata is effectively useless
+as-is).
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="
+			http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+		<bean id="foo" class="x.y.Foo">
+			__<meta key="cacheName" value="foo"/>__
+			<property name="name" value="Rick"/>
+		</bean>
+
+	</beans>
+----
+
+In the case of the above example, you would assume that there is some logic that will
+consume the bean definition and set up some caching infrastructure using the supplied
+metadata.
+
+
+
+

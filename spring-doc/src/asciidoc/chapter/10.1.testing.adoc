@@ -1,0 +1,109 @@
+[[integration-testing]]
+=== 集成测试
+
+
+
+[[integration-testing-overview]]
+==== 概览
+
+不需要发布（程序）到你的应用服务器或者连接到其他企业设施的情况下能够执行一些集成测试是非常重要的。
+这能使你测试下述情况：
+
+* Spring Ioc容器上下文的正确写入
+* 使用JDBC或者ORM工具进行数据访问。这包括SQL语句、Hibernate查询以及JPA实体映射的正确性，类似等等。
+
+
+在`spring-test`模块中，Spring框架为集成测试提供了第一等级的支持。实际的Jar包的名称包括发布版本的
+名称，也可能包括长包名`org.springframework.test`的形式。这依赖你获取的来源（参阅<<dependency-management,
+依赖管理章节>>解释 ）。这个库包括`org.springframework.test`包，它为在Sring容器中进行集成测试提供
+一些有价值的类。这些测试不依赖应用服务器或者其他发布环境。这些测试比单元测试要慢，但是要比等价的分析测试
+或者是依赖应用服务器发布的远程测试要快。
+
+在Spring 2.5及以后的版本中已经提供了注解驱动<<testcontext-framework,Spring 测试上下文框架>>的
+单元测试和集成测试。由于Spring 测试上下文框架对实际使用的测试框架是不可知的，所以允许使用各种测试设施，
+如JUnit，TestNG等等。
+
+
+[[integration-testing-goals]]
+==== 集成测试的目标
+
+Srping的集成测试支持有如下的主要目标：
+
+* 在测试期间管理 <<testing-ctx-management,Spring Ioc容器缓存>> 。
+* 提供 <<testing-fixture-di,测试夹具实例的依赖注入>> 。
+* 在集成测试中提供 <<testing-tx,事务管理>> 方法。 
+* 提供 <<testing-support-classes,Spirng特定的基础类>> ，协助开发人员编写集成测试。
+
+后续的章节描述每一个目标并提供实现和配置详情的链接。
+
+
+[[testing-ctx-management]]
+===== 上下文管理和缓存
+
+Spring TestContext 框架对++ApplicationContext++s 和++WebApplicationContext++s以及这些
+上下文的缓存提供了一致的加载。对加载的上下文进行缓存是重要的，因为启动时间可能会成为一个问题，—— 并非
+因为Spring本身的问题，而是因为被Spring容器管理的对象需要花时间进行实例化。例如，一个拥有50到100个
+Hibernate映射文件的项目可能需要用掉10到20妙来加载这些文件，在运行每一个测试夹具之前都会产生这笔
+开销，这将直接导致开发人员的生产率下降。
+
+这些类有两种典型的声明方式，一种是在XML配置元数据中有一个 __资源路径__ 的列表 ——通常是在类路径下，
+或者是一个配置应用的 __注解类__ 的列表。它们与在`web.xml`发布描述文件中声明的或者其他的发布配置
+文件是相同或相似的。
+
+
+默认情况下，一旦加载，配置的 `ApplicationContext` 对每一个测试都是复用的。因此 setup 的开销在每一个
+测试套件中仅仅一次，后续的测试执行会更快。这种情况下指的 __测试套件__ 意思是运行在同一个JVM中的所有的测试——
+例如，对指定的项目或模块，无论是Ant、Maven或是Gradle构建的所有的测试。一个极不可能发生的情况是测试崩溃
+导致应用上下文的重新加载——例如，修改Bean定义或者应用对象的状态，这时在执行测试之前TestContext框架可以
+被配置为重新加载配置和重新构建应用上下文。
+
+参阅TestContext 框架中<<testcontext-ctx-management>> 和 <<testcontext-ctx-management-caching>>。 
+
+[[testing-fixture-di]]
+===== 测试夹具的依赖注入
+当TestContext 框架加载应用上下文的时候，可选地，你可以使用依赖注入的方式配置测试类的实例。它为使用预先配置
+的Bean设置测试夹具提供了一个便利的机制。一个很大的好处是你可以跨越各种测试场景复用应用上下文。（例如，配置
+Spring管理的对象图，事务代理， ++DataSource++s,等），因此可以避免为独立的测试用例重复地设置复杂的测试
+夹具。
+
+作为一个示例，考虑如下场景：我们有一个类, `HibernateTitleRepository` 为领域实体 `Title` 实现了数据访问
+逻辑。我们想写一个集成测试，测试如下情况：
+
+* Spring配置：与 `HibernateTitleRepository` bean配置相关所有东西的正确性 ？
+* Hibernate 映射文件配置：映射的正确性，lazy-loading设置正确性？
+* `HibernateTitleRepository`对象的逻辑：配置的这个类的实例是否达到了预期？
+
+参阅在<<testcontext-fixture-di,TestContext framework>>中使用测试夹具的依赖注入。
+
+
+[[testing-tx]]
+===== 事务管理
+测试中一个通常的问题是访问真实的数据库对持久化存储状态的影响。甚至你使用开发数据库，状态的变化可能影响将来的测试。
+另外，许多操作，如插入或修改持久化数据——不能在事务外执行（或验证）。
+
+TestContext 框架定位了这个问题。默认情况下，框架将对每一个测试创建并回滚一个事务。你可以假设事务的存在，
+而简单地写代码。在你的测试中，如果调用了一个事务性的代理对象，根据对它们的事务语义配置，它们将会行为正确地执行。
+另外，在测试中，当运行在受管事务中时，如果一个方法删除了选定表的内容，默认情况下，事务将会回滚，数据库将会返回到
+执行测试前的状态。在测试中事务的支持是通过在应用上下文中定一个bean `PlatformTransactionManager` 。
+
+如果你想提交一个事务——极少出现但偶有发生，当你要一个特定的测试来迁移或修改数据库——TestContext框架可以通过注解
+<<integration-testing-annotations, `@TransactionConfiguration`>> 和
+<<integration-testing-annotations, `@Rollback`>>提示进行事务提交而不是事务回滚。
+
+参阅使用<<testcontext-tx,TestContext 框架>>进行事务管理。
+
+
+[[testing-support-classes]]
+===== 集成测试支持类
+Spring TestContext 框架为简化集成测试的编写提供了几个 `abstract` 支持类。这些基础类提供了定义良好的钩子以及
+便利的实例变量和方法，以便你能够访问：
+
+* `ApplicationContext`对象，为了显式bean的查找以及整个上下文状态的测试。
+* `JdbcTemplate`对象，为了执行SQL语句查询数据库。这些查询，可以用来确认数据库相关的代码执行 __前后__ 数据库状态。
+Spring 还保证这些代码与应用代码运行在相同的事务方位内。当联合使用ORM工具使用时，确保避免<<testcontext-tx-false-positives,false positives>>
+问题。
+
+另外，你可能想创建自定义的，应用范围的超类。这些超类拥有实例特定于你的项目的变量和方法。
+
+请参阅<<testcontext-support-classes,TestContext 框架>>支持类。
+

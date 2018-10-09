@@ -1,0 +1,56 @@
+[[mvc-exceptionhandlers]]
+=== 异常处理
+
+
+
+[[mvc-exceptionhandlers-resolver]]
+==== 异常处理
+
+Spring的 `HandlerExceptionResolver` 用来处理包括controller执行期间在内的异常. 一个 `HandlerExceptionResolver` 有点类似于 web 应用中定义在 `web.xml` 中的异常映射.
+但是,它们提供了更加灵活的方式.比如说,在抛出异常的时候它提供了一些关于哪个异常处理器将被执行的信息.此外,在请求被转发到另外一个URL之前,编程方式的异常处理提供了更多的处理方式.s
+
+除了实现 `HandlerExceptionResolver` 接口外, 只需实现 `resolveException(Exception, Handler)` 方法并且返回一个
+`ModelAndView`, 也可以使用提供的 `SimpleMappingExceptionResolver` 或者创建一个
+`@ExceptionHandler` 方法. `SimpleMappingExceptionResolver` 使你能够获取任何异常的类名,这些异常可以被抛出或者映射到一个视图.
+这和Servlet API的异常映射特性是等价的,但是它可以通过不同的异常处理器实现更好的异常处理.
+另外 `@ExceptionHandler` 可以被注解在一个处理异常的方法上. 这个方法可以被定义在包含 `@Controller` 的类局部区域
+或者定义在包含 `@ControllerAdvice` 的类里面应用于多个 `@Controller` 类. 接下来的章节将会详细的解释.
+
+
+
+[[mvc-ann-exceptionhandler]]
+==== @ExceptionHandler
+
+ `HandlerExceptionResolver` 接口 和 `SimpleMappingExceptionResolver`
+实现类允许映射异常到具体的视图,在转发到视图之前可以有Java逻辑代码. 但是, 有些情况下,
+尤其是注解 `@ResponseBody` 的方法而不是一个视图的情况下,它可以更方便的直接设置返回的状态和返回的错误内容.
+
+可以通过 `@ExceptionHandler` 方法. 当它在一个 controller 内部声明时，它将被用于那个controller（或它的子类）的 `@RequestMapping` 方法抛出的异常.
+你也可以在 `@ControllerAdvice` 类里面声明 `@ExceptionHandler` 方法,它将会处理很多controller的 `@RequestMapping` 方法抛出的异常.
+下面是作用一个controller域的一个例子
+`@ExceptionHandler` 方法:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+    @Controller
+	public class SimpleController {
+
+		// @RequestMapping methods omitted ...
+
+		@ExceptionHandler(IOException.class)
+		public ResponseEntity<String> handleIOException(IOException ex) {
+			// prepare responseEntity
+			return responseEntity;
+		}
+
+	}
+----
+
+ `@ExceptionHandler` 的value可以设置一个需要被处理的异常数组. 如果一个异常被抛出并且包含在这个异常列表中, 然后就会调用 `@ExceptionHandler` 方法. 如果没有设置value，
+ 那么就会使用参数里面的异常.
+
+和标准controller的 `@RequestMapping` 方法很相似,  `@ExceptionHandler` 方法的参数值和返回值相当灵活.
+比如说,  `HttpServletRequest` 可以在 Servlet 环境中被接收,
+`PortletRequest` 在 Portlet 环境中被接收. 返回值可以是 `String`, 它将解释为一个视图, 可以是 `ModelAndView` 对象, 可以是 `ResponseEntity` 对象, 或者你可以添加
+ `@ResponseBody` 方法直接返回消息.

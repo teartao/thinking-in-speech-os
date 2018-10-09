@@ -1,0 +1,142 @@
+[[mvc-config-path-matching]]
+==== Path Matching
+This allows customizing various settings related to URL mapping and path matching.
+For details on the individual options check out the
+{javadoc-baseurl}/org/springframework/web/servlet/config/annotation/PathMatchConfigurer.html[PathMatchConfigurer] API.
+
+Below is an example in Java config:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Configuration
+	@EnableWebMvc
+	public class WebConfig extends WebMvcConfigurerAdapter {
+
+		@Override
+		public void configurePathMatch(PathMatchConfigurer configurer) {
+			configurer
+			    .setUseSuffixPatternMatch(true)
+			    .setUseTrailingSlashMatch(false)
+			    .setUseRegisteredSuffixPatternMatch(true)
+			    .setPathMatcher(antPathMatcher())
+			    .setUrlPathHelper(urlPathHelper());
+		}
+
+		@Bean
+		public UrlPathHelper urlPathHelper() {
+		    //...
+		}
+
+		@Bean
+		public PathMatcher antPathMatcher() {
+		    //...
+		}
+
+	}
+----
+
+And the same in XML, use the `<mvc:path-matching>` element:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+    <mvc:annotation-driven>
+        <mvc:path-matching
+            suffix-pattern="true"
+            trailing-slash="false"
+            registered-suffixes-only="true"
+            path-helper="pathHelper"
+            path-matcher="pathMatcher" />
+    </mvc:annotation-driven>
+
+    <bean id="pathHelper" class="org.example.app.MyPathHelper" />
+    <bean id="pathMatcher" class="org.example.app.MyPathMatcher" />
+----
+
+
+
+[[mvc-config-advanced-java]]
+==== Advanced Customizations with MVC Java Config
+As you can see from the above examples, MVC Java config and the MVC namespace provide
+higher level constructs that do not require deep knowledge of the underlying beans
+created for you. Instead it helps you to focus on your application needs. However, at
+some point you may need more fine-grained control or you may simply wish to understand
+the underlying configuration.
+
+The first step towards more fine-grained control is to see the underlying beans created
+for you. In MVC Java config you can see the javadocs and the `@Bean` methods in
+`WebMvcConfigurationSupport`. The configuration in this class is automatically imported
+through the `@EnableWebMvc` annotation. In fact if you open `@EnableWebMvc` you can see
+the `@Import` statement.
+
+The next step towards more fine-grained control is to customize a property on one of the
+beans created in `WebMvcConfigurationSupport` or perhaps to provide your own instance.
+This requires two things -- remove the `@EnableWebMvc` annotation in order to prevent
+the import and then extend from `DelegatingWebMvcConfiguration`, a subclass of
+`WebMvcConfigurationSupport`.
+Here is an example:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Configuration
+	public class WebConfig extends DelegatingWebMvcConfiguration {
+
+		@Override
+		public void addInterceptors(InterceptorRegistry registry){
+			// ...
+		}
+
+		@Override
+		@Bean
+		public RequestMappingHandlerAdapter requestMappingHandlerAdapter() {
+			// Create or let "super" create the adapter
+			// Then customize one of its properties
+		}
+
+	}
+----
+
+[NOTE]
+====
+An application should have only one configuration extending `DelegatingWebMvcConfiguration`
+or a single `@EnableWebMvc` annotated class, since they both register the same underlying
+beans.
+
+Modifying beans in this way does not prevent you from using any of the higher-level
+constructs shown earlier in this section. `WebMvcConfigurerAdapter` subclasses and
+`WebMvcConfigurer` implementations are still being used.
+====
+
+
+
+[[mvc-config-advanced-xml]]
+==== Advanced Customizations with the MVC Namespace
+Fine-grained control over the configuration created for you is a bit harder with the MVC
+namespace.
+
+If you do need to do that, rather than replicating the configuration it provides,
+consider configuring a `BeanPostProcessor` that detects the bean you want to customize
+by type and then modifying its properties as necessary. For example:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Component
+	public class MyPostProcessor implements BeanPostProcessor {
+
+		public Object postProcessBeforeInitialization(Object bean, String name) throws BeansException {
+			if (bean instanceof RequestMappingHandlerAdapter) {
+				// Modify properties of the adapter
+			}
+		}
+
+	}
+----
+
+Note that `MyPostProcessor` needs to be included in an `<component scan />` in order for
+it to be detected or if you prefer you can declare it explicitly with an XML bean
+declaration.
+
+

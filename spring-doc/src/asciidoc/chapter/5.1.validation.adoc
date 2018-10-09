@@ -1,0 +1,159 @@
+[[beans-beans-conversion]]
+==== 内嵌的属性编辑器实现
+
+Spring uses the concept of `PropertyEditors` to effect the conversion between an
+`Object` and a `String`. If you think about it, it sometimes might be handy to be able
+to represent properties in a different way than the object itself. For example, a `Date`
+can be represented in a human readable way (as the `String` ' `2007-14-09`'), while
+we're still able to convert the human readable form back to the original date (or even
+better: convert any date entered in a human readable form, back to `Date` objects). This
+behavior can be achieved by __registering custom editors__, of type
+`java.beans.PropertyEditor`. Registering custom editors on a `BeanWrapper` or
+alternately in a specific IoC container as mentioned in the previous chapter, gives it
+the knowledge of how to convert properties to the desired type. Read more about
+`PropertyEditors` in the javadocs of the `java.beans` package provided by Oracle.
+
+A couple of examples where property editing is used in Spring:
+
+* __setting properties on beans__ is done using `PropertyEditors`. When mentioning
+  `java.lang.String` as the value of a property of some bean you're declaring in XML
+  file, Spring will (if the setter of the corresponding property has a
+  `Class`-parameter) use the `ClassEditor` to try to resolve the parameter to a `Class`
+  object.
+* __parsing HTTP request parameters__ in Spring's MVC framework is done using all kinds
+  of `PropertyEditors` that you can manually bind in all subclasses of the
+  `CommandController`.
+
+Spring has a number of built-in `PropertyEditors` to make life easy. Each of those is
+listed below and they are all located in the `org.springframework.beans.propertyeditors`
+package. Most, but not all (as indicated below), are registered by default by
+`BeanWrapperImpl`. Where the property editor is configurable in some fashion, you can of
+course still register your own variant to override the default one:
+
+[[beans-beans-property-editors-tbl]]
+.Built-in PropertyEditors
+|===
+| Class| Explanation
+
+| `ByteArrayPropertyEditor`
+| Editor for byte arrays. Strings will simply be converted to their corresponding byte
+  representations. Registered by default by `BeanWrapperImpl`.
+
+| `ClassEditor`
+| Parses Strings representing classes to actual classes and the other way around. When a
+  class is not found, an `IllegalArgumentException` is thrown. Registered by default by
+  `BeanWrapperImpl`.
+
+| `CustomBooleanEditor`
+| Customizable property editor for `Boolean` properties. Registered by default by
+  `BeanWrapperImpl`, but, can be overridden by registering custom instance of it as
+  custom editor.
+
+| `CustomCollectionEditor`
+| Property editor for Collections, converting any source `Collection` to a given target
+  `Collection` type.
+
+| `CustomDateEditor`
+| Customizable property editor for java.util.Date, supporting a custom DateFormat. NOT
+  registered by default. Must be user registered as needed with appropriate format.
+
+| `CustomNumberEditor`
+| Customizable property editor for any Number subclass like `Integer`, `Long`, `Float`,
+  `Double`. Registered by default by `BeanWrapperImpl`, but can be overridden by
+  registering custom instance of it as a custom editor.
+
+| `FileEditor`
+| Capable of resolving Strings to `java.io.File` objects. Registered by default by
+  `BeanWrapperImpl`.
+
+| `InputStreamEditor`
+| One-way property editor, capable of taking a text string and producing (via an
+  intermediate `ResourceEditor` and `Resource`) an `InputStream`, so `InputStream`
+  properties may be directly set as Strings. Note that the default usage will not close
+  the `InputStream` for you! Registered by default by `BeanWrapperImpl`.
+
+| `LocaleEditor`
+| Capable of resolving Strings to `Locale` objects and vice versa (the String format is
+  [language]_[country]_[variant], which is the same thing the toString() method of
+  Locale provides). Registered by default by `BeanWrapperImpl`.
+
+| `PatternEditor`
+| Capable of resolving Strings to `java.util.regex.Pattern` objects and vice versa.
+
+| `PropertiesEditor`
+| Capable of converting Strings (formatted using the format as defined in the javadocs
+  of the `java.util.Properties` class) to `Properties` objects. Registered by default
+  by `BeanWrapperImpl`.
+
+| `StringTrimmerEditor`
+| Property editor that trims Strings. Optionally allows transforming an empty string
+  into a `null` value. NOT registered by default; must be user registered as needed.
+
+| `URLEditor`
+| Capable of resolving a String representation of a URL to an actual `URL` object.
+  Registered by default by `BeanWrapperImpl`.
+|===
+
+Spring uses the `java.beans.PropertyEditorManager` to set the search path for property
+editors that might be needed. The search path also includes `sun.bean.editors`, which
+includes `PropertyEditor` implementations for types such as `Font`, `Color`, and most of
+the primitive types. Note also that the standard JavaBeans infrastructure will
+automatically discover `PropertyEditor` classes (without you having to register them
+explicitly) if they are in the same package as the class they handle, and have the same
+name as that class, with `'Editor'` appended; for example, one could have the following
+class and package structure, which would be sufficient for the `FooEditor` class to be
+recognized and used as the `PropertyEditor` for `Foo`-typed properties.
+
+[literal]
+[subs="verbatim,quotes"]
+----
+com
+  chank
+    pop
+      Foo
+      FooEditor // the PropertyEditor for the Foo class
+----
+
+Note that you can also use the standard `BeanInfo` JavaBeans mechanism here as well
+(described
+http://docs.oracle.com/javase/tutorial/javabeans/advanced/customization.html[in
+not-amazing-detail here]). Find below an example of using the `BeanInfo` mechanism for
+explicitly registering one or more `PropertyEditor` instances with the properties of an
+associated class.
+
+[literal]
+[subs="verbatim,quotes"]
+----
+com
+  chank
+    pop
+      Foo
+      FooBeanInfo // the BeanInfo for the Foo class
+----
+
+Here is the Java source code for the referenced `FooBeanInfo` class. This would
+associate a `CustomNumberEditor` with the `age` property of the `Foo` class.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class FooBeanInfo extends SimpleBeanInfo {
+
+		public PropertyDescriptor[] getPropertyDescriptors() {
+			try {
+				final PropertyEditor numberPE = new CustomNumberEditor(Integer.class, true);
+				PropertyDescriptor ageDescriptor = new PropertyDescriptor("age", Foo.class) {
+					public PropertyEditor createPropertyEditor(Object bean) {
+						return numberPE;
+					};
+				};
+				return new PropertyDescriptor[] { ageDescriptor };
+			}
+			catch (IntrospectionException ex) {
+				throw new Error(ex.toString());
+			}
+		}
+	}
+----
+
+

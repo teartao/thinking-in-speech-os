@@ -1,0 +1,50 @@
+[[extensible-xml]]
+== Extensible XML authoring
+
+
+
+
+[[extensible-xml-introduction]]
+=== Introduction
+Since version 2.0, Spring has featured a mechanism for schema-based extensions to the
+basic Spring XML format for defining and configuring beans. This section is devoted to
+detailing how you would go about writing your own custom XML bean definition parsers and
+integrating such parsers into the Spring IoC container.
+
+To facilitate the authoring of configuration files using a schema-aware XML editor,
+Spring's extensible XML configuration mechanism is based on XML Schema. If you are not
+familiar with Spring's current XML configuration extensions that come with the standard
+Spring distribution, please first read the appendix entitled<<xsd-config>>.
+
+Creating new XML configuration extensions can be done by following these (relatively)
+simple steps:
+
+* <<extensible-xml-schema,Authoring>> an XML schema to describe your custom element(s).
+* <<extensible-xml-namespacehandler,Coding>> a custom `NamespaceHandler` implementation
+  (this is an easy step, don't worry).
+* <<extensible-xml-parser,Coding>> one or more `BeanDefinitionParser` implementations
+  (this is where the real work is done).
+* <<extensible-xml-registration,Registering>> the above artifacts with Spring (this too
+  is an easy step).
+
+What follows is a description of each of these steps. For the example, we will create an
+XML extension (a custom XML element) that allows us to configure objects of the type
+`SimpleDateFormat` (from the `java.text` package) in an easy manner. When we are done,
+we will be able to define bean definitions of type `SimpleDateFormat` like this:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<myns:dateformat id="dateFormat"
+		pattern="yyyy-MM-dd HH:mm"
+		lenient="true"/>
+----
+
+__(Don't worry about the fact that this example is very simple; much more detailed
+examples follow afterwards. The intent in this first simple example is to walk you
+through the basic steps involved.)__
+
+
+
+
+

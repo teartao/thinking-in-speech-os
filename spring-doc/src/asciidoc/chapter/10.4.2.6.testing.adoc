@@ -1,0 +1,147 @@
+[[testcontext-executing-sql-declaratively]]
+====== Executing SQL scripts declaratively with `@Sql`
+
+In addition to the aforementioned mechanisms for executing SQL scripts
+_programmatically_, SQL scripts can also be configured _declaratively_ in the Spring
+TestContext Framework. Specifically, the `@Sql` annotation can be declared on a test
+class or test method to configure the resource paths to SQL scripts that should be
+executed against a given database either before or after an integration test method. Note
+that method-level declarations override class-level declarations and that support for
+`@Sql` is provided by the `SqlScriptsTestExecutionListener` which is enabled by default.
+
+*Path resource semantics*
+
+Each path will be interpreted as a Spring `Resource`. A plain path -- for example,
+`"schema.sql"` -- will be treated as a classpath resource that is _relative_ to the
+package in which the test class is defined. A path starting with a slash will be treated
+as an _absolute_ classpath resource, for example: `"/org/example/schema.sql"`. A path
+which references a URL (e.g., a path prefixed with `classpath:`, `file:`, `http:`, etc.)
+will be loaded using the specified resource protocol.
+
+The following example demonstrates how to use `@Sql` at the class level and at the method
+level within a JUnit-based integration test class.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RunWith(SpringJUnit4ClassRunner.class)
+	@ContextConfiguration
+	@Sql("/test-schema.sql")
+	public class DatabaseTests {
+
+		@Test
+		public void emptySchemaTest {
+			// execute code that uses the test schema without any test data
+		}
+
+		@Test
+		@Sql({"/test-schema.sql", "/test-user-data.sql"})
+		public void userTest {
+			// execute code that uses the test schema and test data
+		}
+	}
+----
+
+*Default script detection*
+
+If no SQL scripts are specified, an attempt will be made to detect a `default` script
+depending on where `@Sql` is declared. If a default cannot be detected, an
+`IllegalStateException` will be thrown.
+
+* __class-level declaration__: if the annotated test class is `com.example.MyTest`, the
+	corresponding default script is `"classpath:com/example/MyTest.sql"`.
+* __method-level declaration__: if the annotated test method is named `testMethod()` and is
+	defined in the class `com.example.MyTest`, the corresponding default script is
+	`"classpath:com/example/MyTest.testMethod.sql"`.
+
+*Declaring multiple `@Sql` sets*
+
+If multiple sets of SQL scripts need to be configured for a given test class or test
+method but with different syntax configuration, different error handling rules, or
+different execution phases per set, it is possible to declare multiple instances of
+`@Sql`. With Java 8, `@Sql` can be used as a _repeatable_ annotation. Otherwise, the
+`@SqlGroup` annotation can be used as an explicit container for declaring multiple
+instances of `@Sql`.
+
+The following example demonstrates the use of `@Sql` as a repeatable annotation using
+Java 8. In this scenario the `test-schema.sql` script uses a different syntax for
+single-line comments.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Test
+	@Sql(scripts = "/test-schema.sql", config = @SqlConfig(commentPrefix = "`"))
+	@Sql("/test-user-data.sql")
+	public void userTest {
+		// execute code that uses the test schema and test data
+	}
+----
+
+The following example is identical to the above except that the `@Sql` declarations are
+grouped together within `@SqlGroup` for compatibility with Java 6 and Java 7.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Test
+	@SqlGroup({
+		@Sql(scripts = "/test-schema.sql", config = @SqlConfig(commentPrefix = "`")),
+		@Sql("/test-user-data.sql")
+	)}
+	public void userTest {
+		// execute code that uses the test schema and test data
+	}
+----
+
+*Script execution phases*
+
+By default, SQL scripts will be executed _before_ the corresponding test method. However,
+if a particular set of scripts needs to be executed _after_ the test method -- for
+example, to clean up database state -- the `executionPhase` attribute in `@Sql` can be
+used as seen in the following example. Note that `ISOLATED` and `AFTER_TEST_METHOD` are
+statically imported from `Sql.TransactionMode` and `Sql.ExecutionPhase` respectively.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Test
+	@Sql(
+		scripts = "create-test-data.sql",
+		config = @SqlConfig(transactionMode = ISOLATED)
+	)
+	@Sql(
+		scripts = "delete-test-data.sql",
+		config = @SqlConfig(transactionMode = ISOLATED),
+		executionPhase = AFTER_TEST_METHOD
+	)
+	public void userTest {
+		// execute code that needs the test data to be committed
+		// to the database outside of the test's transaction
+	}
+----
+
+*Script configuration with `@SqlConfig`*
+
+Configuration for script parsing and error handling can be configured via the
+`@SqlConfig` annotation. When declared as a class-level annotation on an integration test
+class, `@SqlConfig` serves as _global_ configuration for all SQL scripts within the test
+class hierarchy. When declared directly via the `config` attribute of the `@Sql`
+annotation, `@SqlConfig` serves as _local_ configuration for the SQL scripts declared
+within the enclosing `@Sql` annotation. Every attribute in `@SqlConfig` has an implicit
+default value which is documented in the javadocs of the corresponding attribute. Due to
+the rules defined for annotation attributes in the Java Language Specification, it is
+unfortunately not possible to assign a value of `null` to an annotation attribute. Thus,
+in order to support overrides of inherited global configuration, `@SqlConfig` attributes
+have an explicit default value of either `""` for Strings or `DEFAULT` for Enums. This
+approach allows local declarations of `@SqlConfig` to selectively override individual
+attributes from global declarations of `@SqlConfig` by providing a value other than `""`
+or `DEFAULT`. Global `@SqlConfig` attributes are inherited whenever local `@SqlConfig`
+attributes do not supply an explicit value other than `""` or `DEFAULT`. Explicit _local_
+configuration therefore overrides _global_ configuration.
+
+The configuration options provided by `@Sql` and `@SqlConfig` are equivalent to those
+supported by `ScriptUtils` and `ResourceDatabasePopulator` but are a superset of those
+provided by the `<jdbc:initialize-database/>` XML namespace element. Consult the javadocs
+of individual attributes in `@Sql` and `@SqlConfig` for details.
+

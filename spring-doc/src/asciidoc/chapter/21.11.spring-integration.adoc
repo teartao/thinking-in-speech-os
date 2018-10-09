@@ -1,0 +1,78 @@
+[[rest-resttemplate-uri]]
+===== Working with the URI
+For each of the main HTTP methods, the `RestTemplate` provides variants that either take
+a String URI or `java.net.URI` as the first argument.
+
+The String URI variants accept template arguments as a String variable length argument
+or as a `Map<String,String>`. They also assume the URL String is not encoded and needs
+to be encoded. For example the following:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	restTemplate.getForObject("http://example.com/hotel list", String.class);
+----
+
+will perform a GET on `http://example.com/hotel%20list`. That means if the input URL
+String is already encoded, it will be encoded twice -- i.e.
+`http://example.com/hotel%20list` will become `http://example.com/hotel%2520list`. If
+this is not the intended effect, use the `java.net.URI` method variant, which assumes
+the URL is already encoded is also generally useful if you want to reuse a single (fully
+expanded) `URI` multiple times.
+
+The `UriComponentsBuilder` class can be used to build and encode the `URI` including
+support for URI templates. For example you can start with a URL String:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	UriComponents uriComponents = UriComponentsBuilder.fromUriString(
+			"http://example.com/hotels/{hotel}/bookings/{booking}").build()
+			.expand("42", "21")
+			.encode();
+
+	URI uri = uriComponents.toUri();
+----
+
+Or specify each URI component individually:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	UriComponents uriComponents = UriComponentsBuilder.newInstance()
+			.scheme("http").host("example.com").path("/hotels/{hotel}/bookings/{booking}").build()
+			.expand("42", "21")
+			.encode();
+
+	URI uri = uriComponents.toUri();
+----
+
+
+[[rest-template-headers]]
+===== Dealing with request and response headers
+Besides the methods described above, the `RestTemplate` also has the `exchange()`
+method, which can be used for arbitrary HTTP method execution based on the `HttpEntity`
+class.
+
+Perhaps most importantly, the `exchange()` method can be used to add request headers and
+read response headers. For example:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	HttpHeaders requestHeaders = new HttpHeaders();
+	requestHeaders.set("MyRequestHeader", "MyValue");
+	HttpEntity<?> requestEntity = new HttpEntity(requestHeaders);
+
+	HttpEntity<String> response = template.exchange(
+			"http://example.com/hotels/{hotel}",
+			HttpMethod.GET, requestEntity, String.class, "42");
+
+	String responseHeader = response.getHeaders().getFirst("MyResponseHeader");
+	String body = response.getBody();
+----
+
+In the above example, we first prepare a request entity that contains the
+`MyRequestHeader` header. We then retrieve the response, and read the `MyResponseHeader`
+and body.
+

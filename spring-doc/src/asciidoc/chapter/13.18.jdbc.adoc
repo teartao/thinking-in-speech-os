@@ -1,0 +1,18 @@
+[[jdbc-object]]
+=== 利用java对象操作JDBC
+`org.springframework.jdbc.object`包中包含了许多类, 这些类提供了更为面向对象的方法来访问数据库。举例来说，你可以通过执行查询，就可以获取包含业务对象的结果集，而这些业务对象和数据库记录是一一映射的。你也可以执行存储过程，或者执行update, delete, 和insert语句。
+
+[NOTE]
+====
+许多Spring的开发者都认为下面所说的各种RDBMS的操作类（除过`StoredProcedure`）都可以直接被 `JdbcTemplate`调用代替。的确，很多时候写一个可以直接调用 `JdbcTemplate` 的DAO方法是更简单的（而不是将一个查询封装为一个完整的类）。
+
+然而， 如果你想通过RDBMS来获取更有意义的数据，请继续使用这些类。
+====
+
+
+
+
+[[jdbc-SqlQuery]]
+==== SqlQuery
+
+`SqlQuery` 是一个封装了SQL查询的可重用的，线程安全的类，其子类需要实现`newRowMapper(..)`方法来提供一个`RowMapper`实例，这个实例可以创建一个数据对象，这个数据对象即是通过迭代查询的结果集经过转换后而得到的java对象。`SqlQuery`其实很少直接使用，因为子类`MappingSqlQuery`提供了一个更方便的数据记录与Java对象的映射的实现。除此之外，其他的继承了`SqlQuery`的子类还包括`MappingSqlQueryWithParameters` 和 `UpdatableSqlQuery`。

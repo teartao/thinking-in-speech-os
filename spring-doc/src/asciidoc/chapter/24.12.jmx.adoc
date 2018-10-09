@@ -1,0 +1,79 @@
+[[jmx-jsr160]]
+=== JSR-160 Connectors
+For remote access, Spring JMX module offers two `FactoryBean` implementations inside the
+`org.springframework.jmx.support` package for creating both server- and client-side
+connectors.
+
+
+
+[[jmx-jsr160-server]]
+==== Server-side Connectors
+To have Spring JMX create, start and expose a JSR-160 `JMXConnectorServer` use the
+following configuration:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="serverConnector" class="org.springframework.jmx.support.ConnectorServerFactoryBean"/>
+----
+
+By default `ConnectorServerFactoryBean` creates a `JMXConnectorServer` bound to
+`"service:jmx:jmxmp://localhost:9875"`. The `serverConnector` bean thus exposes the
+local `MBeanServer` to clients through the JMXMP protocol on localhost, port 9875. Note
+that the JMXMP protocol is marked as optional by the JSR 160 specification: currently,
+the main open-source JMX implementation, MX4J, and the one provided with the JDK
+do __not__ support JMXMP.
+
+To specify another URL and register the `JMXConnectorServer` itself with the
+`MBeanServer` use the `serviceUrl` and `ObjectName` properties respectively:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="serverConnector"
+			class="org.springframework.jmx.support.ConnectorServerFactoryBean">
+		<property name="objectName" value="connector:name=rmi"/>
+		<property name="serviceUrl"
+				value="service:jmx:rmi://localhost/jndi/rmi://localhost:1099/myconnector"/>
+	</bean>
+----
+
+If the `ObjectName` property is set Spring will automatically register your connector
+with the `MBeanServer` under that `ObjectName`. The example below shows the full set of
+parameters which you can pass to the `ConnectorServerFactoryBean` when creating a
+JMXConnector:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="serverConnector"
+			class="org.springframework.jmx.support.ConnectorServerFactoryBean">
+		<property name="objectName" value="connector:name=iiop"/>
+		<property name="serviceUrl"
+			value="service:jmx:iiop://localhost/jndi/iiop://localhost:900/myconnector"/>
+		<property name="threaded" value="true"/>
+		<property name="daemon" value="true"/>
+		<property name="environment">
+			<map>
+				<entry key="someKey" value="someValue"/>
+			</map>
+		</property>
+	</bean>
+----
+
+Note that when using a RMI-based connector you need the lookup service (tnameserv or
+rmiregistry) to be started in order for the name registration to complete. If you are
+using Spring to export remote services for you via RMI, then Spring will already have
+constructed an RMI registry. If not, you can easily start a registry using the following
+snippet of configuration:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="registry" class="org.springframework.remoting.rmi.RmiRegistryFactoryBean">
+		<property name="port" value="1099"/>
+	</bean>
+----
+
+
+

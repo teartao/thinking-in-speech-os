@@ -1,0 +1,152 @@
+[[mvc-etag]]
+=== ETag support
+An http://en.wikipedia.org/wiki/HTTP_ETag[ETag] (entity tag) is an HTTP response header
+returned by an HTTP/1.1 compliant web server used to determine change in content at a
+given URL. It can be considered to be the more sophisticated successor to the
+`Last-Modified` header. When a server returns a representation with an ETag header, the
+client can use this header in subsequent GETs, in an `If-None-Match` header. If the
+content has not changed, the server returns `304: Not Modified`.
+
+Support for ETags is provided by the Servlet filter `ShallowEtagHeaderFilter`. It is a
+plain Servlet Filter, and thus can be used in combination with any web framework. The
+`ShallowEtagHeaderFilter` filter creates so-called shallow ETags (as opposed to deep
+ETags, more about that later).The filter caches the content of the rendered JSP (or
+other content), generates an MD5 hash over that, and returns that as an ETag header in
+the response. The next time a client sends a request for the same resource, it uses that
+hash as the `If-None-Match` value. The filter detects this, renders the view again, and
+compares the two hashes. If they are equal, a `304` is returned. This filter will not
+save processing power, as the view is still rendered. The only thing it saves is
+bandwidth, as the rendered response is not sent back over the wire.
+
+You configure the `ShallowEtagHeaderFilter` in `web.xml`:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<filter>
+		<filter-name>etagFilter</filter-name>
+		<filter-class>org.springframework.web.filter.ShallowEtagHeaderFilter</filter-class>
+	</filter>
+
+	<filter-mapping>
+		<filter-name>etagFilter</filter-name>
+		<servlet-name>petclinic</servlet-name>
+	</filter-mapping>
+----
+
+
+
+
+[[mvc-container-config]]
+=== Code-based Servlet container initialization
+In a Servlet 3.0+ environment, you have the option of configuring the Servlet container
+programmatically as an alternative or in combination with a `web.xml` file. Below is an
+example of registering a `DispatcherServlet`:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	import org.springframework.web.WebApplicationInitializer;
+
+	public class MyWebApplicationInitializer implements WebApplicationInitializer {
+
+		@Override
+		public void onStartup(ServletContext container) {
+			XmlWebApplicationContext appContext = new XmlWebApplicationContext();
+			appContext.setConfigLocation("/WEB-INF/spring/dispatcher-config.xml");
+
+			ServletRegistration.Dynamic registration = container.addServlet("dispatcher", new DispatcherServlet(appContext));
+			registration.setLoadOnStartup(1);
+			registration.addMapping("/");
+		}
+
+	}
+----
+
+`WebApplicationInitializer` is an interface provided by Spring MVC that ensures your
+implementation is detected and automatically used to initialize any Servlet 3 container.
+An abstract base class implementation of `WebApplicationInitializer` named
+`AbstractDispatcherServletInitializer` makes it even easier to register the
+`DispatcherServlet` by simply overriding methods to specify the servlet mapping and the
+location of the `DispatcherServlet` configuration:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class MyWebAppInitializer extends AbstractAnnotationConfigDispatcherServletInitializer {
+
+		@Override
+		protected Class<?>[] getRootConfigClasses() {
+			return null;
+		}
+
+		@Override
+		protected Class<?>[] getServletConfigClasses() {
+			return new Class[] { MyWebConfig.class };
+		}
+
+		@Override
+		protected String[] getServletMappings() {
+			return new String[] { "/" };
+		}
+
+	}
+----
+
+The above example is for an application that uses Java-based Spring configuration. If
+using XML-based Spring configuration, extend directly from
+`AbstractDispatcherServletInitializer`:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class MyWebAppInitializer extends AbstractDispatcherServletInitializer {
+
+		@Override
+		protected WebApplicationContext createRootApplicationContext() {
+			return null;
+		}
+
+		@Override
+		protected WebApplicationContext createServletApplicationContext() {
+			XmlWebApplicationContext cxt = new XmlWebApplicationContext();
+			cxt.setConfigLocation("/WEB-INF/spring/dispatcher-config.xml");
+			return cxt;
+		}
+
+		@Override
+		protected String[] getServletMappings() {
+			return new String[] { "/" };
+		}
+
+	}
+----
+
+`AbstractDispatcherServletInitializer` also provides a convenient way to add `Filter`
+instances and have them automatically mapped to the `DispatcherServlet`:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class MyWebAppInitializer extends AbstractDispatcherServletInitializer {
+
+		// ...
+
+		@Override
+		protected Filter[] getServletFilters() {
+			return new Filter[] { new HiddenHttpMethodFilter(), new CharacterEncodingFilter() };
+		}
+
+	}
+----
+
+Each filter is added with a default name based on its concrete type and automatically
+mapped to the `DispatcherServlet`.
+
+The `isAsyncSupported` protected method of `AbstractDispatcherServletInitializer`
+provides a single place to enable async support on the `DispatcherServlet` and all
+filters mapped to it. By default this flag is set to `true`.
+
+
+
+

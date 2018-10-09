@@ -1,0 +1,51 @@
+[[jmx-interface-methodnames]]
+==== Using MethodNameBasedMBeanInfoAssembler
+
+The `MethodNameBasedMBeanInfoAssembler` allows you to specify a list of method names
+that will be exposed to JMX as attributes and operations. The code below shows a sample
+configuration for this:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="exporter" class="org.springframework.jmx.export.MBeanExporter">
+		<property name="beans">
+			<map>
+				<entry key="bean:name=testBean5" value-ref="testBean"/>
+			</map>
+		</property>
+		<property name="assembler">
+			<bean class="org.springframework.jmx.export.assembler.MethodNameBasedMBeanInfoAssembler">
+				<property name="managedMethods">
+					<value>add,myOperation,getName,setName,getAge</value>
+				</property>
+			</bean>
+		</property>
+	</bean>
+----
+
+Here you can see that the methods `add` and `myOperation` will be exposed as JMX
+operations and `getName()`, `setName(String)` and `getAge()` will be exposed as the
+appropriate half of a JMX attribute. In the code above, the method mappings apply to
+beans that are exposed to JMX. To control method exposure on a bean-by-bean basis, use
+the `methodMappings` property of `MethodNameMBeanInfoAssembler` to map bean names to
+lists of method names.
+
+
+
+
+[[jmx-naming]]
+=== Controlling the ObjectNames for your beans
+
+Behind the scenes, the `MBeanExporter` delegates to an implementation of the
+`ObjectNamingStrategy` to obtain ++ObjectName++s for each of the beans it is registering.
+The default implementation, `KeyNamingStrategy`, will, by default, use the key of the
+`beans` `Map` as the `ObjectName`. In addition, the `KeyNamingStrategy` can map the key
+of the `beans` `Map` to an entry in a `Properties` file (or files) to resolve the
+`ObjectName`. In addition to the `KeyNamingStrategy`, Spring provides two additional
+`ObjectNamingStrategy` implementations: the `IdentityNamingStrategy` that builds an
+`ObjectName` based on the JVM identity of the bean and the `MetadataNamingStrategy` that
+uses source level metadata to obtain the `ObjectName`.
+
+
+

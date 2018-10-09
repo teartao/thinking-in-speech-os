@@ -1,0 +1,96 @@
+[[testing]]
+== 测试
+
+
+
+
+[[testing-introduction]]
+=== Spring 测试框架介绍
+测试是企业级软件开发中不可或缺的一部分。 本章聚焦于Ioc原则在<<unit-testing,单元测试>>中的
+附加价值以及Spring框架为<<integration-testing,集成测试>>带来的益处。
+__(企业中对测试的完整处理超出了本参考手册的范围。)__
+
+
+
+
+[[unit-testing]]
+=== 单元测试
+相比在传统Java EE下开发，依赖注入使你的代码更少的依赖容器。通过简单的`new`操作，构成你应用
+的POJOs对象即可在JUnit或TestNG下测试。 __即使是没有Spring或者其他容器__,你可以使用 <<mock-objects,模拟对象>>
+(联合其他有价值的测试技术) 独立测试你的代码。 如果你遵循了Spring的架构建议, 清晰的分层和组件化的代码将会促进
+单元测试的简化。例如，当运行单元测试的时候，你可以通过存根代码、模拟DAO或者是资源库接口测试服务层对象而不用访问
+持久层数据。
+
+即使没有运行时基础设施设置，真正的单元测试典型的要求是快速地运行。强调真正的单元测试是你开发方法论
+中的一部分将会提高生产率。对你的Ioc-based应用，你可能不需要测试章节来帮你写出高效的单元测试。 
+尽管如此，Spring框架为单元测试场景提供了下列模拟对象和测试支持类。
+
+
+
+[[mock-objects]]
+==== 模拟对象
+
+
+[[mock-objects-env]]
+===== Environment
+`org.springframework.mock.env` 包包含了`Environment` 和 `PropertySource`(查看 <<beans-definition-profiles>>
+和 <<beans-property-source-abstraction>>)抽象的模拟实现。 `MockEnvironment` 和`MockPropertySource` 
+对__out-of-container__代码开发的测试是非常有用的，因为这些代码往往依赖于特定环境的属性。
+
+
+[[mock-objects-jndi]]
+===== JNDI
+`org.springframework.mock.jndi` 包包含了JNDI SPI的模拟实现, 你可以使用它为测试套件或者独立的应用设置一个
+简单的JNDI环境。比如,在测试代码和在Java EE容器中一样对JDBC ++DataSource++s 绑定相同名字的JNDI，这样，你就
+可以在测试场景中复用应用配置而不用修改。
+
+
+[[mock-objects-servlet]]
+===== Servlet API
+`org.springframework.mock.web` 包包含了Servlet API模拟对象的综合设置，定位是在Spring MVC框架中对Web上下文
+和控制器进行测试。这些模拟对象的使用比类似 http://www.easymock.org[EasyMock]或现存的Servlet API模拟对象如
+http://www.mockobjects.com[MockObjects]动态的模拟对象更方便。
+
+
+[[mock-objects-portlet]]
+===== Portlet API
+`org.springframework.mock.web.portlet` 包包含了 Portlet API 模拟对象集和,定位ie是Spring的Portlet MVC
+框架的使用。
+
+
+
+[[unit-testing-support-classes]]
+==== 单元测试支持类
+
+
+[[unit-testing-utilities]]
+===== 通用组件
+`org.springframework.test.util` 包包含 `ReflectionTestUtils`类, 这个类提供了一套基于反射的工具方法。
+当测试应用代码时开发人员在单元或者是集成测试场景中使用这些方法设置一个非`public`的子段或调用一个非`public`的设值方法
+例如：
+
+* 和领域实体对象中属性的`public`setter方法不同，类似JPA和Hibernate的ORM框架放任对`private`或`protected`子段
+的访问。 
+* Spring对注解的支持，例如`@Autowired`, `@Inject`, and `@Resource,`
+  它为 `private` or `protected` 子段提供了依赖注入, setter方法和configuration方法。
+
+
+[[unit-testing-spring-mvc]]
+===== Spring MVC
+`org.springframework.test.web` 包包含`ModelAndViewAssert`对象, 使用它你可以组合JUnit,TestNG或者任意其他的
+单元测试框架为你的Spring MVC`ModelAndView`对象进行单元测试。
+
+.Spring MVC Controllers 单元测试
+[TIP]
+====
+为了测试你的 Spring MVC ++Controller++s, 可以使用 `ModelAndViewAssert` 组合`MockHttpServletRequest`, `MockHttpSession`,
+ 或者其他来自 <<mock-objects-servlet,`org.springframework.mock.web`>> 包的对象。
+
+注意: 目前，在 Spring 4.0中, 包`org.springframework.mock.web` 中的模拟对象是基于Servlet 3.0 API 。
+
+====
+
+
+
+
+

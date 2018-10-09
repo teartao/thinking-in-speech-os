@@ -1,0 +1,126 @@
+[[remoting-web-services]]
+=== Web services
+Spring provides full support for standard Java web services APIs:
+
+* Exposing web services using JAX-WS
+* Accessing web services using JAX-WS
+
+In addition to stock support for JAX-WS in Spring Core, the Spring portfolio also
+features http://www.springframework.org/spring-ws[Spring Web Services], a solution for
+contract-first, document-driven web services - highly recommended for building modern,
+future-proof web services.
+
+
+
+[[remoting-web-services-jaxws-export-servlet]]
+==== Exposing servlet-based web services using JAX-WS
+Spring provides a convenient base class for JAX-WS servlet endpoint implementations -
+`SpringBeanAutowiringSupport`. To expose our `AccountService` we extend Spring's
+`SpringBeanAutowiringSupport` class and implement our business logic here, usually
+delegating the call to the business layer. We'll simply use Spring's `@Autowired`
+annotation for expressing such dependencies on Spring-managed beans.
+
+[source,java,indent=0]
+----
+	/**
+	 * JAX-WS compliant AccountService implementation that simply delegates
+	 * to the AccountService implementation in the root web application context.
+	 *
+	 * This wrapper class is necessary because JAX-WS requires working with dedicated
+	 * endpoint classes. If an existing service needs to be exported, a wrapper that
+	 * extends SpringBeanAutowiringSupport for simple Spring bean autowiring (through
+	 * the @Autowired annotation) is the simplest JAX-WS compliant way.
+	 *
+	 * This is the class registered with the server-side JAX-WS implementation.
+	 * In the case of a Java EE 5 server, this would simply be defined as a servlet
+	 * in web.xml, with the server detecting that this is a JAX-WS endpoint and reacting
+	 * accordingly. The servlet name usually needs to match the specified WS service name.
+	 *
+	 * The web service engine manages the lifecycle of instances of this class.
+	 * Spring bean references will just be wired in here.
+	 */
+	import org.springframework.web.context.support.SpringBeanAutowiringSupport;
+
+	@WebService(serviceName="AccountService")
+	public class AccountServiceEndpoint extends SpringBeanAutowiringSupport {
+
+		@Autowired
+		private AccountService biz;
+
+		@WebMethod
+		public void insertAccount(Account acc) {
+			biz.insertAccount(acc);
+		}
+
+		@WebMethod
+		public Account[] getAccounts(String name) {
+			return biz.getAccounts(name);
+		}
+
+	}
+----
+
+Our `AccountServletEndpoint` needs to run in the same web application as the Spring
+context to allow for access to Spring's facilities. This is the case by default in Java
+EE 5 environments, using the standard contract for JAX-WS servlet endpoint deployment.
+See Java EE 5 web service tutorials for details.
+
+
+
+[[remoting-web-services-jaxws-export-standalone]]
+==== Exporting standalone web services using JAX-WS
+The built-in JAX-WS provider that comes with Oracle's JDK 1.6 supports exposure of web
+services using the built-in HTTP server that's included in JDK 1.6 as well. Spring's
+`SimpleJaxWsServiceExporter` detects all `@WebService` annotated beans in the Spring
+application context, exporting them through the default JAX-WS server (the JDK 1.6 HTTP
+server).
+
+In this scenario, the endpoint instances are defined and managed as Spring beans
+themselves; they will be registered with the JAX-WS engine but their lifecycle will be
+up to the Spring application context. This means that Spring functionality like explicit
+dependency injection may be applied to the endpoint instances. Of course,
+annotation-driven injection through `@Autowired` will work as well.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean class="org.springframework.remoting.jaxws.SimpleJaxWsServiceExporter">
+		<property name="baseAddress" value="http://localhost:8080/"/>
+	</bean>
+
+	<bean id="accountServiceEndpoint" class="example.AccountServiceEndpoint">
+		...
+	</bean>
+
+	...
+----
+
+The `AccountServiceEndpoint` may derive from Spring's `SpringBeanAutowiringSupport` but
+doesn't have to since the endpoint is a fully Spring-managed bean here. This means that
+the endpoint implementation may look like as follows, without any superclass declared -
+and Spring's `@Autowired` configuration annotation still being honored:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@WebService(serviceName="AccountService")
+	public class AccountServiceEndpoint {
+
+		@Autowired
+		private AccountService biz;
+
+		@WebMethod
+		public void insertAccount(Account acc) {
+			biz.insertAccount(acc);
+		}
+
+		@WebMethod
+		public List<Account> getAccounts(String name) {
+			return biz.getAccounts(name);
+		}
+
+	}
+----
+
+
+

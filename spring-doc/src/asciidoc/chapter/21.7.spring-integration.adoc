@@ -1,0 +1,115 @@
+[[remoting-jms]]
+=== JMS
+It is also possible to expose services transparently using JMS as the underlying
+communication protocol. The JMS remoting support in the Spring Framework is pretty basic
+- it sends and receives on the `same thread` and in the __same non-transactional__
+`Session`, and as such throughput will be very implementation dependent. Note that these
+single-threaded and non-transactional constraints apply only to Spring's JMS
+__remoting__ support. See <<jms>> for information on Spring's rich support for JMS-based
+__messaging__.
+
+The following interface is used on both the server and the client side.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package com.foo;
+
+	public interface CheckingAccountService {
+
+		public void cancelAccount(Long accountId);
+
+	}
+----
+
+The following simple implementation of the above interface is used on the server-side.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package com.foo;
+
+	public class SimpleCheckingAccountService implements CheckingAccountService {
+
+		public void cancelAccount(Long accountId) {
+			System.out.println("Cancelling account [" + accountId + "]");
+		}
+
+	}
+----
+
+This configuration file contains the JMS-infrastructure beans that are shared on both
+the client and server.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://www.springframework.org/schema/beans
+			http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+		<bean id="connectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory">
+			<property name="brokerURL" value="tcp://ep-t43:61616"/>
+		</bean>
+
+		<bean id="queue" class="org.apache.activemq.command.ActiveMQQueue">
+			<constructor-arg value="mmm"/>
+		</bean>
+
+	</beans>
+----
+
+
+
+[[remoting-jms-server]]
+==== Server-side configuration
+On the server, you just need to expose the service object using the
+`JmsInvokerServiceExporter`.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://www.springframework.org/schema/beans
+			http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+		<bean id="checkingAccountService"
+				class="org.springframework.jms.remoting.JmsInvokerServiceExporter">
+			<property name="serviceInterface" value="com.foo.CheckingAccountService"/>
+			<property name="service">
+				<bean class="com.foo.SimpleCheckingAccountService"/>
+			</property>
+		</bean>
+
+		<bean class="org.springframework.jms.listener.SimpleMessageListenerContainer">
+			<property name="connectionFactory" ref="connectionFactory"/>
+			<property name="destination" ref="queue"/>
+			<property name="concurrentConsumers" value="3"/>
+			<property name="messageListener" ref="checkingAccountService"/>
+		</bean>
+
+	</beans>
+----
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package com.foo;
+
+	import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+	public class Server {
+
+		public static void main(String[] args) throws Exception {
+			new ClassPathXmlApplicationContext(new String[]{"com/foo/server.xml", "com/foo/jms.xml"});
+		}
+
+	}
+----
+
+
+

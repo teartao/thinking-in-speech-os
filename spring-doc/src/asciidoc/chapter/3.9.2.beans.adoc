@@ -1,0 +1,77 @@
+[[beans-scanning-filters]]
+==== Using filters to customize scanning
+By default, classes annotated with `@Component`, `@Repository`, `@Service`,
+`@Controller`, or a custom annotation that itself is annotated with `@Component` are the
+only detected candidate components. However, you can modify and extend this behavior
+simply by applying custom filters. Add them as __includeFilters__ or __excludeFilters__
+parameters of the `@ComponentScan` annotation (or as __include-filter__ or __exclude-filter__
+sub-elements of the `component-scan` element). Each filter element requires the `type`
+and `expression` attributes. The following table describes the filtering options.
+
+[[beans-scanning-filters-tbl]]
+.Filter Types
+|===
+| Filter Type| Example Expression| Description
+
+| annotation (default)
+| `org.example.SomeAnnotation`
+| An annotation to be present at the type level in target components.
+
+| assignable
+| `org.example.SomeClass`
+| A class (or interface) that the target components are assignable to (extend/implement).
+
+| aspectj
+| `org.example..*Service+`
+| An AspectJ type expression to be matched by the target components.
+
+| regex
+| `org\.example\.Default.*`
+| A regex expression to be matched by the target components class names.
+
+| custom
+| `org.example.MyTypeFilter`
+| A custom implementation of the `org.springframework.core.type .TypeFilter` interface.
+|===
+
+The following example shows the configuration ignoring all `@Repository` annotations
+and using "stub" repositories instead.
+
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Configuration
+    @ComponentScan(basePackages = "org.example",
+    		includeFilters = @Filter(type = FilterType.REGEX, pattern = ".*Stub.*Repository"),
+    		excludeFilters = @Filter(Repository.class))
+    public class AppConfig {
+    	...
+    }
+----
+
+and the equivalent using XML
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<beans>
+		<context:component-scan base-package="org.example">
+			<context:include-filter type="regex"
+					expression=".*Stub.*Repository"/>
+			<context:exclude-filter type="annotation"
+					expression="org.springframework.stereotype.Repository"/>
+		</context:component-scan>
+	</beans>
+----
+
+[NOTE]
+====
+You can also disable the default filters by setting `useDefaultFilters=false` on the annotation or
+providing `use-default-filters="false"` as an attribute of the <component-scan/> element. This
+will in effect disable automatic detection of classes annotated with `@Component`, `@Repository`,
+`@Service`, or `@Controller`.
+====
+
+
+

@@ -1,0 +1,57 @@
+[[cache-annotation-stereotype]]
+==== Using custom annotations
+
+.Custom annotation and AspectJ
+****
+This feature only works out-of-the-box with the proxy-based approach but can be enabled
+with a bit of extra effort using AspectJ.
+
+The `spring-aspects` module defines an aspect for the standard annotations only. If you
+have defined your own annotations, you also need to define an aspect for those. Check
+`AnnotationCacheAspect` for an example.
+****
+
+The caching abstraction allows you to use your own annotations to identify what method
+triggers cache population or eviction. This is quite handy as a template mechanism as it
+eliminates the need to duplicate cache annotation declarations (especially useful if the
+key or condition are specified) or if the foreign imports (`org.springframework`) are
+not allowed in your code base. Similar to the rest of the
+<<beans-stereotype-annotations,stereotype>> annotations, `@Cacheable`, `@CachePut`,
+`@CacheEvict` and `@CacheConfig` can be used as <<beans-meta-annotations,meta-annotations>>,
+that is annotations that can annotate other annotations. To wit, let us replace a common
+`@Cacheable` declaration with our own, custom annotation:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target({ElementType.METHOD})
+	@Cacheable(value="books", key="#isbn")
+	public @interface SlowService {
+	}
+----
+
+Above, we have defined our own `SlowService` annotation which itself is annotated with
+`@Cacheable` - now we can replace the following code:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Cacheable(value="books", key="#isbn")
+	public Book findBook(ISBN isbn, boolean checkWarehouse, boolean includeUsed)
+----
+
+with:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@SlowService
+	public Book findBook(ISBN isbn, boolean checkWarehouse, boolean includeUsed)
+----
+
+Even though `@SlowService` is not a Spring annotation, the container automatically picks
+up its declaration at runtime and understands its meaning. Note that as mentioned
+<<cache-annotation-enable,above>>, the annotation-driven behavior needs to be enabled.
+
+

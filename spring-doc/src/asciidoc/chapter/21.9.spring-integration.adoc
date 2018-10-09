@@ -1,0 +1,85 @@
+[[remoting-amqp]]
+=== AMQP
+Refer to the http://docs.spring.io/spring-amqp/reference/html/amqp.html#remoting[Spring
+AMQP Reference Document 'Spring Remoting with AMQP' section] for more information.
+
+
+
+
+[[remoting-autodection-remote-interfaces]]
+=== Auto-detection is not implemented for remote interfaces
+The main reason why auto-detection of implemented interfaces does not occur for remote
+interfaces is to avoid opening too many doors to remote callers. The target object might
+implement internal callback interfaces like `InitializingBean` or `DisposableBean` which
+one would not want to expose to callers.
+
+Offering a proxy with all interfaces implemented by the target usually does not matter
+in the local case. But when exporting a remote service, you should expose a specific
+service interface, with specific operations intended for remote usage. Besides internal
+callback interfaces, the target might implement multiple business interfaces, with just
+one of them intended for remote exposure. For these reasons, we __require__ such a
+service interface to be specified.
+
+This is a trade-off between configuration convenience and the risk of accidental
+exposure of internal methods. Always specifying a service interface is not too much
+effort, and puts you on the safe side regarding controlled exposure of specific methods.
+
+
+
+
+[[remoting-considerations]]
+=== Considerations when choosing a technology
+Each and every technology presented here has its drawbacks. You should carefully
+consider your needs, the services you are exposing and the objects you'll be sending
+over the wire when choosing a technology.
+
+When using RMI, it's not possible to access the objects through the HTTP protocol,
+unless you're tunneling the RMI traffic. RMI is a fairly heavy-weight protocol in that
+it supports full-object serialization which is important when using a complex data model
+that needs serialization over the wire. However, RMI-JRMP is tied to Java clients: It is
+a Java-to-Java remoting solution.
+
+Spring's HTTP invoker is a good choice if you need HTTP-based remoting but also rely on
+Java serialization. It shares the basic infrastructure with RMI invokers, just using
+HTTP as transport. Note that HTTP invokers are not only limited to Java-to-Java remoting
+but also to Spring on both the client and server side. (The latter also applies to
+Spring's RMI invoker for non-RMI interfaces.)
+
+Hessian and/or Burlap might provide significant value when operating in a heterogeneous
+environment, because they explicitly allow for non-Java clients. However, non-Java
+support is still limited. Known issues include the serialization of Hibernate objects in
+combination with lazily-initialized collections. If you have such a data model, consider
+using RMI or HTTP invokers instead of Hessian.
+
+JMS can be useful for providing clusters of services and allowing the JMS broker to take
+care of load balancing, discovery and auto-failover. By default: Java serialization is
+used when using JMS remoting but the JMS provider could use a different mechanism for
+the wire formatting, such as XStream to allow servers to be implemented in other
+technologies.
+
+Last but not least, EJB has an advantage over RMI in that it supports standard
+role-based authentication and authorization and remote transaction propagation. It is
+possible to get RMI invokers or HTTP invokers to support security context propagation as
+well, although this is not provided by core Spring: There are just appropriate hooks for
+plugging in third-party or custom solutions here.
+
+
+
+
+[[rest-client-access]]
+=== Accessing RESTful services on the Client
+The `RestTemplate` is the core class for client-side access to RESTful services. It is
+conceptually similar to other template classes in Spring, such as `JdbcTemplate` and
+`JmsTemplate` and other template classes found in other Spring portfolio projects.
+`RestTemplate`'s behavior is customized by providing callback methods and configuring
+the `HttpMessageConverter` used to marshal objects into the HTTP request body and to
+unmarshal any response back into an object. As it is common to use XML as a message
+format, Spring provides a `MarshallingHttpMessageConverter` that uses the Object-to-XML
+framework that is part of the `org.springframework.oxm` package. This gives you a wide
+range of choices of XML to Object mapping technologies to choose from.
+
+This section describes how to use the `RestTemplate` and its associated
+`HttpMessageConverters`.
+
+
+

@@ -1,0 +1,68 @@
+[[scheduling-trigger-interface]]
+==== Trigger接口
+
+The `Trigger` interface is essentially inspired by JSR-236, which, as of Spring 3.0, has
+not yet been officially implemented. The basic idea of the `Trigger` is that execution
+times may be determined based on past execution outcomes or even arbitrary conditions.
+If these determinations do take into account the outcome of the preceding execution,
+that information is available within a `TriggerContext`. The `Trigger` interface itself
+is quite simple:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface Trigger {
+
+		Date nextExecutionTime(TriggerContext triggerContext);
+
+	}
+----
+
+As you can see, the `TriggerContext` is the most important part. It encapsulates all of
+the relevant data, and is open for extension in the future if necessary. The
+`TriggerContext` is an interface (a `SimpleTriggerContext` implementation is used by
+default). Here you can see what methods are available for `Trigger` implementations.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface TriggerContext {
+
+		Date lastScheduledExecutionTime();
+
+		Date lastActualExecutionTime();
+
+		Date lastCompletionTime();
+
+	}
+----
+
+
+
+[[scheduling-trigger-implementations]]
+==== Trigger实现
+
+Spring provides two implementations of the `Trigger` interface. The most interesting one
+is the `CronTrigger`. It enables the scheduling of tasks based on cron expressions. For
+example the following task is being scheduled to run 15 minutes past each hour but only
+during the 9-to-5 "business hours" on weekdays.
+
+[source,java,indent=0]
+[subs="verbatim"]
+----
+	scheduler.schedule(task, new CronTrigger("* 15 9-17 * * MON-FRI"));
+----
+
+The other out-of-the-box implementation is a `PeriodicTrigger` that accepts a fixed
+period, an optional initial delay value, and a boolean to indicate whether the period
+should be interpreted as a fixed-rate or a fixed-delay. Since the `TaskScheduler`
+interface already defines methods for scheduling tasks at a fixed-rate or with a
+fixed-delay, those methods should be used directly whenever possible. The value of the
+`PeriodicTrigger` implementation is that it can be used within components that rely on
+the `Trigger` abstraction. For example, it may be convenient to allow periodic triggers,
+cron-based triggers, and even custom trigger implementations to be used interchangeably.
+Such a component could take advantage of dependency injection so that such `Triggers`
+could be configured externally.
+
+
+

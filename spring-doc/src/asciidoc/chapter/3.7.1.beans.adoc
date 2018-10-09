@@ -1,0 +1,96 @@
+[[beans-factory-extension-bpp-examples-hw]]
+===== Example: Hello World, BeanPostProcessor-style
+
+This first example illustrates basic usage. The example shows a custom
+`BeanPostProcessor` implementation that invokes the `toString()` method of each bean as
+it is created by the container and prints the resulting string to the system console.
+
+Find below the custom `BeanPostProcessor` implementation class definition:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package scripting;
+
+	import org.springframework.beans.factory.config.BeanPostProcessor;
+	import org.springframework.beans.BeansException;
+
+	public class InstantiationTracingBeanPostProcessor implements BeanPostProcessor {
+
+		// simply return the instantiated bean as-is
+		public Object postProcessBeforeInitialization(Object bean,
+				String beanName) throws BeansException {
+			return bean; // we could potentially return any object reference here...
+		}
+
+		public Object postProcessAfterInitialization(Object bean,
+				String beanName) throws BeansException {
+			System.out.println("Bean ''" + beanName + "'' created : " + bean.toString());
+			return bean;
+		}
+
+	}
+----
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns:lang="http://www.springframework.org/schema/lang"
+		xsi:schemaLocation="http://www.springframework.org/schema/beans
+			http://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.springframework.org/schema/lang
+			http://www.springframework.org/schema/lang/spring-lang.xsd">
+
+		<lang:groovy id="messenger"
+				script-source="classpath:org/springframework/scripting/groovy/Messenger.groovy">
+			<lang:property name="message" value="Fiona Apple Is Just So Dreamy."/>
+		</lang:groovy>
+
+		<!--
+		when the above bean (messenger) is instantiated, this custom
+		BeanPostProcessor implementation will output the fact to the system console
+		-->
+		<bean class="scripting.InstantiationTracingBeanPostProcessor"/>
+
+	</beans>
+----
+
+Notice how the `InstantiationTracingBeanPostProcessor` is simply defined. It does not
+even have a name, and because it is a bean it can be dependency-injected just like any
+other bean. (The preceding configuration also defines a bean that is backed by a Groovy
+script. The Spring dynamic language support is detailed in the chapter entitled
+<<dynamic-language>>.)
+
+The following simple Java application executes the preceding code and configuration:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	import org.springframework.context.ApplicationContext;
+	import org.springframework.context.support.ClassPathXmlApplicationContext;
+	import org.springframework.scripting.Messenger;
+
+	public final class Boot {
+
+		public static void main(final String[] args) throws Exception {
+			ApplicationContext ctx = new ClassPathXmlApplicationContext("scripting/beans.xml");
+			Messenger messenger = (Messenger) ctx.getBean("messenger");
+			System.out.println(messenger);
+		}
+
+	}
+----
+
+The output of the preceding application resembles the following:
+
+[literal]
+[subs="verbatim,quotes"]
+----
+Bean 'messenger' created : org.springframework.scripting.groovy.GroovyMessenger@272961
+org.springframework.scripting.groovy.GroovyMessenger@272961
+----
+
+

@@ -1,0 +1,125 @@
+[[scheduling-annotation-support-async]]
+==== @Async注解
+The `@Async` annotation can be provided on a method so that invocation of that method
+will occur asynchronously. In other words, the caller will return immediately upon
+invocation and the actual execution of the method will occur in a task that has been
+submitted to a Spring `TaskExecutor`. In the simplest case, the annotation may be
+applied to a `void`-returning method.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Async
+	void doSomething() {
+		// this will be executed asynchronously
+	}
+----
+
+Unlike the methods annotated with the `@Scheduled` annotation, these methods can expect
+arguments, because they will be invoked in the "normal" way by callers at runtime rather
+than from a scheduled task being managed by the container. For example, the following is
+a legitimate application of the `@Async` annotation.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Async
+	void doSomething(String s) {
+		// this will be executed asynchronously
+	}
+----
+
+Even methods that return a value can be invoked asynchronously. However, such methods
+are required to have a `Future` typed return value. This still provides the benefit of
+asynchronous execution so that the caller can perform other tasks prior to calling
+`get()` on that Future.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Async
+	Future<String> returnSomething(int i) {
+		// this will be executed asynchronously
+	}
+----
+
+`@Async` can not be used in conjunction with lifecycle callbacks such as
+`@PostConstruct`. To asynchronously initialize Spring beans you currently have to use a
+separate initializing Spring bean that invokes the `@Async` annotated method on the
+target then.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class SampleBeanImpl implements SampleBean {
+
+		@Async
+		void doSomething() {
+			// ...
+		}
+
+	}
+
+	public class SampleBeanInititalizer {
+
+		private final SampleBean bean;
+
+		public SampleBeanInitializer(SampleBean bean) {
+			this.bean = bean;
+		}
+
+		@PostConstruct
+		public void initialize() {
+			bean.doSomething();
+		}
+
+	}
+----
+
+
+
+[[scheduling-annotation-support-qualification]]
+==== Executor使用@Async的条件
+By default when specifying `@Async` on a method, the executor that will be used is the
+one supplied to the 'annotation-driven' element as described above. However, the `value`
+attribute of the `@Async` annotation can be used when needing to indicate that an
+executor other than the default should be used when executing a given method.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Async("otherExecutor")
+	void doSomething(String s) {
+		// this will be executed asynchronously by "otherExecutor"
+	}
+----
+
+In this case, "otherExecutor" may be the name of any `Executor` bean in the Spring
+container, or may be the name of a __qualifier__ associated with any `Executor`, e.g. as
+specified with the `<qualifier>` element or Spring's `@Qualifier` annotation.
+
+
+
+[[scheduling-annotation-support-exception]]
+==== @Async的异常管理
+When an `@Async` method has a `Future` typed return value, it is easy to manage
+an exception that was thrown during the method execution as this exception will
+be thrown when calling `get` on the `Future` result. With a void return type
+however, the exception is uncaught and cannot be transmitted. For those cases, an
+`AsyncUncaughtExceptionHandler` can be provided to handle such exceptions.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class MyAsyncUncaughtExceptionHandler implements AsyncUncaughtExceptionHandler {
+
+    	@Override
+    	public void handleUncaughtException(Throwable ex, Method method, Object... params) {
+			// handle exception
+    	}
+	}
+----
+
+By default, the exception is simply logged. A custom `AsyncUncaughtExceptionHandler` can
+be defined _via_ `AsyncConfigurer` or the `task:annotation-driven` XML element.
+

@@ -1,0 +1,100 @@
+[[scheduling-task-executor-usage]]
+==== 使用TaskExecutor
+
+Spring's `TaskExecutor` implementations are used as simple JavaBeans. In the example
+below, we define a bean that uses the `ThreadPoolTaskExecutor` to asynchronously print
+out a set of messages.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	import org.springframework.core.task.TaskExecutor;
+
+	public class TaskExecutorExample {
+
+		private class MessagePrinterTask implements Runnable {
+
+			private String message;
+
+			public MessagePrinterTask(String message) {
+				this.message = message;
+			}
+
+			public void run() {
+				System.out.println(message);
+			}
+
+		}
+
+		private TaskExecutor taskExecutor;
+
+		public TaskExecutorExample(TaskExecutor taskExecutor) {
+			this.taskExecutor = taskExecutor;
+		}
+
+		public void printMessages() {
+			for(int i = 0; i < 25; i++) {
+				taskExecutor.execute(new MessagePrinterTask("Message" + i));
+			}
+		}
+
+	}
+----
+
+As you can see, rather than retrieving a thread from the pool and executing yourself,
+you add your `Runnable` to the queue and the `TaskExecutor` uses its internal rules to
+decide when the task gets executed.
+
+To configure the rules that the `TaskExecutor` will use, simple bean properties have
+been exposed.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="taskExecutor" class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
+		<property name="corePoolSize" value="5" />
+		<property name="maxPoolSize" value="10" />
+		<property name="queueCapacity" value="25" />
+	</bean>
+
+	<bean id="taskExecutorExample" class="TaskExecutorExample">
+		<constructor-arg ref="taskExecutor" />
+	</bean>
+----
+
+
+
+[[scheduling-task-scheduler]]
+=== Spring的TaskScheduler抽象
+
+In addition to the `TaskExecutor` abstraction, Spring 3.0 introduces a `TaskScheduler`
+with a variety of methods for scheduling tasks to run at some point in the future.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface TaskScheduler {
+
+		ScheduledFuture schedule(Runnable task, Trigger trigger);
+
+		ScheduledFuture schedule(Runnable task, Date startTime);
+
+		ScheduledFuture scheduleAtFixedRate(Runnable task, Date startTime, long period);
+
+		ScheduledFuture scheduleAtFixedRate(Runnable task, long period);
+
+		ScheduledFuture scheduleWithFixedDelay(Runnable task, Date startTime, long delay);
+
+		ScheduledFuture scheduleWithFixedDelay(Runnable task, long delay);
+
+	}
+----
+
+The simplest method is the one named 'schedule' that takes a `Runnable` and `Date` only.
+That will cause the task to run once after the specified time. All of the other methods
+are capable of scheduling tasks to run repeatedly. The fixed-rate and fixed-delay
+methods are for simple, periodic execution, but the method that accepts a Trigger is
+much more flexible.
+
+
+

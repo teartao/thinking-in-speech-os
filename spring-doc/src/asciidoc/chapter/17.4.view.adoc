@@ -1,0 +1,149 @@
+[[view-jsp-formtaglib-errorstag]]
+===== The errors tag
+
+This tag renders field errors in an HTML 'span' tag. It provides access to the errors
+created in your controller or those that were created by any validators associated with
+your controller.
+
+Let's assume we want to display all error messages for the `firstName` and `lastName`
+fields once we submit the form. We have a validator for instances of the `User` class
+called `UserValidator`.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class UserValidator implements Validator {
+
+		public boolean supports(Class candidate) {
+			return User.class.isAssignableFrom(candidate);
+		}
+
+		public void validate(Object obj, Errors errors) {
+			ValidationUtils.rejectIfEmptyOrWhitespace(errors, "firstName", "required", "Field is required.");
+			ValidationUtils.rejectIfEmptyOrWhitespace(errors, "lastName", "required", "Field is required.");
+		}
+	}
+----
+
+The `form.jsp` would look like:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<form:form>
+		<table>
+			<tr>
+				<td>First Name:</td>
+				<td><form:input path="firstName" /></td>
+				<%-- Show errors for firstName field --%>
+				<td><form:errors path="firstName" /></td>
+			</tr>
+
+			<tr>
+				<td>Last Name:</td>
+				<td><form:input path="lastName" /></td>
+				<%-- Show errors for lastName field --%>
+				<td><form:errors path="lastName" /></td>
+			</tr>
+			<tr>
+				<td colspan="3">
+					<input type="submit" value="Save Changes" />
+				</td>
+			</tr>
+		</table>
+	</form:form>
+----
+
+If we submit a form with empty values in the `firstName` and `lastName` fields, this is
+what the HTML would look like:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<form method="POST">
+		<table>
+			<tr>
+				<td>First Name:</td>
+				<td><input name="firstName" type="text" value=""/></td>
+				<%-- Associated errors to firstName field displayed --%>
+				<td><span name="firstName.errors">Field is required.</span></td>
+			</tr>
+
+			<tr>
+				<td>Last Name:</td>
+				<td><input name="lastName" type="text" value=""/></td>
+				<%-- Associated errors to lastName field displayed --%>
+				<td><span name="lastName.errors">Field is required.</span></td>
+			</tr>
+			<tr>
+				<td colspan="3">
+					<input type="submit" value="Save Changes" />
+				</td>
+			</tr>
+		</table>
+	</form>
+----
+
+What if we want to display the entire list of errors for a given page? The example below
+shows that the `errors` tag also supports some basic wildcarding functionality.
+
+* `path="*"` - displays all errors
+* `path="lastName"` - displays all errors associated with the `lastName` field
+* if `path` is omitted - object errors only are displayed
+
+The example below will display a list of errors at the top of the page, followed by
+field-specific errors next to the fields:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<form:form>
+		<form:errors path="*" cssClass="errorBox" />
+		<table>
+			<tr>
+				<td>First Name:</td>
+				<td><form:input path="firstName" /></td>
+				<td><form:errors path="firstName" /></td>
+			</tr>
+			<tr>
+				<td>Last Name:</td>
+				<td><form:input path="lastName" /></td>
+				<td><form:errors path="lastName" /></td>
+			</tr>
+			<tr>
+				<td colspan="3">
+					<input type="submit" value="Save Changes" />
+				</td>
+			</tr>
+		</table>
+	</form:form>
+----
+
+The HTML would look like:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<form method="POST">
+		<span name="*.errors" class="errorBox">Field is required.<br/>Field is required.</span>
+		<table>
+			<tr>
+				<td>First Name:</td>
+				<td><input name="firstName" type="text" value=""/></td>
+				<td><span name="firstName.errors">Field is required.</span></td>
+			</tr>
+
+			<tr>
+				<td>Last Name:</td>
+				<td><input name="lastName" type="text" value=""/></td>
+				<td><span name="lastName.errors">Field is required.</span></td>
+			</tr>
+			<tr>
+				<td colspan="3">
+					<input type="submit" value="Save Changes" />
+				</td>
+			</tr>
+	</form>
+----
+
+

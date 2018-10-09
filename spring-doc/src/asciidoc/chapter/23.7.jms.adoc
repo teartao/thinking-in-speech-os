@@ -1,0 +1,91 @@
+[[jms-jca-message-endpoint-manager]]
+=== Support for JCA Message Endpoints
+Beginning with version 2.5, Spring also provides support for a JCA-based
+`MessageListener` container. The `JmsMessageEndpointManager` will attempt to
+automatically determine the `ActivationSpec` class name from the provider's
+`ResourceAdapter` class name. Therefore, it is typically possible to just provide
+Spring's generic `JmsActivationSpecConfig` as shown in the following example.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean class="org.springframework.jms.listener.endpoint.JmsMessageEndpointManager">
+		<property name="resourceAdapter" ref="resourceAdapter"/>
+		<property name="activationSpecConfig">
+			<bean class="org.springframework.jms.listener.endpoint.JmsActivationSpecConfig">
+				<property name="destinationName" value="myQueue"/>
+			</bean>
+		</property>
+		<property name="messageListener" ref="myMessageListener"/>
+	</bean>
+----
+
+Alternatively, you may set up a `JmsMessageEndpointManager` with a given
+`ActivationSpec` object. The `ActivationSpec` object may also come from a JNDI lookup
+(using `<jee:jndi-lookup>`).
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean class="org.springframework.jms.listener.endpoint.JmsMessageEndpointManager">
+		<property name="resourceAdapter" ref="resourceAdapter"/>
+		<property name="activationSpec">
+			<bean class="org.apache.activemq.ra.ActiveMQActivationSpec">
+				<property name="destination" value="myQueue"/>
+				<property name="destinationType" value="javax.jms.Queue"/>
+			</bean>
+		</property>
+		<property name="messageListener" ref="myMessageListener"/>
+	</bean>
+----
+
+Using Spring's `ResourceAdapterFactoryBean`, the target `ResourceAdapter` may be
+configured locally as depicted in the following example.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="resourceAdapter" class="org.springframework.jca.support.ResourceAdapterFactoryBean">
+		<property name="resourceAdapter">
+			<bean class="org.apache.activemq.ra.ActiveMQResourceAdapter">
+				<property name="serverUrl" value="tcp://localhost:61616"/>
+			</bean>
+		</property>
+		<property name="workManager">
+			<bean class="org.springframework.jca.work.SimpleTaskWorkManager"/>
+		</property>
+	</bean>
+----
+
+The specified `WorkManager` may also point to an environment-specific thread pool -
+typically through `SimpleTaskWorkManager's` "asyncTaskExecutor" property. Consider
+defining a shared thread pool for all your `ResourceAdapter` instances if you happen to
+use multiple adapters.
+
+In some environments (e.g. WebLogic 9 or above), the entire `ResourceAdapter` object may
+be obtained from JNDI instead (using `<jee:jndi-lookup>`). The Spring-based message
+listeners can then interact with the server-hosted `ResourceAdapter`, also using the
+server's built-in `WorkManager`.
+
+Please consult the JavaDoc for `JmsMessageEndpointManager`, `JmsActivationSpecConfig`,
+and `ResourceAdapterFactoryBean` for more details.
+
+Spring also provides a generic JCA message endpoint manager which is not tied to JMS:
+`org.springframework.jca.endpoint.GenericMessageEndpointManager`. This component allows
+for using any message listener type (e.g. a CCI MessageListener) and any
+provider-specific ActivationSpec object. Check out your JCA provider's documentation to
+find out about the actual capabilities of your connector, and consult
+`GenericMessageEndpointManager`'s JavaDoc for the Spring-specific configuration details.
+
+[NOTE]
+====
+JCA-based message endpoint management is very analogous to EJB 2.1 Message-Driven Beans;
+it uses the same underlying resource provider contract. Like with EJB 2.1 MDBs, any
+message listener interface supported by your JCA provider can be used in the Spring
+context as well. Spring nevertheless provides explicit 'convenience' support for JMS,
+simply because JMS is the most common endpoint API used with the JCA endpoint management
+contract.
+====
+
+
+

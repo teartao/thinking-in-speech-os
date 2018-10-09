@@ -1,0 +1,124 @@
+[[view-jasper-reports-configuration-multiformat-view]]
+===== Using JasperReportsMultiFormatView
+
+The `JasperReportsMultiFormatView` allows for the report format to be specified at
+runtime. The actual rendering of the report is delegated to one of the other
+JasperReports view classes - the `JasperReportsMultiFormatView` class simply adds a
+wrapper layer that allows for the exact implementation to be specified at runtime.
+
+The `JasperReportsMultiFormatView` class introduces two concepts: the format key and the
+discriminator key. The `JasperReportsMultiFormatView` class uses the mapping key to look
+up the actual view implementation class, and it uses the format key to lookup up the
+mapping key. From a coding perspective you add an entry to your model with the format
+key as the key and the mapping key as the value, for example:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public ModelAndView handleSimpleReportMulti(HttpServletRequest request,
+	HttpServletResponse response) throws Exception {
+
+		String uri = request.getRequestURI();
+		String format = uri.substring(uri.lastIndexOf(".") + 1);
+
+		Map model = getModel();
+		model.put("format", format);
+
+		return new ModelAndView("simpleReportMulti", model);
+
+	}
+----
+
+In this example, the mapping key is determined from the extension of the request URI and
+is added to the model under the default format key: `format`. If you wish to use a
+different format key then you can configure this using the `formatKey` property of the
+`JasperReportsMultiFormatView` class.
+
+By default the following mapping key mappings are configured in
+`JasperReportsMultiFormatView`:
+
+[[view-jasper-reports-configuration-multiformat-view-mappings]]
+.JasperReportsMultiFormatView Default Mapping Key Mappings
+|===
+| Mapping Key| View Class
+
+| csv
+| `JasperReportsCsvView`
+
+| html
+| `JasperReportsHtmlView`
+
+| pdf
+| `JasperReportsPdfView`
+
+| xls
+| `JasperReportsXlsView`
+|===
+
+So in the example above a request to URI /foo/myReport.pdf would be mapped to the
+`JasperReportsPdfView` class. You can override the mapping key to view class mappings
+using the `formatMappings` property of `JasperReportsMultiFormatView`.
+
+
+
+[[view-jasper-reports-model]]
+==== Populating the ModelAndView
+
+In order to render your report correctly in the format you have chosen, you must supply
+Spring with all of the data needed to populate your report. For JasperReports this means
+you must pass in all report parameters along with the report datasource. Report
+parameters are simple name/value pairs and can be added to the `Map` for your model as
+you would add any name/value pair.
+
+When adding the datasource to the model you have two approaches to choose from. The
+first approach is to add an instance of `JRDataSource` or a `Collection` type to the
+model `Map` under any arbitrary key. Spring will then locate this object in the model
+and treat it as the report datasource. For example, you may populate your model like so:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	private Map getModel() {
+		Map model = new HashMap();
+		Collection beanData = getBeanData();
+		model.put("myBeanData", beanData);
+		return model;
+	}
+----
+
+The second approach is to add the instance of `JRDataSource` or `Collection` under a
+specific key and then configure this key using the `reportDataKey` property of the view
+class. In both cases Spring will wrap instances of `Collection` in a
+`JRBeanCollectionDataSource` instance. For example:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	private Map getModel() {
+		Map model = new HashMap();
+		Collection beanData = getBeanData();
+		Collection someData = getSomeData();
+		model.put("myBeanData", beanData);
+		model.put("someData", someData);
+		return model;
+	}
+----
+
+Here you can see that two `Collection` instances are being added to the model. To ensure
+that the correct one is used, we simply modify our view configuration as appropriate:
+
+[literal]
+[subs="verbatim,quotes"]
+----
+simpleReport.(class)=org.springframework.web.servlet.view.jasperreports.JasperReportsPdfView
+simpleReport.url=/WEB-INF/reports/DataSourceReport.jasper
+simpleReport.reportDataKey=myBeanData
+----
+
+Be aware that when using the first approach, Spring will use the first instance of
+`JRDataSource` or `Collection` that it encounters. If you need to place multiple
+instances of `JRDataSource` or `Collection` into the model you need to use the second
+approach.
+
+
+

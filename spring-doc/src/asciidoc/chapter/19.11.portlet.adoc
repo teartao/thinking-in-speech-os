@@ -1,0 +1,62 @@
+[[portlet-exceptionresolver]]
+=== Handling exceptions
+Just like Servlet MVC, Portlet MVC provides ++HandlerExceptionResolver++s to ease the
+pain of unexpected exceptions that occur while your request is being processed by a
+handler that matched the request. Portlet MVC also provides a portlet-specific, concrete
+`SimpleMappingExceptionResolver` that enables you to take the class name of any
+exception that might be thrown and map it to a view name.
+
+
+
+
+[[portlet-annotation]]
+=== Annotation-based controller configuration
+Spring 2.5 introduced an annotation-based programming model for MVC controllers, using
+annotations such as `@RequestMapping`, `@RequestParam`, `@ModelAttribute`, etc. This
+annotation support is available for both Servlet MVC and Portlet MVC. Controllers
+implemented in this style do not have to extend specific base classes or implement
+specific interfaces. Furthermore, they do not usually have direct dependencies on
+Servlet or Portlet API's, although they can easily get access to Servlet or Portlet
+facilities if desired.
+
+The following sections document these annotations and how they are most commonly used in
+a Portlet environment.
+
+
+
+[[portlet-ann-setup]]
+==== Setting up the dispatcher for annotation support
+__`@RequestMapping` will only be processed if a corresponding `HandlerMapping` (for
+type level annotations) and/or `HandlerAdapter` (for method level annotations) is
+present in the dispatcher.__ This is the case by default in both `DispatcherServlet` and
+`DispatcherPortlet`.
+
+However, if you are defining custom `HandlerMappings` or `HandlerAdapters`, then you
+need to make sure that a corresponding custom `DefaultAnnotationHandlerMapping` and/or
+`AnnotationMethodHandlerAdapter` is defined as well - provided that you intend to use
+`@RequestMapping`.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://www.springframework.org/schema/beans
+			http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+		<bean class="org.springframework.web.portlet.mvc.annotation.DefaultAnnotationHandlerMapping"/>
+
+		<bean class="org.springframework.web.portlet.mvc.annotation.AnnotationMethodHandlerAdapter"/>
+
+		// ... (controller bean definitions) ...
+
+	</beans>
+----
+
+Defining a `DefaultAnnotationHandlerMapping` and/or `AnnotationMethodHandlerAdapter`
+explicitly also makes sense if you would like to customize the mapping strategy, e.g.
+specifying a custom `WebBindingInitializer` (see below).
+
+
+

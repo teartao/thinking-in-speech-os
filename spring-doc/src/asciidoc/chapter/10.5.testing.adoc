@@ -1,0 +1,95 @@
+[[spring-mvc-test-framework]]
+==== Spring MVC Test Framework 测试框架
+
+.独立项目
+****
+
+在被Spring Framework 3.2 纳入之前，Spring MVC Test Framework 测试框架就已经作为Github的一个独立项目存在了，并且在许多人的实际使用、反馈和贡献下不断成长和发展。
+
+独立的  https://github.com/spring-projects/spring-test-mvc[spring-test-mvc 项目] 
+仍然可以从github获取到，并与 Spring Framework 3.1.x 结合使用。
+使用Spring 3.2 及以上版本的应用程序不能再使用 `spring-test-mvc` 的依赖，而应当改为 `spring-test` 。
+
+`spring-test` 模块使用的是另一个 `org.springframework.test.web` 包，除了两个地方以外，
+与原来的包基本相同。这两个差别，一个是对 spring 3.2新特性的支持（例如异步 web 请求）；另一个是与创建 `MockMvc` 实例的选项有关，
+因为在 Spring Framework 3.2及以上版本中，`MockMvc` 实例的创建只能通过 TestContext Framework 来完成，
+从而在加载配置时能够使用缓存等好处。
+
+****
+
+__Spring MVC Test framework__ 通过一套便利的 API ，为 基于 Spring MVC 的客户端和服务端代码Junit测试提供了非常好的支持。
+通常，它会通过 __TestContext framework__ 加载实际的Spring配置，并使用 `DispatcherServlet` 处理请求，
+从而在不用运行 Servlet 容器的情况下几乎实现了完整的集成测试。
+
+客户端测试是基于 `RestTemplate` 的，允许在没有服务器响应请求的情况下，测试那些依赖 `RestTemplate` 的代码。
+
+[[spring-mvc-test-server]]
+===== Server-Side Tests 服务端的测试
+在Spring Framework 3.2之前，测试一个Spring MVC 的 Controller最常用的方法是写一个单元测试，初始化Controller，
+将模拟对象mock或桩对象stub的依赖注入至Controller，然后直接调用Controller的方法，
+并且在必要时使用 `MockHttpServletRequest`  和 `MockHttpServletResponse` 。
+
+虽然这样做很简单，但是对于Controller使用到的大部分注解，这种方法测试不了。例如 请求映射 Request mapping、
+数据绑定 data binding、类型转换，以及数据验证都无法被测试到，此外还有那些被
+ `@InitBinder` , `@ModelAttribute` , 和 `@ExceptionHandler` 等注解的方法也无法被测试，这些方法恰恰是在请求处理时会被调用的。
+
+Spring MVC Test 背后的思想是通过向Spring MVC 的 `DispatcherServlet` 发起真正的请求，从而去调用controller，
+并生成响应，就像在Servlet 容器中运行时那样。controller 依旧可以被注入模拟的依赖，这样测试代码可以专注于web 层的逻辑
+
+Spring MVC Test 构建于 `spring-test` 模块中我们耳熟能详的Servlet API “模拟” 实现之上。
+它允许我们在不运行Servlet 容器的情况下去发起请求并生成响应报文。大部分情况下，
+这一执行过程都会和真正的运行时环境（在容器中）一样，除了 JSP 页面渲染，
+因为只有在 Servlet容器内部才能渲染 JSP 。此外，如果你熟悉 `MockHttpServletResponse` 是如何运作的话，
+你就会知道转发和重定向不会真正被执行。实际上，“转发”和“重定向”的URL会被保存起来并可以在测试代码中被断言assert，
+因此如果你在使用JSP，你可以验证请求被转发到了哪个JSP页面。
+
+其他渲染HTML、JSON、XML 等的手段包括  `@ResponseBody`  方法注解、不同的 `View` 类型（除了JSP以外）例如Freemarker, 
+Velocity, Thymeleaf 及其他，这些都能正常工作，响应报文会包含相应的内容。
+
+
+下面是一个测试的例子，以JSON格式请求账户信息。
+
+[source,java,indent=0]
+----
+	import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+	import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+	@RunWith(SpringJUnit4ClassRunner.class)
+	@WebAppConfiguration
+	@ContextConfiguration("test-servlet-context.xml")
+	public class ExampleTests {
+
+		@Autowired
+		private WebApplicationContext wac;
+
+		private MockMvc mockMvc;
+
+		@Before
+		public void setup() {
+			this.mockMvc = MockMvcBuilders.webAppContextSetup(this.wac).build();
+		}
+
+		@Test
+		public void getAccount() throws Exception {
+			this.mockMvc.perform(get("/accounts/1").accept(MediaType.parseMediaType("application/json;charset=UTF-8")))
+				.andExpect(status().isOk())
+				.andExpect(content().contentType("application/json"))
+				.andExpect(jsonPath("$.name").value("Lee"));
+		}
+
+	}
+----
+
+这个测试依赖于  __TestContext framework__ 对  `WebApplicationContext`  的支持。
+测试代码从与自身所在包 package 定位 Spring 的 XML 配置文件（也支持JavaConfig），并将其载入，
+然后将 `WebApplicationContext`  注入进来，用于创建 `MockMvc` 。
+
+
+
+测试代码通过 `MockMvc` 发起对 `"/accounts/1"` 路径的请求，验证其产生的响应报文是否状态码为200、
+内容类型 content type 是否为 `"application/json"` 、响应内容是否含有一个名字为“name”值为“Lee”的JSON 属性。
+这里使用了 Jayway's https://github.com/jayway/JsonPath[JsonPath
+project] 去探查 JSON 内容。
+除此以外还有很多其他验证响应报文的选项，我们将在后续讨论。
+
+

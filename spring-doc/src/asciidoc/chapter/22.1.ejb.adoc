@@ -1,0 +1,108 @@
+[[ejb-access-local]]
+==== Accessing local SLSBs
+Assume that we have a web controller that needs to use a local EJB. We'll follow best
+practice and use the EJB Business Methods Interface pattern, so that the EJB's local
+interface extends a non EJB-specific business methods interface. Let's call this
+business methods interface `MyComponent`.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface MyComponent {
+		...
+	}
+----
+
+One of the main reasons to use the Business Methods Interface pattern is to ensure that
+synchronization between method signatures in local interface and bean implementation
+class is automatic. Another reason is that it later makes it much easier for us to
+switch to a POJO (plain old Java object) implementation of the service if it makes sense
+to do so. Of course we'll also need to implement the local home interface and provide an
+implementation class that implements `SessionBean` and the `MyComponent` business
+methods interface. Now the only Java coding we'll need to do to hook up our web tier
+controller to the EJB implementation is to expose a setter method of type `MyComponent`
+on the controller. This will save the reference as an instance variable in the
+controller:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	private MyComponent myComponent;
+
+	public void setMyComponent(MyComponent myComponent) {
+		this.myComponent = myComponent;
+	}
+----
+
+We can subsequently use this instance variable in any business method in the controller.
+Now assuming we are obtaining our controller object out of a Spring container, we can
+(in the same context) configure a `LocalStatelessSessionProxyFactoryBean` instance,
+which will be the EJB proxy object. The configuration of the proxy, and setting of the
+`myComponent` property of the controller is done with a configuration entry such as:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="myComponent"
+			class="org.springframework.ejb.access.LocalStatelessSessionProxyFactoryBean">
+		<property name="jndiName" value="ejb/myBean"/>
+		<property name="businessInterface" value="com.mycom.MyComponent"/>
+	</bean>
+
+	<bean id="myController" class="com.mycom.myController">
+		<property name="myComponent" ref="myComponent"/>
+	</bean>
+----
+
+There's a lot of work happening behind the scenes, courtesy of the Spring AOP framework,
+although you aren't forced to work with AOP concepts to enjoy the results. The
+`myComponent` bean definition creates a proxy for the EJB, which implements the business
+method interface. The EJB local home is cached on startup, so there's only a single JNDI
+lookup. Each time the EJB is invoked, the proxy invokes the `classname` method on the
+local EJB and invokes the	corresponding business method on the EJB.
+
+The `myController` bean definition sets the `myComponent` property of the controller
+class to the EJB proxy.
+
+Alternatively (and preferably in case of many such proxy definitions), consider using
+the `<jee:local-slsb>` configuration element in Spring's "jee" namespace:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<jee:local-slsb id="myComponent" jndi-name="ejb/myBean"
+			business-interface="com.mycom.MyComponent"/>
+
+	<bean id="myController" class="com.mycom.myController">
+		<property name="myComponent" ref="myComponent"/>
+	</bean>
+----
+
+This EJB access mechanism delivers huge simplification of application code: the web tier
+code (or other EJB client code) has no dependence on the use of EJB. If we want to
+replace this EJB reference with a POJO or a mock object or other test stub, we could
+simply change the `myComponent` bean definition without changing a line of Java code.
+Additionally, we haven't had to write a single line of JNDI lookup or other EJB plumbing
+code as part of our application.
+
+Benchmarks and experience in real applications indicate that the performance overhead of
+this approach (which involves reflective invocation of the target EJB) is minimal, and
+is typically undetectable in typical use. Remember that we don't want to make
+fine-grained calls to EJBs anyway, as there's a cost associated with the EJB
+infrastructure in the application server.
+
+There is one caveat with regards to the JNDI lookup. In a bean container, this class is
+normally best used as a singleton (there simply is no reason to make it a prototype).
+However, if that bean container pre-instantiates singletons (as do the various XML
+`ApplicationContext` variants) you may have a problem if the bean container is loaded
+before the EJB container loads the target EJB. That is because the JNDI lookup will be
+performed in the `init()` method of this class and then cached, but the EJB will not
+have been bound at the target location yet. The solution is to not pre-instantiate this
+factory object, but allow it to be created on first use. In the XML containers, this is
+controlled via the `lazy-init` attribute.
+
+Although this will not be of interest to the majority of Spring users, those doing
+programmatic AOP work with EJBs may want to look at `LocalSlsbInvokerInterceptor`.
+
+
+

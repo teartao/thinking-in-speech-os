@@ -1,0 +1,96 @@
+[[view-tiles-url]]
+===== UrlBasedViewResolver
+
+The `UrlBasedViewResolver` instantiates the given `viewClass` for each view it has to
+resolve.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="viewResolver" class="org.springframework.web.servlet.view.UrlBasedViewResolver">
+		<property name="viewClass" value="org.springframework.web.servlet.view.tiles3.TilesView"/>
+	</bean>
+----
+
+
+[[view-tiles-resource]]
+===== ResourceBundleViewResolver
+
+The `ResourceBundleViewResolver` has to be provided with a property file containing
+viewnames and viewclasses the resolver can use:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="viewResolver" class="org.springframework.web.servlet.view.ResourceBundleViewResolver">
+		<property name="basename" value="views"/>
+	</bean>
+----
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	...
+	welcomeView.(class)=org.springframework.web.servlet.view.tiles3.TilesView
+	welcomeView.url=welcome (this is the name of a Tiles definition)
+
+	vetsView.(class)=org.springframework.web.servlet.view.tiles3.TilesView
+	vetsView.url=vetsView (again, this is the name of a Tiles definition)
+
+	findOwnersForm.(class)=org.springframework.web.servlet.view.JstlView
+	findOwnersForm.url=/WEB-INF/jsp/findOwners.jsp
+	...
+----
+
+As you can see, when using the `ResourceBundleViewResolver`, you can easily mix
+different view technologies.
+
+Note that the `TilesView` class supports JSTL (the JSP Standard Tag Library) out of the
+box.
+
+
+[[view-tiles-preparer]]
+===== SimpleSpringPreparerFactory and SpringBeanPreparerFactory
+
+As an advanced feature, Spring also supports two special Tiles `PreparerFactory`
+implementations. Check out the Tiles documentation for details on how to use
+`ViewPreparer` references in your Tiles definition files.
+
+Specify `SimpleSpringPreparerFactory` to autowire ViewPreparer instances based on
+specified preparer classes, applying Spring's container callbacks as well as applying
+configured Spring BeanPostProcessors. If Spring's context-wide annotation-config has
+been activated, annotations in ViewPreparer classes will be automatically detected and
+applied. Note that this expects preparer __classes__ in the Tiles definition files, just
+like the default `PreparerFactory` does.
+
+Specify `SpringBeanPreparerFactory` to operate on specified preparer __names__ instead
+of classes, obtaining the corresponding Spring bean from the DispatcherServlet's
+application context. The full bean creation process will be in the control of the Spring
+application context in this case, allowing for the use of explicit dependency injection
+configuration, scoped beans etc. Note that you need to define one Spring bean definition
+per preparer name (as used in your Tiles definitions).
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="tilesConfigurer" class="org.springframework.web.servlet.view.tiles3.TilesConfigurer">
+		<property name="definitions">
+			<list>
+				<value>/WEB-INF/defs/general.xml</value>
+				<value>/WEB-INF/defs/widgets.xml</value>
+				<value>/WEB-INF/defs/administrator.xml</value>
+				<value>/WEB-INF/defs/customer.xml</value>
+				<value>/WEB-INF/defs/templates.xml</value>
+			</list>
+		</property>
+
+		<!-- resolving preparer names as Spring bean definition names -->
+		<property name="preparerFactoryClass"
+				value="org.springframework.web.servlet.view.tiles3.SpringBeanPreparerFactory"/>
+
+	</bean>
+----
+
+
+
+

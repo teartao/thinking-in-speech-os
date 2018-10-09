@@ -1,0 +1,124 @@
+[[portlet-ann-controller]]
+==== Defining a controller with @Controller
+
+The `@Controller` annotation indicates that a particular class serves the role of a
+__controller__. There is no need to extend any controller base class or reference the
+Portlet API. You are of course still able to reference Portlet-specific features if you
+need to.
+
+The basic purpose of the `@Controller` annotation is to act as a stereotype for the
+annotated class, indicating its role. The dispatcher will scan such annotated classes
+for mapped methods, detecting `@RequestMapping` annotations (see the next section).
+
+Annotated controller beans may be defined explicitly, using a standard Spring bean
+definition in the dispatcher's context. However, the `@Controller` stereotype also
+allows for autodetection, aligned with Spring 2.5's general support for detecting
+component classes in the classpath and auto-registering bean definitions for them.
+
+To enable autodetection of such annotated controllers, you have to add component
+scanning to your configuration. This is easily achieved by using the __spring-context__
+schema as shown in the following XML snippet:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns:p="http://www.springframework.org/schema/p"
+		xmlns:context="http://www.springframework.org/schema/context"
+		xsi:schemaLocation="
+			http://www.springframework.org/schema/beans
+			http://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.springframework.org/schema/context
+			http://www.springframework.org/schema/context/spring-context.xsd">
+
+		<context:component-scan base-package="org.springframework.samples.petportal.portlet"/>
+
+		// ...
+
+	</beans>
+----
+
+
+
+[[portlet-ann-requestmapping]]
+==== Mapping requests with @RequestMapping
+
+The `@RequestMapping` annotation is used to map portlet modes like 'VIEW'/'EDIT' onto an
+entire class or a particular handler method. Typically the type-level annotation maps a
+specific mode (or mode plus parameter condition) onto a form controller, with additional
+method-level annotations 'narrowing' the primary mapping for specific portlet request
+parameters.
+
+[TIP]
+====
+
+`@RequestMapping` at the type level may be used for plain implementations of the
+`Controller` interface as well. In this case, the request processing code would follow
+the traditional `handle(Action|Render)Request` signature, while the controller's mapping
+would be expressed through an `@RequestMapping` annotation. This works for pre-built
+`Controller` base classes, such as `SimpleFormController`, too.
+
+In the following discussion, we'll focus on controllers that are based on annotated
+handler methods.
+====
+
+The following is an example of a form controller from the PetPortal sample application
+using this annotation:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Controller
+	@RequestMapping("EDIT")
+	@SessionAttributes("site")
+	public class PetSitesEditController {
+
+		private Properties petSites;
+
+		public void setPetSites(Properties petSites) {
+			this.petSites = petSites;
+		}
+
+		@ModelAttribute("petSites")
+		public Properties getPetSites() {
+			return this.petSites;
+		}
+
+		@RequestMapping // default (action=list)
+		public String showPetSites() {
+			return "petSitesEdit";
+		}
+
+		@RequestMapping(params = "action=add") // render phase
+		public String showSiteForm(Model model) {
+			// Used for the initial form as well as for redisplaying with errors.
+			if (!model.containsAttribute("site")) {
+				model.addAttribute("site", new PetSite());
+			}
+
+			return "petSitesAdd";
+		}
+
+		@RequestMapping(params = "action=add") // action phase
+		public void populateSite(@ModelAttribute("site") PetSite petSite,
+				BindingResult result, SessionStatus status, ActionResponse response) {
+			new PetSiteValidator().validate(petSite, result);
+			if (!result.hasErrors()) {
+				this.petSites.put(petSite.getName(), petSite.getUrl());
+				status.setComplete();
+				response.setRenderParameter("action", "list");
+			}
+		}
+
+		@RequestMapping(params = "action=delete")
+		public void removeSite(@RequestParam("site") String site, ActionResponse response) {
+			this.petSites.remove(site);
+			response.setRenderParameter("action", "list");
+		}
+	}
+----
+
+
+

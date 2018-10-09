@@ -1,0 +1,77 @@
+[[scheduling-annotation-support-scheduled]]
+==== @Scheduled注解
+The @Scheduled annotation can be added to a method along with trigger metadata. For
+example, the following method would be invoked every 5 seconds with a fixed delay,
+meaning that the period will be measured from the completion time of each preceding
+invocation.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Scheduled(fixedDelay=5000)
+	public void doSomething() {
+		// something that should execute periodically
+	}
+----
+
+If a fixed rate execution is desired, simply change the property name specified within
+the annotation. The following would be executed every 5 seconds measured between the
+successive start times of each invocation.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Scheduled(fixedRate=5000)
+	public void doSomething() {
+		// something that should execute periodically
+	}
+----
+
+For fixed-delay and fixed-rate tasks, an initial delay may be specified indicating the
+number of milliseconds to wait before the first execution of the method.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Scheduled(initialDelay=1000, fixedRate=5000)
+	public void doSomething() {
+		// something that should execute periodically
+	}
+----
+
+If simple periodic scheduling is not expressive enough, then a cron expression may be
+provided. For example, the following will only execute on weekdays.
+
+[source,java,indent=0]
+[subs="verbatim"]
+----
+	@Scheduled(cron="*/5 * * * * MON-FRI")
+	public void doSomething() {
+		// something that should execute on weekdays only
+	}
+----
+
+[TIP]
+====
+You can additionally use the `zone` attribute to specify the time zone in which the cron
+expression will be resolved.
+====
+
+
+Notice that the methods to be scheduled must have void returns and must not expect any
+arguments. If the method needs to interact with other objects from the Application
+Context, then those would typically have been provided through dependency injection.
+
+[NOTE]
+====
+Make sure that you are not initializing multiple instances of the same @Scheduled
+annotation class at runtime, unless you do want to schedule callbacks to each such
+instance. Related to this, make sure that you do not use @Configurable on bean classes
+which are annotated with @Scheduled and registered as regular Spring beans with the
+container: You would get double initialization otherwise, once through the container and
+once through the @Configurable aspect, with the consequence of each @Scheduled method
+being invoked twice.
+====
+
+
+

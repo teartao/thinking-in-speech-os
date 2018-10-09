@@ -1,0 +1,35 @@
+[[dynamic-language]]
+== Dynamic language support
+
+
+
+
+[[dynamic-language-introduction]]
+=== Introduction
+Spring 2.0 introduces comprehensive support for using classes and objects that have been
+defined using a dynamic language (such as JRuby) with Spring. This support allows you to
+write any number of classes in a supported dynamic language, and have the Spring
+container transparently instantiate, configure and dependency inject the resulting
+objects.
+
+The dynamic languages currently supported are:
+
+* JRuby 1.5+
+* Groovy 1.8+
+* BeanShell 2.0
+
+.Why only these languages?
+****
+The supported languages were chosen because __a)__ the languages have a lot of traction in
+the Java enterprise community, __b)__ no requests were made for other languages at the time
+that this support was added, and __c)__ the Spring developers were most familiar with
+them.
+****
+
+Fully working examples of where this dynamic language support can be immediately useful
+are described in <<dynamic-language-scenarios>>.
+
+
+
+
+[[

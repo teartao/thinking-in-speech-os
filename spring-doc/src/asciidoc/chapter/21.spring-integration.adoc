@@ -1,0 +1,123 @@
+[[spring-integration]]
+= Integration
+[partintro]
+--
+This part of the reference documentation covers the Spring Framework's integration with
+a number of Java EE (and related) technologies.
+
+* <<remoting>>
+* <<ejb>>
+* <<jms>>
+* <<jmx>>
+* <<cci>>
+* <<mail>>
+* <<scheduling>>
+* <<dynamic-language>>
+* <<cache>>
+--
+
+
+
+
+
+[[remoting]]
+== Remoting and web services using Spring
+
+
+
+
+[[remoting-introduction]]
+=== Introduction
+Spring features integration classes for remoting support using various technologies. The
+remoting support eases the development of remote-enabled services, implemented by your
+usual (Spring) POJOs. Currently, Spring supports the following remoting technologies:
+
+* __Remote Method Invocation (RMI)__. Through the use of the `RmiProxyFactoryBean` and
+  the `RmiServiceExporter` Spring supports both traditional RMI (with `java.rmi.Remote`
+  interfaces and `java.rmi.RemoteException`) and transparent remoting via RMI invokers
+  (with any Java interface).
+* __Spring's HTTP invoker__. Spring provides a special remoting strategy which allows
+  for Java serialization via HTTP, supporting any Java interface (just like the RMI
+  invoker). The corresponding support classes are `HttpInvokerProxyFactoryBean` and
+  `HttpInvokerServiceExporter`.
+* __Hessian__. By using Spring's `HessianProxyFactoryBean` and the
+  `HessianServiceExporter` you can transparently expose your services using the
+  lightweight binary HTTP-based protocol provided by Caucho.
+* __Burlap__. Burlap is Caucho's XML-based alternative to Hessian. Spring provides
+  support classes such as `BurlapProxyFactoryBean` and `BurlapServiceExporter`.
+* __JAX-WS__. Spring provides remoting support for web services via JAX-WS (the
+  successor of JAX-RPC, as introduced in Java EE 5 and Java 6).
+* __JMS__. Remoting using JMS as the underlying protocol is supported via the
+  `JmsInvokerServiceExporter` and `JmsInvokerProxyFactoryBean` classes.
+* __AMQP__. Remoting using AMQP as the underlying protocol is supported by the Spring
+  AMQP project.
+
+While discussing the remoting capabilities of Spring, we'll use the following domain
+model and corresponding services:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class Account implements Serializable{
+
+		private String name;
+
+		public String getName(){
+			return name;
+		}
+
+		public void setName(String name) {
+			this.name = name;
+		}
+
+	}
+----
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface AccountService {
+
+		public void insertAccount(Account account);
+
+		public List<Account> getAccounts(String name);
+
+	}
+----
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface RemoteAccountService extends Remote {
+
+		public void insertAccount(Account account) throws RemoteException;
+
+		public List<Account> getAccounts(String name) throws RemoteException;
+
+	}
+----
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	// the implementation doing nothing at the moment
+	public class AccountServiceImpl implements AccountService {
+
+		public void insertAccount(Account acc) {
+			// do something...
+		}
+
+		public List<Account> getAccounts(String name) {
+			// do something...
+		}
+
+	}
+----
+
+We will start exposing the service to a remote client by using RMI and talk a bit about
+the drawbacks of using RMI. We'll then continue to show an example using Hessian as the
+protocol.
+
+
+
+

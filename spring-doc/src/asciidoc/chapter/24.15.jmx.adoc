@@ -1,0 +1,100 @@
+[[jmx-notifications-publishing]]
+==== Publishing Notifications
+Spring provides support not just for registering to receive `Notifications`, but also
+for publishing `Notifications`.
+
+[NOTE]
+====
+Please note that this section is really only relevant to Spring managed beans that have
+been exposed as MBeans via an `MBeanExporter`; any existing, user-defined MBeans should
+use the standard JMX APIs for notification publication.
+====
+
+The key interface in Spring's JMX notification publication support is the
+`NotificationPublisher` interface (defined in the
+`org.springframework.jmx.export.notification` package). Any bean that is going to be
+exported as an MBean via an `MBeanExporter` instance can implement the related
+`NotificationPublisherAware` interface to gain access to a `NotificationPublisher`
+instance. The `NotificationPublisherAware` interface simply supplies an instance of a
+`NotificationPublisher` to the implementing bean via a simple setter method, which the
+bean can then use to publish `Notifications`.
+
+As stated in the javadocs of the `NotificationPublisher` class, managed beans that are
+publishing events via the `NotificationPublisher` mechanism are __not__ responsible for
+the state management of any notification listeners and the like ... Spring's JMX support
+will take care of handling all the JMX infrastructure issues. All one need do as an
+application developer is implement the `NotificationPublisherAware` interface and start
+publishing events using the supplied `NotificationPublisher` instance. Note that the
+`NotificationPublisher` will be set __after__ the managed bean has been registered with
+an `MBeanServer`.
+
+Using a `NotificationPublisher` instance is quite straightforward... one simply creates
+a JMX `Notification` instance (or an instance of an appropriate `Notification`
+subclass), populates the notification with the data pertinent to the event that is to be
+published, and one then invokes the `sendNotification(Notification)` on the
+`NotificationPublisher` instance, passing in the `Notification`.
+
+Find below a simple example... in this scenario, exported instances of the `JmxTestBean`
+are going to publish a `NotificationEvent` every time the `add(int, int)` operation is
+invoked.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package org.springframework.jmx;
+
+	import org.springframework.jmx.export.notification.NotificationPublisherAware;
+	import org.springframework.jmx.export.notification.NotificationPublisher;
+	import javax.management.Notification;
+
+	public class JmxTestBean implements IJmxTestBean, NotificationPublisherAware {
+
+		private String name;
+		private int age;
+		private boolean isSuperman;
+		private NotificationPublisher publisher;
+
+		// other getters and setters omitted for clarity
+
+		public int add(int x, int y) {
+			int answer = x + y;
+			this.publisher.sendNotification(new Notification("add", this, 0));
+			return answer;
+		}
+
+		public void dontExposeMe() {
+			throw new RuntimeException();
+		}
+
+		public void setNotificationPublisher(NotificationPublisher notificationPublisher) {
+			this.publisher = notificationPublisher;
+		}
+
+	}
+----
+
+The `NotificationPublisher` interface and the machinery to get it all working is one of
+the nicer features of Spring's JMX support. It does however come with the price tag of
+coupling your classes to both Spring and JMX; as always, the advice here is to be
+pragmatic... if you need the functionality offered by the `NotificationPublisher` and
+you can accept the coupling to both Spring and JMX, then do so.
+
+
+
+
+[[jmx-resources]]
+=== Further Resources
+This section contains links to further resources about JMX.
+
+* The http://www.oracle.com/technetwork/java/javase/tech/javamanagement-140525.html[JMX
+homepage] at Oracle
+* The http://jcp.org/aboutJava/communityprocess/final/jsr003/index3.html[JMX
+  specification] (JSR-000003)
+* The http://jcp.org/aboutJava/communityprocess/final/jsr160/index.html[JMX Remote API
+  specification] (JSR-000160)
+* The http://mx4j.sourceforge.net/[MX4J homepage] (an Open Source implementation of
+  various JMX specs)
+
+
+
+

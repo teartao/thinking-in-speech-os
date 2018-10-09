@@ -1,0 +1,2658 @@
+[[spring-web]]
+= The Web
+[partintro]
+--
+这部分参考文档将介绍 Spring 框架 对表现层的支持（特别是对 web 表现层的支持），和支持 web socket 形式式的web应用。
+
+Spring 框架拥有自己的 web 框架 —— <<mvc,Spring Web MVC>>，这部分将会在前两章介绍。后续章节将介绍 Spring 框架与其他 web 技术的集成，如 <<jsf,JSF>> 等。
+
+紧跟着介绍 Spring MVC 框架，<<portlet,portlet 框架>>。
+Following that is coverage of Spring Framework's MVC <<portlet,portlet framework>>.
+
+结尾部分将全面覆盖 Spring 框架 <<websocket>> (包括 <<websocket-stomp>>)。
+
+* <<mvc>>
+* <<view>>
+* <<web-integration>>
+* <<portlet>>
+* <<websocket>>
+--
+
+
+
+
+[[mvc]]
+== Web MVC 框架
+
+
+
+
+[[mvc-introduction]]
+=== Spring Web MVC 框架介绍
+Spring Web 模型-视图-控制器(MVC) 框架是围绕 `DispatcherServlet`而设计的，其支持可配置的 handler 映射，视图解析，本地化、时区和主题的解析以及文件上传的功能。`DispatcherServlet` 负责将请求分发到不同的 handler。默认的 handler 通过`@Controller` 和 `@RequestMapping`注解，提供多种灵活的处理方法。若加上 `@PathVariable` 注解和其他辅助功能，你也可用使用 `@Controller` 机制来创建 RESTful web 站点和应用程序。
+
+****
+"对扩展开放..." 是 Spring Web MVC 的重要设计原则之一，符合 Spring 的本身设计的概念
+"_对扩展开发，对修改关闭_"。
+
+Spring Web MVC 核心类中部分方法被标记为 `final`,开发者不能通过覆盖这些方法，来提供自定义的行为。其目的是遵循开闭(OCP)原则， 而不是故意刁难开发者。
+
+在 Seth Ladd 等人所著一书__Expert Spring Web MVC and Web Flow__中，详细解释了这一设计原则，如果你有兴趣深入了解的，可以阅读一下，重点阅读该书第一版 117 页 "A Look At Design" 的章节。或者，你可以看一下这个：
+
+* http://www.objectmentor.com/resources/articles/ocp.pdf[Bob Martin, The Open-Closed
+  Principle (PDF)]
+
+Spring MVC 不允许在 final 方法添加 advice。如不能在 `AbstractController.setSynchronizeOnSession()` 方法添加 advice。需要了解 AOP 代理的相关信息与及为什么不能在 final 方法上添加 advice，可以参考
+<<aop-understanding-aop-proxies>>。
+****
+
+使用 Spring Web MVC ，你不需要实现框架指定的任何接口或继承任意基类，就可以使用任意对象作为命令对象(或表单对象)。Spring 的数据绑定相当之灵活，比如，Spring可以将不匹配的类型作为应用可识别的验证错误，而不是系统错误，所以，你不需要去重复定义一套属性一致而类型是原始字符串的业务逻辑对象，去处理错误的提交或对字符串进行类型转换。反过来说就是，spring 允许你直接将正确类型的参数绑定到业务逻辑对象。
+
+Spring 的视图解析也相当之灵活。完成一个请求，`Controller` 通常是负责准备一个数据模型 `Map` 和选择一个指定的视图，当然，也支持直接将数据写到响应流里。视图名称的解析是高度可配置的，可以通过文件扩展名、accept header 的 Content-Type、bean 的名称、属性文件或自定义的 `ViewResolver` 实现来解析。模型(Model,MVC 中的 'M'),是一个 `Map` 接口，提供对视图数据的完全抽象，可直接与渲染模版集成，如 JSP，Veloctiy，Freemarker;或直接生成原始数据，或xml、json等其他类型的响应内容。模型 `Map` 接口只是负责将数据转换为合适格式，如 jsp 请求属性，velocity 的 model 等。
+
+
+[[mvc-features]]
+==== Spring Web MVC 的特点
+
+.Spring Web Flow
+****
+Spring Web Flow (SWF) aims to be the best solution for the management of web application
+page flow.
+
+SWF integrates with existing frameworks like Spring MVC and JSF, in both Servlet and
+Portlet environments. If you have a business process (or processes) that would benefit
+from a conversational model as opposed to a purely request model, then SWF may be the
+solution.
+
+SWF allows you to capture logical page flows as self-contained modules that are reusable
+in different situations, and as such is ideal for building web application modules that
+guide the user through controlled navigations that drive business processes.
+
+For more information about SWF, consult the
+http://projects.spring.io/spring-webflow/[Spring Web Flow website].
+****
+
+Spring's web module includes many unique web support features:
+
+* __Clear separation of roles__. Each role -- controller, validator, command object,
+  form object, model object, `DispatcherServlet`, handler mapping, view resolver, and so
+  on -- can be fulfilled by a specialized object.
+* __Powerful and straightforward configuration of both framework and application classes
+  as JavaBeans__. This configuration capability includes easy referencing across
+  contexts, such as from web controllers to business objects and validators.
+* __Adaptability, non-intrusiveness, and flexibility.__ Define any controller method
+  signature you need, possibly using one of the parameter annotations (such as
+  @RequestParam, @RequestHeader, @PathVariable, and more) for a given scenario.
+* __Reusable business code, no need for duplication__. Use existing business objects
+  as command or form objects instead of mirroring them to extend a particular framework
+  base class.
+* __Customizable binding and validation__. Type mismatches as application-level
+  validation errors that keep the offending value, localized date and number binding,
+  and so on instead of String-only form objects with manual parsing and conversion to
+  business objects.
+* __Customizable handler mapping and view resolution__. Handler mapping and view
+  resolution strategies range from simple URL-based configuration, to sophisticated,
+  purpose-built resolution strategies. Spring is more flexible than web MVC frameworks
+  that mandate a particular technique.
+* __Flexible model transfer__. Model transfer with a name/value `Map` supports easy
+  integration with any view technology.
+* __Customizable locale, time zone and theme resolution, support for JSPs with or without
+  Spring tag library, support for JSTL, support for Velocity without the need for extra
+  bridges, and so on.__
+* __A simple yet powerful JSP tag library known as the Spring tag library that provides
+  support for features such as data binding and themes__. The custom tags allow for
+  maximum flexibility in terms of markup code. For information on the tag library
+  descriptor, see the appendix entitled <<spring.tld>>
+* __A JSP form tag library, introduced in Spring 2.0, that makes writing forms in JSP
+  pages much easier.__ For information on the tag library descriptor, see the appendix
+  entitled <<spring-form.tld>>
+* __Beans whose lifecycle is scoped to the current HTTP request or HTTP `Session`.__
+  This is not a specific feature of Spring MVC itself, but rather of the
+  `WebApplicationContext` container(s) that Spring MVC uses. These bean scopes are
+  described in <<beans-factory-scopes-other>>
+
+
+
+[[mvc-introduction-pluggability]]
+==== 其他 MVC 实现的可插入性
+Non-Spring MVC implementations are preferable for some projects. Many teams expect to
+leverage their existing investment in skills and tools, for example with JSF.
+
+If you do not want to use Spring's Web MVC, but intend to leverage other solutions that
+Spring offers, you can integrate the web MVC framework of your choice with Spring
+easily. Simply start up a Spring root application context through its
+`ContextLoaderListener`, and access it through its `ServletContext` attribute (or
+Spring's respective helper method) from within any action object. No "plug-ins"
+are involved, so no dedicated integration is necessary. From the web layer's point of
+view, you simply use Spring as a library, with the root application context instance as
+the entry point.
+
+Your registered beans and Spring's services can be at your fingertips even without
+Spring's Web MVC. Spring does not compete with other web frameworks in this scenario.
+It simply addresses the many areas that the pure web MVC frameworks do not, from bean
+configuration to data access and transaction handling. So you can enrich your
+application with a Spring middle tier and/or data access tier, even if you just want
+to use, for example, the transaction abstraction with JDBC or Hibernate.
+
+
+
+
+[[mvc-servlet]]
+=== The DispatcherServlet
+
+像其他 web MVC 框架一样， Spring web MVC 框架也是基于请求驱动，围绕一个核心 Servlet 转发请求到对应的 Controller 而设计的，提供对web 程序开发的基础的支持。然而 Spring 的 `DispatcherServlet` 并不仅仅拥有这些，因为 Spring MVC 框架集成了 Spring IOC 容器，因此，Spring MVC  可以使用 Spring 提供的其他功能。            
+
+如图，展示了 Spring web MVC `DispatcherServlet` 处理请求的流程。
+The request processing workflow of the Spring Web MVC `DispatcherServlet` is illustrated
+in the following diagram. The pattern-savvy reader will recognize that the
+`DispatcherServlet` is an expression of the "Front Controller" design pattern (this is a
+pattern that Spring Web MVC shares with many other leading web frameworks).
+
+image::images/mvc.png[width=400]
+
+Spring Web MVC 请求处理的宏观图
+
+`DispatcherServlet` 继承了 `HttpServlet` ，是一个真实的 Servlet，因此可以在 `web.xml` 文件声明。另外你需要使用 url 匹配元件指定 `DispatcherServlet` 处理的请求。如下例子，使用了标准 java EE Servlet 配置，配置了一个 `DispatcherServlet`的声明和匹配 url 元件: 
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<web-app>
+		<servlet>
+			<servlet-name>example</servlet-name>
+			<servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+			<load-on-startup>1</load-on-startup>
+		</servlet>
+
+		<servlet-mapping>
+			<servlet-name>example</servlet-name>
+			<url-pattern>/example/*</url-pattern>
+		</servlet-mapping>
+
+	</web-app>
+----
+
+在刚才配置的例子中，所有以 `/example` 开始的请求都会被名为 `example` 的 `DispatcherServlet` 所处理。在 Servlet 3.0+ 环境，也可以以编程方式配置上述 `DispatcherServlet`。如下代码与上述 `web.xml` 配置例子等效:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class MyWebApplicationInitializer implements WebApplicationInitializer {
+
+		@Override
+		public void onStartup(ServletContext container) {
+			ServletRegistration.Dynamic registration = container.addServlet("dispatcher", new DispatcherServlet());
+			registration.setLoadOnStartup(1);
+			registration.addMapping("/example/*");
+		}
+
+	}
+----
+
+Spring MVC 提供的 `WebApplicationInitializer` 接口，可以确保检测到基于代码的配置和用来自动初始化基于 Servlet 3 的容器。它有一个抽象的实现类 `AbstractDispatcherServletInitializer`,简化了`DispatcherServlet` 的注册，只需指定 servlet mapping 就可以了，详情请参考  <<mvc-container-config,Code-based Servlet container initialization>>。
+
+上述的操作仅仅是开启了 Spring Web MVC 之旅的第一步，现在你需要配置 Spring Web MVC 所使用到的各种 bean(这不在本节讨论范围)。
+
+如 <<context-introduction>> 所描述那样，在Spring里可以获取到 `ApplicationContext` 实例。在 web MVC 框架，每一个 `DispatcherServlet` 都拥有自己的 `WebApplicationContext`，这个 `WebApplicationContext` 继承了根 `WebApplicationContext` 定义的所有 bean.
+
+As detailed in <<context-introduction>>, `ApplicationContext` instances in Spring can be
+scoped. In the Web MVC framework, each `DispatcherServlet` has its own
+`WebApplicationContext`, which inherits all the beans already defined in the root
+`WebApplicationContext`. These inherited beans can be overridden in the servlet-specific
+scope, and you can define new scope-specific beans local to a given Servlet instance.
+
+. Spring Web MVC 上下文的层次结构
+image::images/mvc-contexts.gif[width=400]
+
+
+`DispatcherServlet` 在初始化时，Spring MVC 会查找 web 应用 `WEB_INF` 目录下的__[servlet-name]-servlet.xml__ 并创建在此文件定义的 bean,若在全局范围里有一个名称相同的 bean，全局范围的 bean 会被覆盖掉。
+
+
+假设`DispatcherServlet` Servlet 的配置如下(在 web.xml 配置)：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<web-app>
+		<servlet>
+			<servlet-name>**golfing**</servlet-name>
+			<servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+			<load-on-startup>1</load-on-startup>
+		</servlet>
+		<servlet-mapping>
+			<servlet-name>**golfing**</servlet-name>
+			<url-pattern>/golfing/*</url-pattern>
+		</servlet-mapping>
+	</web-app>
+----
+
+上述配置，要求应用程序在 `WEB-INF` 目录下有一个 `golfing-servlet.xml` 文件，在这个文件里，会包含 Spring MVC 的所有组件(beans)。你可以通过定义 servlet 初始化参数来改变__[servlet-name]-servlet.xml__ 文件的路径，如下：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<web-app>
+		<context-param>
+			<param-name>contextConfigLocation</param-name>
+			<param-value>/WEB-INF/root-context.xml</param-value>
+		</context-param>
+		<servlet>
+			<servlet-name>dispatcher</servlet-name>
+			<servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+			<init-param>
+				<param-name>contextConfigLocation</param-name>
+				<param-value></param-value>
+			</init-param>
+			<load-on-startup>1</load-on-startup>
+		</servlet>
+		<servlet-mapping>
+			<servlet-name>dispatcher</servlet-name>
+			<url-pattern>/*</url-pattern>
+		</servlet-mapping>
+		<listener>
+			<listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+		</listener>
+	</web-app>
+----
+
+
+`WebApplicationContext` 扩展了 `ApplicationContext`，额外提供了 web 程序所需要的功能。与传统 `ApplicationContext` 不同的是，`WebApplicationContext` 支持主题解析(查看 <<mvc-themeresolver>>)，并且知道其所关联的的 Servlet(通过一个指向 `ServletContext` 的引用)。`WebApplicationContext` 绑定在 `ServletContext` 里，在需要访问的时候，可以使用 `RequestContextUtils` 提供的静态方法获取 `WebApplicationContext`。
+
+
+[[mvc-servlet-special-bean-types]]
+==== WebApplicationContext 的专用 bean
+
+`DispatcherServlet`  使用了其专用的 bean 来处理请求和渲染视图。这些 bean 是 Spring 的组成部分之一，你可以选择在 `WebApplicationContext`配置所使用一个或多个专用的bean。当然，比并不需要一开始就去配置这些专用的 bean，因为在你不配置这些 bean时，Spring 会维护一系列默认的 bean。首先我们看一下  `DispatcherServlet` 依赖了哪些专用的 bean，后续再作详解。
+
+[[mvc-webappctx-special-beans-tbl]]
+.WebApplicationContext 专用 bean 列表
+|===
+| Bean 类型| 解释
+
+| <<mvc-handlermapping,HandlerMapping>>
+| 将传入的请求映射到处理器，与一系列基于各种条件的 pre- 和 post- 处理器，这些处理器根据 `HandlerMapping` 实现的不同而会有所差异。最会欢迎的 `HandlerMapping` 实现提供注解控制器，但其他实现也仍然是存在的。
+
+| HandlerAdapter
+| 帮助 `DispatcherServlet` 去调用请求所映射的 handler，不管hadler 最终是否会被调用，这个处理过程都会存在的。比如，调用注解控制器前需要解析各种 annotations。因此，`HandlerAdapter` 的主要目的就是从 `DispatcherServlet` 中屏蔽这些处理细节。
+
+| <<mvc-exceptionhandlers,HandlerExceptionResolver>>
+| 将异常映射到指定视图，也支持自定义更加复杂的异常处理流程
+
+| <<mvc-viewresolver,ViewResolver>>
+| 将合理的视图名称解释为真实的视图类型
+
+| <<mvc-localeresolver,LocaleResolver>> & <<mvc-timezone,LocaleContextResolver>>
+| 解释客户端所在地区和其时区(本地化)，以便提供国际化的视图
+
+| <<mvc-themeresolver,ThemeResolver>>
+| 解释 web 程序可用的主题，比如，提供个性化的布局
+
+| <<mvc-multipart,MultipartResolver>>
+| 解释 multi-part 请求，比如，在 html form 里支持文件上传
+
+| <<mvc-flash-attributes,FlashMapManager>>
+| Stores and retrieves the "input" and the "output" `FlashMap` that can be used to pass
+  attributes from one request to another, usually across a redirect.
+|===
+
+
+
+[[mvc-servlet-config]]
+==== 默认的 DispatcherServlet 配置
+如上一节所说，每一个 `DispatcherServlet` 都维持了一系列默认的实现。这些默认实现的信息保存在 `org.springframework.web.servlet` 包里的 `DispatcherServlet.properties` 文件。
+
+尽管所有专用的 bean 都有其合理的默认值。迟早你也需要根据实际去自定义这些 bean 的中一个或多个属性值。例如一种很常见的自定义应用，配置一个 `InternalResourceViewResolver`，其 `prefix` 为视图文件的父文件夹。
+
+不管这些默认细节如何实现，在这里都需要清楚一个概念——一旦在 `WebApplicationContext` 配置自己专用的 bean，就有效覆盖了原有一系列默认的实现，至少也会作为这个专用 bean 的一个实例。比如，配置了 `InternalResourceViewResolver`，默认的一系列 `ViewResolver` 实现都会被覆盖。
+
+在 <<mvc-config>> 章节，你可以知道 Spring MVC 的其他配置选项，包括 MVC java 配置和 MVC XML 的命名空间。不管你选择如何去配置应用，这一节解释的理念基本都可以帮到你。
+
+In <<mvc-config>> you'll learn about other options for configuring Spring MVC including
+MVC Java config and the MVC XML namespace both of which provide a simple starting point
+and assume little knowledge of how Spring MVC works. Regardless of how you choose to
+configure your application, the concepts explained in this section are fundamental
+should be of help to you.
+
+
+
+[[mvc-servlet-sequence]]
+==== DispatcherServlet 处理顺序
+在你建立一个 `DispatcherServlet` 之后，并处理一个传进来的请求时，`DispatcherServlet` 会按照以下顺序年来处理这个请求： 
+
+* 寻找 `WebApplicationContext`，并将 `WebApplicationContext`作为一个属性绑定到请求里，以便控制器或其他原件在后续中使用。默认会以 `DispatcherServlet.WEB_APPLICATION_CONTEXT_ATTRIBUTE` 键绑定到请求里。
+
+* 将本地化解析器绑定到请求里，以便在处理这个请求时，原件可以解析到客户端的地区（为了渲染视图，准备日期等）。如果你不需要本地化解析器，可以忽略这个步骤。
+
+* 将主题解析其绑定到请求里，让原件（如视图）决定去使用哪一种主题。如果你不需要使用主题，可以忽略这个步骤。
+
+* 如果你指定一个 multipart file 解析器，会检查这个请求包含 multiparts 请求。当发现了 multiparts，这个请求会被封装为 `MultipartHttpServletRequest` 对象，提供给后续原件处理。详细信息，清参考 <<mvc-multipart>>。
+
+* 寻找合适的 handler。如何找到这个 handler，执行与这个 handler 关联的执行链，目的是准备一个 model 或 渲染。
+
+* 如果返回一个 model，渲染相对应的视图。反之（可能是因为 pre- 或 post- 处理器拦截了这个请求，也可能是权限问题），便不渲染任何视图，因为这个请求可能已执行完成。
+
+handler 异常解析是在 `WebApplicationContext` 声明的，接收在上述处理过程抛出的异常。使用异常解析器，你可以根据异常信息自定义其处理方式。
+
+`DispatcherServlet` 也支持返回 __last-modification-date__( 在 Servlet API 里有相应的接口)。让指定请求返回 __last-modification-date__ 的处理方式非常简单：`DispatcherServlet`  寻找是否有匹配的 handler，并检查这个 handler 是否实现了 __LastModified__接口，如果实现了该接口，方法`long getLastModified(request)` 的返回值会返回到客户端。
+
+你可以通过在 web.xml 里设置 Servlet 的初始化参数，来自定义一个 `DispatcherServlet` 实例。下表列出了 `DispatcherServlet` 支持的参数：
+
+[[mvc-disp-servlet-init-params-tbl]]
+.DispatcherServlet initialization parameters
+|===
+| 参数 | 说明
+
+| `contextClass`
+| `WebApplicationContext` 的实现类，负责初始化 Servlet 所使用的上下文。默认使用 `XmlWebApplicationContext`
+
+| `contextConfigLocation`
+| 传给 上下文(`contextClass`) 使用的路径参数，用来说明在哪里查找上下文(配置文件)。支持以 , 分隔的多个路径参数。当路径参数出现重复时，近者优先。
+
+| `namespace`
+|`WebApplicationContext` 命名规则. 默认是 `[servlet-name]-servlet`.
+|===
+
+
+
+
+[[mvc-controller]]
+=== Implementing Controllers
+Controllers provide access to the application behavior that you typically define through
+a service interface. Controllers interpret user input and transform it into a model that
+is represented to the user by the view. Spring implements a controller in a very
+abstract way, which enables you to create a wide variety of controllers.
+
+Spring 2.5 introduced an annotation-based programming model for MVC controllers that
+uses annotations such as `@RequestMapping`, `@RequestParam`, `@ModelAttribute`, and so
+on. This annotation support is available for both Servlet MVC and Portlet MVC.
+Controllers implemented in this style do not have to extend specific base classes or
+implement specific interfaces. Furthermore, they do not usually have direct dependencies
+on Servlet or Portlet APIs, although you can easily configure access to Servlet or
+Portlet facilities.
+
+[TIP]
+====
+
+在 https://github.com/spring-projects/[spring-projects Org on Github] 上,有好几个项目都使用这一节谈到的注解，有__MvcShowcase__, __MvcAjax__, __MvcBasic__, __PetClinic__, __PetCare__等……
+====
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Controller
+	public class HelloWorldController {
+
+		@RequestMapping("/helloWorld")
+		public String helloWorld(Model model) {
+			model.addAttribute("message", "Hello World!");
+			return "helloWorld";
+		}
+	}
+----
+
+如你所见，`@Controller` 和 `@RequestMapping` 允许灵活的配置方法签名。在上述例子中，helloWorld 方法接受一个 `Model` 参数，并返回一个视图名称，当然也允许添加方法入参和返回不同类型的值，这些内容将会在后面解释。`@Controller` 、`@RequestMapping` 和其他一些功能注解组成了 Spring MVC 实现的基础，这一节将会谈到这些组成的注解和在 Servlet 环境的普遍用法。
+
+
+[[mvc-ann-controller]]
+==== 使用 @Controller 定义控制器
+
+`@Controller` 表明了被注解类的服务角色——控制器。Spring 不需要去继承任何 Controller 的基类或引用任意的 Servlet API。当然了，如何你需要的， 你仍然可以引用 Servlet API。
+
+
+`@Controller` 注解定义了被注解类的原型，表明了注解类的服务角色。dispatcher 会扫描这些被 `@Controller` 标记的类并检测 `@RequestMapping` 标记的方法(见下一节)。
+
+你可以在 dispatcher 上下文显式定义控制器 bean，不过，为了与 Spring 支持在类路径上检测 bean 并自动注册这些 bean 定义 保持一致，`@Controller` 也许允许自动检测。
+
+要开启注解控制器的扫描功能，需要在你的配置里添加组件扫描元件。如下 xml 所示，可以使用 _spring-context_ 模式开启此扫描功能：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns:p="http://www.springframework.org/schema/p"
+		xmlns:context="http://www.springframework.org/schema/context"
+		xsi:schemaLocation="
+			http://www.springframework.org/schema/beans
+			http://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.springframework.org/schema/context
+			http://www.springframework.org/schema/context/spring-context.xsd">
+
+		<context:component-scan base-package="org.springframework.samples.petclinic.web"/>
+
+		<!-- ... -->
+
+	</beans>
+----
+
+
+
+[[mvc-ann-requestmapping]]
+==== 使用 @RequestMapping 映射请求
+
+你可以在类或指定 handler 方法上，使用 `@RequestMapping` 注解来映射 URL，如 `/appointments`。
+
+You use the `@RequestMapping` annotation to map URLs such as `/appointments` onto an
+entire class or a particular handler method. Typically the class-level annotation maps a
+specific request path (or path pattern) onto a form controller, with additional
+method-level annotations narrowing the primary mapping for a specific HTTP method
+request method ("GET", "POST", etc.) or an HTTP request parameter condition.
+
+如下例子来自于  __Petcare__  项目，展示了如何使用 @RequestMapping 注解。 
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Controller
+	**@RequestMapping("/appointments")**
+	public class AppointmentsController {
+
+		private final AppointmentBook appointmentBook;
+
+		@Autowired
+		public AppointmentsController(AppointmentBook appointmentBook) {
+			this.appointmentBook = appointmentBook;
+		}
+
+		**@RequestMapping(method = RequestMethod.GET)**
+		public Map<String, Appointment> get() {
+			return appointmentBook.getAppointmentsForToday();
+		}
+
+		**@RequestMapping(value="/{day}", method = RequestMethod.GET)**
+		public Map<String, Appointment> getForDay(@PathVariable @DateTimeFormat(iso=ISO.DATE) Date day, Model model) {
+			return appointmentBook.getAppointmentsForDay(day);
+		}
+
+		**@RequestMapping(value="/new", method = RequestMethod.GET)**
+		public AppointmentForm getNewForm() {
+			return new AppointmentForm();
+		}
+
+		**@RequestMapping(method = RequestMethod.POST)**
+		public String add(@Valid AppointmentForm appointment, BindingResult result) {
+			if (result.hasErrors()) {
+				return "appointments/new";
+			}
+			appointmentBook.addAppointment(appointment);
+			return "redirect:/appointments";
+		}
+	}
+----
+
+例子中，在多处地方使用 `@RequestMapping`。第一个用在了类上，表示`@RequestMapping` 这个控制器下的所有 handler 方法都是相对 `/appointments` 路径而言的。get() 方法对 `@RequestMapping` 做了进一步的细化 —— 此方法只接收 GET 请求方式，换句话说就是 `/appointments` 的GET 请求会调用这个方法; add() 方法也做一个类似的细化; getNewForm() 方法在 RequestMapping 上组合定义了 http 方法和路径，因此此方法会处理 `appointments/new` 的 GET 请求。
+
+getForDay() 方法演示了 `@RequestMapping` 的另外一种使用方式 —— URI 模版(查看 <<mvc-ann-requestmapping-uri-templates,the next section >>)。
+
+在类上添加 `@RequestMapping` 不是必须的，如果没有，所有的路径都是绝对路径，而不是相对路径。来自 __PetClinic__ 项目的例子展示如何使用 `@RequestMapping` 来定义一个 multi-action 控制器：
+
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Controller
+	public class ClinicController {
+
+		private final Clinic clinic;
+
+		@Autowired
+		public ClinicController(Clinic clinic) {
+			this.clinic = clinic;
+		}
+
+		**@RequestMapping("/")**
+		public void welcomeHandler() {
+		}
+
+		**@RequestMapping("/vets")**
+		public ModelMap vetsHandler() {
+			return new ModelMap(this.clinic.getVets());
+		}
+
+	}
+----
+
+上面的例子没有指定 GET、PUT、POST 等方法，因为 `@RequestMapping` 默认匹配所有的 http 方法。使用 `@RequestMapping(method=GET)` 可以缩小其映射范围。
+
+[[mvc-ann-requestmapping-proxying]]
+===== ++@Controller++' 和 AOP 代理
+
+某些时候，控制器需要在运行时 AOP 代理修饰一番。
+
+In some cases a controller may need to be decorated with an AOP proxy at runtime.
+One example is if you choose to have `@Transactional` annotations directly on the
+controller. When this is the case, for controllers specifically, we recommend
+using class-based proxying. This is typically the default choice with controllers.
+However if a controller must implement an interface that is not a Spring Context
+callback (e.g. `InitializingBean`, `*Aware`, etc), you may need to explicitly
+configure class-based proxying. For example with `<tx:annotation-driven />`,
+change to `<tx:annotation-driven proxy-target-class="true" />`.
+
+[[mvc-ann-requestmapping-31-vs-30]]
+===== New Support Classes for @RequestMapping methods in Spring MVC 3.1
+Spring 3.1 introduced a new set of support classes for `@RequestMapping` methods called
+`RequestMappingHandlerMapping` and `RequestMappingHandlerAdapter` respectively. They are
+recommended for use and even required to take advantage of new features in Spring MVC
+3.1 and going forward. The new support classes are enabled by default by the MVC
+namespace and the MVC Java config but must be configured explicitly if using neither.
+This section describes a few important differences between the old and the new support
+classes.
+
+Prior to Spring 3.1, type and method-level request mappings were examined in two
+separate stages -- a controller was selected first by the
+`DefaultAnnotationHandlerMapping` and the actual method to invoke was narrowed down
+second by the `AnnotationMethodHandlerAdapter`.
+
+With the new support classes in Spring 3.1, the `RequestMappingHandlerMapping` is the
+only place where a decision is made about which method should process the request. Think
+of controller methods as a collection of unique endpoints with mappings for each method
+derived from type and method-level `@RequestMapping` information.
+
+This enables some new possibilities. For once a `HandlerInterceptor` or a
+`HandlerExceptionResolver` can now expect the Object-based handler to be a
+`HandlerMethod`, which allows them to examine the exact method, its parameters and
+associated annotations. The processing for a URL no longer needs to be split across
+different controllers.
+
+There are also several things no longer possible:
+
+* Select a controller first with a `SimpleUrlHandlerMapping` or
+  `BeanNameUrlHandlerMapping` and then narrow the method based on `@RequestMapping`
+  annotations.
+* Rely on method names as a fall-back mechanism to disambiguate between two
+  `@RequestMapping` methods that don't have an explicit path mapping URL path but
+  otherwise match equally, e.g. by HTTP method. In the new support classes
+  `@RequestMapping` methods have to be mapped uniquely.
+* Have a single default method (without an explicit path mapping) with which requests
+  are processed if no other controller method matches more concretely. In the new
+  support classes if a matching method is not found a 404 error is raised.
+
+The above features are still supported with the existing support classes. However to
+take advantage of new Spring MVC 3.1 features you'll need to use the new support classes.
+
+
+[[mvc-ann-requestmapping-uri-templates]]
+===== URI 模版模式
+
+__URI__ 模版能便捷访问 `@RequestMapping` 方法中 URL 的某些部分。
+
+__URI__ 模版是一个类似于 URI 的字符串，其中包含了一个或多个变量。当你将这些变量替换掉市，就变回了 URI。 URI 模版格式 http://bitworking.org/projects/URI-Templates/[proposed RFC] 定义了如何参数化 URI。比如，URI 模版 `http://www.example.com/users/{userId}`，包含了变量 __userId__，设置此变量为 __fred，就会变成`http://www.example.com/users/fred`。
+
+可在方法入参上使用注解 `@PathVariable` 绑定 URI 的模版参数：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RequestMapping(value="/owners/{ownerId}", method=RequestMethod.GET)
+	public String findOwner(**@PathVariable** String ownerId, Model model) {
+		Owner owner = ownerService.findOwner(ownerId);
+		model.addAttribute("owner", owner);
+		return "displayOwner";
+	}
+----
+
+URI 模版 " `/owners/{ownerId}`" 指定了参数 `owernId`。当控制器处理这个请求时，会将 URI 中匹配的部分赋值给 `owernId` 变量。如，当传入 `/owners/fred` 请求时，`owernId` 的值就是 `fred`。 
+
+[提示]
+====
+
+在处理 @PathVariable 注解时，Srping MVC 是根据名称来匹配 URI 模版变量的。你可以在注解里指定这个名称：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RequestMapping(value="/owners/{ownerId}", method=RequestMethod.GET)
+	public String findOwner(**@PathVariable("ownerId")** String theOwner, Model model) {
+		// implementation omitted
+	}
+----
+
+如果URI 模版变量名和入参名一致，可以省略这个细节。只要你的代码不是不带调试信息的编译，Spring MVC 将匹配入参名和 URI 变量名。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RequestMapping(value="/owners/{ownerId}", method=RequestMethod.GET)
+	public String findOwner(**@PathVariable** String ownerId, Model model) {
+		// implementation omitted
+	}
+----
+====
+
+一个方法可以有任意个 `@PathVariable` 注解。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RequestMapping(value="/owners/{ownerId}/pets/{petId}", method=RequestMethod.GET)
+	public String findPet(**@PathVariable** String ownerId, **@PathVariable** String petId, Model model) {
+		Owner owner = ownerService.findOwner(ownerId);
+		Pet pet = owner.getPet(petId);
+		model.addAttribute("pet", pet);
+		return "displayPet";
+	}
+----
+
+当在 `Map<String, String>` 参数使用 `@PathVariable` 注解时，map 会填充所有 URI 模版变量。 
+
+URI 模版可以组合类型和参数路径的 __@RequestMapping__。因此，`findPet` 可以处理类似  `/owners/42/pets/21` 的URI 。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Controller
+	@RequestMapping(**"/owners/{ownerId}"**)
+	public class RelativePathUriTemplateController {
+
+		@RequestMapping(**"/pets/{petId}"**)
+		public void findPet(@PathVariable String ownerId, @PathVariable String petId, Model model) {
+			// implementation omitted
+		}
+
+	}
+----
+
+`@PathVariable` 参数可以是任意的简单类型（如 int，long，Date 等），Spring 会自动将其进行类型转换，转换出错会抛出 `TypeMismatchException`。你可以注册支持解析其他数据类型，详情请看 <<mvc-ann-typeconversion>> 和 <<mvc-ann-webdatabinder>>.
+
+
+[[mvc-ann-requestmapping-uri-templates-regex]]
+===== 在 URI 模版上使用正则表达式
+
+偶尔，在URI 模版变量里，你会需要用到更加精确的控制。比如 `"/spring-web/spring-web-3.0.5.jar"` 这样的URI，该如何拆分成多个部分？
+
+`@RequestMapping` 注解支持在 URI 模版变量里使用正则表达式。语法 `{变量名:正则表达式}`，第一个部分定义变量的名称，第二部分是正则表达式。如
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RequestMapping("/spring-web/{symbolicName:[a-z-]+}-{version:\\d\\.\\d\\.\\d}{extension:\\.[a-z]+}")
+		public void handle(@PathVariable String version, @PathVariable String extension) {
+			// ...
+		}
+	}
+----
+
+
+[[mvc-ann-requestmapping-patterns]]
+===== 路径模式
+`@RequestMapping` 注解处理支持 URI 模版，也支持使用 Ant 风格模式(如：`/myPath/*.do)。同时支持组合使用 URI 模版和 Ant 风格模式（如：e.g. `/owners/*/pets/{petId}`）。
+
+
+[[mvc-ann-requestmapping-pattern-comparison]]
+===== 路径模式比较
+当一个 URL 与多个模式匹配时，会设法找出最具体的那一个路径。
+
+当模式中的 URI 模版变量和通配符的数量相对较少，会认为其相对具体。如：`/hotels/{hotel}/*` 相对 `/hotels/{hotel}/**` 更加合适，因为 `/hotels/{hotel}/*` 只有一个URI 模版变量和一个通配符，而 hotels/{hotel}/**` 有一个 URI 模版变量和两个通配符。
+
+当两个模式中的 URI 模版变量和通配符数量相同时，更详细的那一个会认为相对适合。如 `/foo/bar*`  比 `/foo/*` 更为详细。
+
+当两个模式中变量个数详细程度相同时，使用更少通配符的那一个会相对具体。如  `/hotels/{hotel}` 比  `/hotels/{hotel}` 更加具体。
+
+一些额外的特别规定：
+
+* 任意模式都比默认全匹配 `/**` 模式具体。如：`/api/{a}/{b}/{c}` 比 `/**` 更加具体。
+* 任意不包含两个通配符的模式都比*前缀模式*（如 `/public/**`) 更加具体。`/public/path3/{a}/{b}/{c}` 比 `/public/**` 更加具体。
+
+For the full details see `AntPatternComparator` in `AntPathMatcher`. Note that the PathMatcher
+can be customized (see <<mvc-config-path-matching>> in the section on configuring Spring MVC).
+
+全部细节信息可查看 `AntPathMatcher` 的 `AntPatternComparator`。注意，PathMatcher 是可以自定义的。（可查看 <<mvc-config-path-matching>> 的 Spring MVC 配置）
+
+[[mvc-ann-requestmapping-placeholders]]
+===== 路径模式与占位符
+在 `@RequestMapping` 注解中，模式支持使用占位符来代替本地属性 和/或者 系统属性和环境变量。当路径需要通过配置文件来自定义时，适合使用占位符。占位符的详细信息，可以查看 `PropertyPlaceholderConfigurer` 的 javadoc。
+
+
+[[mvc-ann-requestmapping-suffix-pattern-match]]
+===== 路径模式的后缀匹配
+Spring MVC 默认自动执行 `".*"` 的后缀匹配，所以当一个控制器匹配 `/person` 时，其也隐式匹配  `/person.*`。这样的设计允许通过文件扩展名来说明内容的类型名比如 `/person.pdf`,
+`/person.xml` 等。然而，这里会有一个常犯的陷阱，当路径最后的片段是 URI 模版变量时（如 `/person/{id}`），请求 `/person/1.json` 可以正确匹配路径,变量 id=1，拓展名为 json，可当 id 自身包含 . (如 `/person/joe@email.com`)，那匹配结果就不是我们所期望的，显然 ".com" 不是文件扩展名。
+
+解决这个问题的正确方法是配置 Spring MVC 只对注册的文件扩展名做后缀匹配，这要求内容(扩展名)协商好。想做更多的了解，可以先看 <<mvc-config-content-negotiation>> 后看 <<mvc-config-path-matching>>，这里展示里如何启用后缀模式和如何只使用注册的后缀模式。
+
+
+[[mvc-ann-matrix-variables]]
+===== 矩阵变量
+The URI specification http://tools.ietf.org/html/rfc3986#section-3.3[RFC 3986] defines
+the possibility of including name-value pairs within path segments. There is no specific
+term used in the spec. The general "URI path parameters" could be applied although the
+more unique http://www.w3.org/DesignIssues/MatrixURIs.html["Matrix URIs"], originating
+from an old post by Tim Berners-Lee, is also frequently used and fairly well known.
+Within Spring MVC these are referred to as matrix variables.
+
+Matrix variables can appear in any path segment, each matrix variable separated with a
+";" (semicolon). For example: `"/cars;color=red;year=2012"`. Multiple values may be
+either "," (comma) separated `"color=red,green,blue"` or the variable name may be
+repeated `"color=red;color=green;color=blue"`.
+
+If a URL is expected to contain matrix variables, the request mapping pattern must
+represent them with a URI template. This ensures the request can be matched correctly
+regardless of whether matrix variables are present or not and in what order they are
+provided.
+
+Below is an example of extracting the matrix variable "q":
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	// GET /pets/42;q=11;r=22
+
+	@RequestMapping(value = "/pets/{petId}", method = RequestMethod.GET)
+	public void findPet(@PathVariable String petId, @MatrixVariable int q) {
+
+		// petId == 42
+		// q == 11
+
+	}
+----
+
+Since all path segments may contain matrix variables, in some cases you need to be more
+specific to identify where the variable is expected to be:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	// GET /owners/42;q=11/pets/21;q=22
+
+	@RequestMapping(value = "/owners/{ownerId}/pets/{petId}", method = RequestMethod.GET)
+	public void findPet(
+			@MatrixVariable(value="q", pathVar="ownerId") int q1,
+			@MatrixVariable(value="q", pathVar="petId") int q2) {
+
+		// q1 == 11
+		// q2 == 22
+
+	}
+----
+
+A matrix variable may be defined as optional and a default value specified:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	// GET /pets/42
+
+	@RequestMapping(value = "/pets/{petId}", method = RequestMethod.GET)
+	public void findPet(@MatrixVariable(required=false, defaultValue="1") int q) {
+
+		// q == 1
+
+	}
+----
+
+All matrix variables may be obtained in a Map:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	// GET /owners/42;q=11;r=12/pets/21;q=22;s=23
+
+	@RequestMapping(value = "/owners/{ownerId}/pets/{petId}", method = RequestMethod.GET)
+	public void findPet(
+			@MatrixVariable Map<String, String> matrixVars,
+			@MatrixVariable(pathVar="petId"") Map<String, String> petMatrixVars) {
+
+		// matrixVars: ["q" : [11,22], "r" : 12, "s" : 23]
+		// petMatrixVars: ["q" : 11, "s" : 23]
+
+	}
+----
+
+Note that to enable the use of matrix variables, you must set the
+`removeSemicolonContent` property of `RequestMappingHandlerMapping` to `false`. By
+default it is set to `true`.
+
+[TIP]
+====
+
+The MVC Java config and the MVC namespace both provide options for enabling the use of
+matrix variables.
+
+If you are using Java config, The <<mvc-config-advanced-java, Advanced Customizations
+with MVC Java Config>> section describes how the `RequestMappingHandlerMapping` can
+be customized.
+
+In the MVC namespace, the `<mvc:annotation-driven>` element has an
+`enable-matrix-variables` attribute that should be set to `true`. By default it is set
+to `false`.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:mvc="http://www.springframework.org/schema/mvc"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="
+			http://www.springframework.org/schema/beans
+			http://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.springframework.org/schema/mvc
+			http://www.springframework.org/schema/mvc/spring-mvc.xsd">
+
+		<mvc:annotation-driven enable-matrix-variables="true"/>
+
+	</beans>
+----
+====
+
+[[mvc-ann-requestmapping-consumes]]
+===== 可消费的媒体类型
+你可以指定一系列可消费的媒体类型来压缩主要映射。这样只用当 __Content-Type__ 请求头匹配可消费的媒体类型，才认为这个请求是可映射的。如：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Controller
+	@RequestMapping(value = "/pets", method = RequestMethod.POST, **consumes="application/json"**)
+	public void addPet(@RequestBody Pet pet, Model model) {
+		// 实现省略
+	}
+----
+
+Consumable media type expressions can also be negated as in __!text/plain__ to match to
+all requests other than those with __Content-Type__ of __text/plain__.
+
+[TIP]
+====
+
+__consumes__ 条件支持在类和方法上使用。与大多数情况不一样的是，方法中 __consumes__ 会覆盖类上使用 的__consumes__，而不是继承 类上使用 的__consumes__。
+====
+
+
+[[mvc-ann-requestmapping-produces]]
+===== 可生产的媒体类型
+你可以指定一系列可消费的媒体类型来压缩主要映射。当 __Accept__ 请求头匹配可消费的媒体类型，才认为这个请求是可映射的。此外，使用 __produces__ 条件可以保证实际类容的类型，__produces__  用于形成 response 方面的媒体类型，如：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Controller
+	@RequestMapping(value = "/pets/{petId}", method = RequestMethod.GET, **produces="application/json"**)
+	@ResponseBody
+	public Pet getPet(@PathVariable String petId, Model model) {
+		// 省略实现
+	}
+----
+
+Just like with __consumes__, producible media type expressions can be negated as in
+__!text/plain__ to match to all requests other than those with an __Accept__ header
+value of __text/plain__.
+
+[TIP]
+====
+__produces__  条件支持在类和方法上使用。与大多数情况不一样的是，方法中 __produces__  会覆盖类上使用 的__produces__ ，而不是继承 类上使用 的__produces__ 。
+====
+
+
+[[mvc-ann-requestmapping-params-and-headers]]
+===== 请求参数和头字段值
+你可以通过请求参数条件来压缩请求匹配范围，如使用 `"myParam"`, `"!myParam"`, 或 `"myParam=myValue"`。前两种情况表示 存在/不存在，第三种指定了参数值。如下给出指定参数值的例子：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Controller
+	@RequestMapping("/owners/{ownerId}")
+	public class RelativePathUriTemplateController {
+
+		@RequestMapping(value = "/pets/{petId}", method = RequestMethod.GET, **params="myParam=myValue"**)
+		public void findPet(@PathVariable String ownerId, @PathVariable String petId, Model model) {
+			// 省略实现
+		}
+
+	}
+----
+
+类似的，头字段也支持 存在/不存在 和基于指定头字段值的匹配：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Controller
+	@RequestMapping("/owners/{ownerId}")
+	public class RelativePathUriTemplateController {
+
+		@RequestMapping(value = "/pets", method = RequestMethod.GET, **headers="myHeader=myValue"**)
+		public void findPet(@PathVariable String ownerId, @PathVariable String petId, Model model) {
+			// 省略实现
+		}
+
+	}
+----
+
+[TIP]
+====
+
+尽管你可以使用媒体类型通配符来匹配 __Content-Type__ 和 __Accept__ 头字段（如 __"content-type=text/*"__ 可以匹配 __"text/plain"__ 和
+__"text/html"__），还是建议使用  __consumes__ 和 __produces__ 条件，因为 __consumes__ 和 __produces__ 专门为此而使用的。
+====
+
+
+
+[[mvc-ann-methods]]
+==== 定义 @RequestMapping 处理方法
+
+@RequestMapping 处理方法允许非常灵活的签名，其支持方法参数和返回值（在这一节谈到）。除了 `BindingResult` 参数，其他类型参数顺序随意（下一节会谈到）。
+
+[NOTE]
+====
+Spring 3.1 介绍了一套 `@RequestMapping` 方法的新支持类，分别是 `RequestMappingHandlerMapping` 和 `RequestMappingHandlerAdapter`。推荐使用新支持类，即使这个需要用到 Spring MVC 3.1+ 的新特性。新支持类和 MVC 的 java 配置方式在 MVC 命名空间都默认支持，然而，如果都不需要，必须显式配置。
+====
+
+
+[[mvc-ann-arguments]]
+===== 可支持的方法参数类型
+如下是可以支持的方法参数：
+
+* Request 或 response 对象 (Servlet API). 选择任意指定的 request 或 response 类型，如`ServletRequest` o或 `HttpServletRequest`.
+* Session 对象 (Servlet API):需要是 `HttpSession` 类型. 这种类型的参数会强制合适 session 的存在。因此，这个参数永远不会为 null。
+
+[NOTE]
+====
+Session 访问可能是非线程安全的，特别是在 Servlet 环境。当允许多个请求并发访问 session 时，可以考虑设置 ++RequestMappingHandlerAdapter++ 的 "synchronizeOnSession" 值为 "true"。
+====
+
+* `org.springframework.web.context.request.WebRequest` 或
+  `org.springframework.web.context.request.NativeWebRequest`.允许通过请求参数访问和 request/session 属性访问，没有与原始的 Servlet/Portlet API 绑定。
+* `java.util.Locale` 给当前请求本地化，取决于最具体的本地化解析器，实际上取决与是 Servlet 环境配置的 `LocaleResolver` 。
+* `java.io.InputStream` / `java.io.Reader` 可访问请求的内容。这是 Servlet API 暴露的原生 InputStream/Reader 。
+* `java.io.OutputStream` / `java.io.Writer` 用于 产生 response 的内容。这是 Servlet API 暴露的原生 OutputStream/Writer.
+* `org.springframework.http.HttpMethod` 可访问 HTTP 请求方法。
+* `java.security.Principal` 包含了当前授权用户。
+* `@PathVariable` 注解参数，可访问 URI 模版变量。可查看 <<mvc-ann-requestmapping-uri-templates>>。
+* `@MatrixVariable` annotated parameters for access to name-value pairs located in URI
+  path segments. See <<mvc-ann-matrix-variables>>.
+* `@RequestParam` 注解参数，可访问指定 Servlet request 参数。参数值会被转换为方法参数的类型。可查看<<mvc-ann-requestparam>>.
+* `@RequestHeader` 注解参数，可访问指定 Servlet request 的 HTTP 头字段。参数值会被转换为方法参数的类型。可查看 <<mvc-ann-requestheader>>
+* `@RequestBody` 注解参数，可访问 HTTP 请求体。参数值使用 ++HttpMessageConverter++ 转换为方法参数类型，可查看  <<mvc-ann-requestbody>>
+* `@RequestPart` 注解参数，可访问 "multipart/form-data" 请求的内容。可查看 <<mvc-multipart-forms-non-browsers>> 和 <<mvc-multipart>>  
+* `HttpEntity<?>` 参数，可访问 Servlet request 的HTTP 头和内容。请求流使用 ++HttpMessageConverter++ 转换为 entity body，可查看 <<mvc-ann-httpentity>>
+* `java.util.Map` / `org.springframework.ui.Model` / `org.springframework.ui.ModelMap`
+  用来丰富隐式模型（暴露给 web 视图）
+* `org.springframework.web.servlet.mvc.support.RedirectAttributes` to specify the exact
+  set of attributes to use in case of a redirect and also to add flash attributes
+  (attributes stored temporarily on the server-side to make them available to the
+  request after the redirect). `RedirectAttributes` is used instead of the implicit
+  model if the method returns a "redirect:" prefixed view name or `RedirectView`.
+* Command or form objects to bind request parameters to bean properties (via setters) or
+  directly to fields, with customizable type conversion, depending on `@InitBinder`
+  methods and/or the HandlerAdapter configuration. See the `webBindingInitializer`
+  property on `RequestMappingHandlerAdapter`. Such command objects along with their
+  validation results will be exposed as model attributes by default, using the command
+  class class name - e.g. model attribute "orderAddress" for a command object of type
+  "some.package.OrderAddress". The `ModelAttribute` annotation can be used on a method
+  argument to customize the model attribute name used.
+* `org.springframework.validation.Errors` /
+  `org.springframework.validation.BindingResult` 已执行的命令或表单对象的验证错误(the immediately preceding method argument).
+* `org.springframework.web.bind.support.SessionStatus` status handle for marking form
+  processing as complete, which triggers the cleanup of session attributes that have
+  been indicated by the `@SessionAttributes` annotation at the handler type level.
+* `org.springframework.web.util.UriComponentsBuilder` a builder for preparing a URL
+  relative to the current request's host, port, scheme, context path, and the literal
+  part of the servlet mapping.
+
+
+`Errors` 或 `BindingResult` 参数必须跟随所绑定的模型对象，如果方法签名有超过一个模型对象的，Spring 会为其分别创建 `BindingResult` 实例。因此，如下例子没有效果：
+
+.BindingResult and @ModelAttribute 的无效顺序
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RequestMapping(method = RequestMethod.POST)
+	public String processSubmit(**@ModelAttribute("pet") Pet pet**, Model model, **BindingResult result**) { ... }
+----
+
+注意，因为 `Pet` 和 `BindingResult` 之间存在参数 `Model`。要其有效，你需要重新排序参数等我位置，如下：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RequestMapping(method = RequestMethod.POST)
+	public String processSubmit(**@ModelAttribute("pet") Pet pet**, **BindingResult result**, Model model) { ... }
+----
+
+[NOTE]
+====
+JDK 1.8's `java.util.Optional` is supported as a method parameter type with annotations
+that have a `required` attribute (e.g. `@RequestParam`, `@RequestHeader`, etc. The use
+of `java.util.Optional` in those cases is equivalent to having `required=false`.
+====
+
+
+[[mvc-ann-return-types]]
+===== 可支持的方法返回类型
+以下是可支持的返回类型：
+
+* A `ModelAndView` object, with the model implicitly enriched with command objects and
+  the results of `@ModelAttribute` annotated reference data accessor methods.
+* A `Model` object, with the view name implicitly determined through a
+  `RequestToViewNameTranslator` and the model implicitly enriched with command objects
+  and the results of `@ModelAttribute` annotated reference data accessor methods.
+* A `Map` object for exposing a model, with the view name implicitly determined through
+  a `RequestToViewNameTranslator` and the model implicitly enriched with command objects
+  and the results of `@ModelAttribute` annotated reference data accessor methods.
+* A `View` object, with the model implicitly determined through command objects and
+  `@ModelAttribute` annotated reference data accessor methods. The handler method may
+  also programmatically enrich the model by declaring a `Model` argument (see above).
+* A `String` value that is interpreted as the logical view name, with the model
+  implicitly determined through command objects and `@ModelAttribute` annotated
+  reference data accessor methods. The handler method may also programmatically enrich
+  the model by declaring a `Model` argument (see above).
+* `void` if the method handles the response itself (by writing the response content
+  directly, declaring an argument of type `ServletResponse` / `HttpServletResponse` for
+  that purpose) or if the view name is supposed to be implicitly determined through a
+  `RequestToViewNameTranslator` (not declaring a response argument in the handler method
+  signature).
+* If the method is annotated with `@ResponseBody`, the return type is written to the
+  response HTTP body. The return value will be converted to the declared method argument
+  type using ++HttpMessageConverter++s. See <<mvc-ann-responsebody>>.
+* An `HttpEntity<?>` or `ResponseEntity<?>` object to provide access to the Servlet
+  response HTTP headers and contents. The entity body will be converted to the response
+  stream using ++HttpMessageConverter++s. See <<mvc-ann-httpentity>>.
+* An `HttpHeaders` object to return a response with no body.
+* A `Callable<?>` can be returned when the application wants to produce the return value
+  asynchronously in a thread managed by Spring MVC.
+* A `DeferredResult<?>` can be returned when the application wants to produce the return
+  value from a thread of its own choosing.
+* A `ListenableFuture<?>` can be returned when the application wants to produce the return
+  value from a thread of its own choosing.
+* Any other return type is considered to be a single model attribute to be exposed to
+  the view, using the attribute name specified through `@ModelAttribute` at the method
+  level (or the default attribute name based on the return type class name). The model
+  is implicitly enriched with command objects and the results of `@ModelAttribute`
+  annotated reference data accessor methods.
+
+
+[[mvc-ann-requestparam]]
+===== 使用 @RequestParam 将请求参数绑定到方法参数
+
+在控制器里，使用 `@RequestParam` 将请求参数绑定到方法参数。 
+
+如下代码片段演示了其用法：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Controller
+	@RequestMapping("/pets")
+	@SessionAttributes("pet")
+	public class EditPetForm {
+
+		// ...
+
+		@RequestMapping(method = RequestMethod.GET)
+		public String setupForm(**@RequestParam("petId") int petId**, ModelMap model) {
+			Pet pet = this.clinic.loadPet(petId);
+			model.addAttribute("pet", pet);
+			return "petForm";
+		}
+
+		// ...
+
+	}
+----
+
+使用 `@RequestParam` 的参数默认是必须提供的，当然，你可以指定其为可选的，将 `@RequestParam` 的 `reqired` 属性设置 `false` 即可。(如, `@RequestParam(value="id", required=false)`).
+
+如果方法参数的类型不是 `String`,类型转换会自动执行，可查看 <<mvc-ann-typeconversion>>。
+
+如果将 `@RequestParam` 用于 `Map<String, String>` 或
+`MultiValueMap<String, String>` 参数，此参数 map 会填充所有的请求参数。
+
+
+[[mvc-ann-requestbody]]
+===== 使用 @RequestBody 映射请求体
+`@RequestBody` 注解参数表示该参数将与 HTTP 请求体绑定。例子：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RequestMapping(value = "/something", method = RequestMethod.PUT)
+	public void handle(@RequestBody String body, Writer writer) throws IOException {
+		writer.write(body);
+	}
+----
+
+你使用 `HttpMessageConverter` 将请求体转换为方法参数。`HttpMessageConverter` 负责将请求信息转换为指定对象和将指定对象转换为请求体。`RequestMappingHandlerAdapter` 默认支持 `@RequestBody` 使用以下 `HttpMessageConverters`。
+
+* `ByteArrayHttpMessageConverter` 转换为字节数组。
+* `StringHttpMessageConverter` 转换为字符串。
+* `FormHttpMessageConverter` 表单数据与 MultiValueMap<String, String> 互转。
+* `SourceHttpMessageConverter` 表单数据与 javax.xml.transform.Source 互转。
+
+转换起的详细信息，可查看 <<rest-message-conversion,Message
+Converters>>。也提醒一下，当使用 MVC 命名空间 或 MVC Java 配置时，默认注册了一系列转换器，详细信息可查看 <<mvc-config-enable>>。
+
+如果你想读写 XML 的，需要注册 `MarshallingHttpMessageConverter`，`MarshallingHttpMessageConverter` 包含了 `org.springframework.oxm` 包中的 `Marshaller` 和 `Unmarshaller` 实现。如下例子演示了直接在配置文件注册 `MarshallingHttpMessageConverter`，如果你的应用通过 MVC 命名空间或 MVC Java 配置的，可查看 <<mvc-config-enable>>。
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter">
+		<property name="messageConverters">
+			<util:list id="beanList">
+				<ref bean="stringHttpMessageConverter"/>
+				<ref bean="marshallingHttpMessageConverter"/>
+			</util:list>
+		</property
+	</bean>
+
+	<bean id="stringHttpMessageConverter"
+			class="org.springframework.http.converter.StringHttpMessageConverter"/>
+
+	<bean id="marshallingHttpMessageConverter"
+			class="org.springframework.http.converter.xml.MarshallingHttpMessageConverter">
+		<property name="marshaller" ref="castorMarshaller" />
+		<property name="unmarshaller" ref="castorMarshaller" />
+	</bean>
+
+	<bean id="castorMarshaller" class="org.springframework.oxm.castor.CastorMarshaller"/>
+----
+
+`@RequestBody` 方法参数可添加 `@Valid` 注解，被注解的参数会使用配置的 `Validator` 来验证。当使用 MVC 命名空间或 mvc Java 配置时，应用会自动配置 JSR-303 验证器（前提是在类路径能找到 JSR-303 的实现）。
+
+类似于 `@ModelAttribute` 参数，`Errors` 参数也可用来检测错误。当 `Errore` 参数没有声明时，或抛出 `MethodArgumentNotValidException`。此异常会被 `DefaultHandlerExceptionResolver` 处理 —— 向客户端发送 `400` 错误。 
+
+[NOTE]
+====
+可以查看 <<mvc-config-enable>>，了解如何使用 MVC 命名空间和 MVC Java 配置来配置信息转换器和验证器。
+====
+
+
+[[mvc-ann-responsebody]]
+===== 使用 @ResponseBody 映射响应体
+
+`@ResponseBody` 的使用类似于 `@RequestBody`。此注解用在方法上，用来表示直接将返回数据写到 HTTP 响应体里。注意，不是将数据放到 Model 中，或解析为视图名称。例子：
+
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RequestMapping(value = "/something", method = RequestMethod.PUT)
+	@ResponseBody
+	public String helloWorld() {
+		return "Hello World";
+	}
+----
+
+上述例子会将 `Hello World` 文本写到 HTTP 响应流中。
+
+与 `@RequestBody` 一样，Spring 使用 `HttpMessageConverter` 将返回对象转换为响应体。转换的详细信息可以查看上一节<<rest-message-conversion,信息转换器>>。
+
+[[mvc-ann-restcontroller]]
+===== 使用 @RestController 创建 REST 控制器
+
+一种比较常见的场景，控制器实现 REST API，只会返回 JSON、XML 或其他自定义媒体类型。为了方便，你可以在控制器上添加 `@RestController` 注解，而不是在每一个 `@RequestMapping` 上使用 `@ResponseBody`。
+
+{javadoc-baseurl}/org/springframework/web/bind/annotation/RestController.html[`@RestController`] 是一个结合了 `@ResponseBody` 和 `@Controller` 的注解。不仅如此，`@RestController` 赋予了控制器更多的意义，在未来的版本中可能会携带额外的语义。。
+
+与常规 ++@Controller++ 一样，`@RestController` 可以协助 `@ControllerAdvice` bean。详细信息可查看<<mvc-ann-controller-advice>>。
+
+[[mvc-ann-httpentity]]
+===== 使用 HttpEntity
+
+`HttpEntity` 的用法类似于 `@RequestBody` 和 `@ResponseBody` 注解。除了可以访问请求/响应体，`HttpEntity`(和特用与响应的子类 `ResponseEntity`) 还可以访问 request 和 response 的头字段。例子：
+
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RequestMapping("/something")
+	public ResponseEntity<String> handle(HttpEntity<byte[]> requestEntity) throws UnsupportedEncodingException {
+		String requestHeader = requestEntity.getHeaders().getFirst("MyRequestHeader"));
+		byte[] requestBody = requestEntity.getBody();
+
+		// do something with request header and body
+
+		HttpHeaders responseHeaders = new HttpHeaders();
+		responseHeaders.set("MyResponseHeader", "MyValue");
+		return new ResponseEntity<String>("Hello World", responseHeaders, HttpStatus.CREATED);
+	}
+----
+
+上述例子获取了 `MyRequestHeader` 头字段的值，以字节数组的形式读取了请求体，随后将 `MyRequestHeader` 添加到 response，将 `Hello World` 写到响应流和设置响应状态码为 201(Created).
+
+与 `@RequestBody` 和 `@ResponseBody` 一样，Srping 使用 `HttpMessageConverter` 将数据与请求/响应流互转，可查看上一节<<rest-message-conversion,信息转换器>>
+
+
+[[mvc-ann-modelattrib-methods]]
+===== 在方法上使用 @ModelAttribute
+
+`@ModelAttribute` 可用欲方法或方法参数中。这一部分将介绍 `@ModelAttribute` 在方法中的使用，下一部分介绍其在方法啊参数中的使用。
+
+在方法上使用 `@ModelAttribute` 注解，表示此方法的目的在于添加一个或多个模型属性。这种方法所支持的参数类型与 `@RequestMapping` 一样，不同的是，其不能直接映射到 request。另外，在同一个控制器里，`@ModelAttribute` 会在 `@RequestMapping` 之前调用。举几个例子：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	// 添加一个属性
+	// 方法的返回值会以 "account" 键添加到 model
+	// 可通过 @ModelAttribute("myAccount") 自定义
+
+	@ModelAttribute
+	public Account addAccount(@RequestParam String number) {
+		return accountManager.findAccount(number);
+	}
+
+	// 添加多个属性
+
+	@ModelAttribute
+	public void populateModel(@RequestParam String number, Model model) {
+		model.addAttribute(accountManager.findAccount(number));
+		// 再添加多个……
+	}
+----
+
+`@ModelAttribute` 用来将常用属性填充到模型里。如：填充下拉框陈述、宠物类型、或命令对象（如 Account，用于表示 HTML 表单数据）。最后一种情况会在下一部分深入谈论。
+
+留意一下 `@ModelAttribute` 方法的两种使用方式。第一种，在方法里隐式添加一个属性并返回；第二种，方法里接收 `Model` 参数，并将任意个属性添加到 `Model`中。你可以根据自身需要选择其中一种使用方式。
+
+一个控制器可以有多个 `@ModelAttribute` 方法。在同一个控制器中，所有 `@ModelAttribute` 方法都会在 `@RequestMapping` 方法之前调用。
+
+`@ModelAttribute` 方法也可以在  ++@ControllerAdvice++ 注解的类中使用，类似的可应用于其他控制器，详细信息可查看 <<mvc-ann-controller-advice>>。
+
+[TIP]
+====
+
+当模型属性名称没有显式定义，会是一种什么样的情况？在这种情况下，默认使用参数类型名称作为模型属性名称。如，当方法返回 `Account` 对象时，其默认的模型属性名称是 "account"。你可以通过设置`@ModelAttribute` 注解的 "value" 属性来自定义。当直接往 `Model` 添加属性时，请正确使用 `addAttribute(..)` 的重载方法 —— 如，是否在方法中带属性名。
+====
+
+`@ModelAttribute` 注解也可用在 `@RequestMapping` 方法中。这种情况下，`@RequestMapping` 方法的返回值将解析为模型属性，而不是视图名称。相反，视图名称来源于视图名称的约定，就类似于方法返回 void，可查看<<mvc-coc-r2vnt>>。
+
+[[mvc-ann-modelattrib-method-args]]
+===== 在方法参数上使用 @ModelAttribute 
+
+如前文所述，`@ModelAttribute` 也可以用在方法或方法参数上。这一部分将介绍其在方法参数上的使用。
+
+`@ModelAttribute` 注解的方法参数，表示该参数会从模型中检索。如果该参数不在模型中，此参数会先执行初始化或后添加到模型里；如果参数存在模型里，此参数字段会填充所有匹配其名称的请求参数。这就是大家熟知的 Spring MVC 数据绑定 —— 一个可以免除你逐个解析表单属性而又非常有用的机制。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RequestMapping(value="/owners/{ownerId}/pets/{petId}/edit", method = RequestMethod.POST)
+	public String processSubmit(**@ModelAttribute Pet pet**) { }
+----
+
+上述所给例子，Pet 实例可以在哪里获取？有以下几种选择：
+
+* 可能已存到模型里，自然可从模型中获取，因为使用了 `@SessionAttributes` -- 可查看 <<mvc-ann-sessionattrib>>。
+* 可能已存到模型里，自然可从模型中获取，因为同一个控制器里的 `@ModelAttribute` 方法 -- 在上一部分有解释。
+* 可以从 URI 模版变量和类型转换器获取（在下面详细描述会有所说明）
+* 可以使用默认构造函器初始化
+
+`@ModelAttribute` 方法是一种从数据库检索索性的常用方式，所检索到的属性可以使用 `@SessionAttributes` 在请求之间存储。在某些情况下，使用 URI 模版变量和类型转化器可能会方便一些，举个例子：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RequestMapping(value="/accounts/{account}", method = RequestMethod.PUT)
+	public String save(@ModelAttribute("account") Account account) {
+
+	}
+----
+
+上面这个例子，模型属性名称（这里为 "account") 可以映射 URI 模版模版变量。如果你注册了 `Converter<String, Account>`（一个可将 `String` 类型的 account 值转换为 `Account`实例），那上述例子在没有 `@ModelAttribute` 方法下，也是可工作的。
+
+下一步是数据绑定。`WebDataBinder` 类映射请求参数名 —— 包括查询字符参数和表单属性 —— 根据名称添加模型属性。在类型转换之后，如果需要，映射属性会被填充。数据绑定在验证在 <<validation>>  有介绍，在控制器层自定义数据绑定的处理方法，在 <<mvc-ann-webdatabinder>> 有介绍。
+
+在处理数据绑定中，可能会抛出错误（如缺失必要属性或类型转换错误）。如要检查这些错误，可在 `@ModelAttribute` 参数后添加 `BindingResult` 参数。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RequestMapping(value="/owners/{ownerId}/pets/{petId}/edit", method = RequestMethod.POST)
+	public String processSubmit(**@ModelAttribute("pet") Pet pet**, BindingResult result) {
+
+		if (result.hasErrors()) {
+			return "petForm";
+		}
+
+		// ...
+
+	}
+----
+
+使用 `BindingResult`， 你可以判断是否存在数据绑定错误。当存在错误时，通常会渲染此表单 —— 通过 Spring 的 `<errors>` 表单标签展示这些错误。
+
+除了数据绑定，你也可以通过自定以验证器传递 `BindingResult` 来执行验证。当中 `BindingResult` 保存了数据绑定的错误。这样可以允许数据绑定和验证错误统一收集，随后回馈给用户。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RequestMapping(value="/owners/{ownerId}/pets/{petId}/edit", method = RequestMethod.POST)
+	public String processSubmit(**@ModelAttribute("pet") Pet pet**, BindingResult result) {
+
+		new PetValidator().validate(pet, result);
+		if (result.hasErrors()) {
+			return "petForm";
+		}
+
+		// ...
+
+	}
+----
+
+你也可以自动执行验证，配置 JSR-303 `@Valid 注解即可。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RequestMapping(value="/owners/{ownerId}/pets/{petId}/edit", method = RequestMethod.POST)
+	public String processSubmit(**@Valid @ModelAttribute("pet") Pet pet**, BindingResult result) {
+
+		if (result.hasErrors()) {
+			return "petForm";
+		}
+
+		// ...
+
+	}
+----
+
+至于如何配置和使用验证，可查看 <<validation-beanvalidation>> 和 <<validation>>。
+
+
+[[mvc-ann-sessionattrib]]
+===== 使用 @SessionAttributes 将模型属性存储到 HTTP session 
+
+类上的 `@SessionAttributes` 注解，声明了 session 属性可以被指定 hadler 使用。这通常会列出需要透明存储到 session 或其他会话存储的模型属性或模型属性的类型，作为后续请求的 form-backing beam。
+
+如下代码片段展示了 @SessionAttributes 的用法，其指定了模型属性名称：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Controller
+	@RequestMapping("/editPet.do")
+	**@SessionAttributes("pet")**
+	public class EditPetForm {
+		// ...
+	}
+----
+
+[[mvc-ann-redirect-attributes]]
+===== 指定 redirect 和 flash 属性
+在重定向 URL 中，所有模型属性默认暴露给 URI 模版变量，剩下的属性(原始类型或原始类型集合/数组)会自动拼接到查询参数中。
+
+然而，在一个带注解的控制器中，模型也许包含了额外的属性（用于渲染，如下拉框属性）。在重定向场景中，要准确控制这些属性，可在 `@RequestMapping` 方法中声明 `RedirectAttributes` 类型参数，并往其添加 `RedirectView` 使用的属性。如果这个控制方法没有重定向，将使用 `RedirectAttributes` 的内容，否则使用默认 `Model` 的内容。
+
+`RequestMappingHandlerAdapter` 提供了一个 `"ignoreDefaultModelOnRedirect"` 标志，用来设置在控制方法重定向时，默认`Model` 的内容是否从不使用。相反，控制器方法应该声明 `RedirectAttributes` 类型属性，否则会没有任何属性传递给 `RedirectView`。为了向后兼容，MVC 命名空间和 MVC Java 配置都将 `"ignoreDefaultModelOnRedirect"` 设置为 false。可我们还是建议你在新应用里将其设置为 true。
+
+`RedirectAttributes` 接口也可以用来添加 flash 属性。与其他重定向属性（在重定向 URL 中销毁）不同的是，flash 属性会保存到 HTTP session（因此 flash 属性也不会在 URL 上出现）。作用于重定向 URL 的控制器里的模型会自动接收这些 flash 属性，之后，flash 属性会从 session 中移除。可查看 <<mvc-flash-attributes>>，了解 Spring MVC 对 flash 属性的常规支持。
+
+
+[[mvc-ann-form-urlencoded-data]]
+===== 处理 "application/x-www-form-urlencoded" 数据
+前一节节介绍了 `@ModelAttribute` 在客户端浏览器表单提交的使用。同时也推荐使用 `@ModelAttribute` 处理非浏览器提交的请求。然而，在处理 HTTP PUT 请求时，这里存在了一个明显的不同。浏览器支持通过 HTTP GET 或 HTTP POST 方法提交表单数据。非浏览器也支持通过 HTTP PUT 方法提交表单。这里提出了一个挑战 —— 因为 Servlet 规范要求 `ServletRequest.getParameter*()` 方法需要支持表单属性访问，而这只适用于 HTTP POST，不适用于 HTTP PUT。
+
+为了支持 HTTP PUT 和 PATCH 请求，`spring-web` 模块提供了 `HttpPutFormContentFilter` 过滤器，此过滤器可 `web.xml` 配置：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<filter>
+		<filter-name>httpPutFormFilter</filter-name>
+		<filter-class>org.springframework.web.filter.HttpPutFormContentFilter</filter-class>
+	</filter>
+
+	<filter-mapping>
+		<filter-name>httpPutFormFilter</filter-name>
+		<servlet-name>dispatcherServlet</servlet-name>
+	</filter-mapping>
+
+	<servlet>
+		<servlet-name>dispatcherServlet</servlet-name>
+		<servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+	</servlet>
+----
+
+`HttpPutFormContentFilter` 过滤器拦截了content 类型为 `application/x-www-form-urlencoded` 的 HTTP PUT 和 PATCH 请求，它从请求体中读取表单数据并将其封装为 `ServletRequest`，以便后续使用 `ServletRequest.getParameter*()` 方法获取表单数据。
+
+[NOTE]
+====
+由于`HttpPutFormContentFilter`已经处理了请求体，所以不应该再给PUT和PATCH的请求配置其他依赖于处理"application/x-www-form-urlencoded"的转换器。这里包括了 `@RequestBody MultiValueMap<String,
+String>` 和 `HttpEntity<MultiValueMap<String, String>>`。
+====
+
+
+[[mvc-ann-cookievalue]]
+===== 使用 @CookieValue 映射 cookie 值
+`@CookieValue` 注解允许将方法参数与HTTP cookie 值绑定。
+
+假设下面这个 cookie 值已经从 http 请求获得。
+Let us consider that the following cookie has been received with an http request:
+
+[literal]
+[subs="verbatim,quotes"]
+----
+JSESSIONID=415A4AC178C59DACE0B2C9CA727CDD84
+----
+
+一下例子演示了如何获取 `JSESSIONID` cookie 值。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RequestMapping("/displayHeaderInfo.do")
+	public void displayHeaderInfo(**@CookieValue("JSESSIONID")** String cookie) {
+		//...
+	}
+----
+
+如果方法参数不是 `String` 类型，类型转换会自动执行，可查看 <<mvc-ann-typeconversion>>。
+
+`@CookieValue` 注解支持在 Servlet 和 Portlet 环境中注解 handler 方法。
+
+
+[[mvc-ann-requestheader]]
+===== 使用 @RequestHeader 映射请求头字段属性
+@RequestHeader 注解允许将方法参数与请求头字段绑定。
+
+如下一个请求头字段值的样例：
+
+[literal]
+[subs="verbatim,quotes"]
+----
+Host                    localhost:8080
+Accept                  text/html,application/xhtml+xml,application/xml;q=0.9
+Accept-Language         fr,en-gb;q=0.7,en;q=0.3
+Accept-Encoding         gzip,deflate
+Accept-Charset          ISO-8859-1,utf-8;q=0.7,*;q=0.7
+Keep-Alive              300
+----
+
+如下代码演示了如何获取 `Accept-Encoding` 和 `Keep-Alive` 头字段值：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RequestMapping("/displayHeaderInfo.do")
+	public void displayHeaderInfo(**@RequestHeader("Accept-Encoding")** String encoding,
+			**@RequestHeader("Keep-Alive")** long keepAlive) {
+		//...
+	}
+----
+
+如果方法参数不是 `String` 类型，类型转换会自动执行，可查看 <<mvc-ann-typeconversion>>。
+
+将注解 `@RequestHeader` 用于 `Map<String, String>`,`MultiValueMap<String, String>`, 或 `HttpHeaders` 参数，map 会填充所有头字段值。
+
+
+[TIP]
+====
+内置支持将逗号分隔的字符串转换为数组/集合 或 系统其他熟知的类型。比如，带有 `@RequestHeader("Accept")` 的方法参数，可以 `String` 类型，也可以是 `String[]` 或 `List<String>` 类型。
+====
+
+`@RequestHeader` 注解支持在 Servlet 和 Portlet 环境中注解 handler 方法。
+
+
+[[mvc-ann-typeconversion]]
+===== 方法参数和类型转换
+从请求(包括请求参数、路径参数、请求头和cookie)里提取的字符串，基本上都需要转换为方法参数或类属性的目标类型，如将请求参数绑定到 `@ModelAttribute` 参数属性。如果目标类型不是 String，Spring 自动将其转换为合适的类型。支持所有简单类型的转换（如 int、long、Date等）。你可以进一步通过 `WebDataBinder` 自定义处理过程(可查看<<mvc-ann-webdatabinder>>)或使用 `FormattingConversionService` 注册 `Formatters`（可查看 <<format>>）。 
+
+
+[[mvc-ann-webdatabinder]]
+===== 自定义 WebDataBinder 的初始化
+To customize request parameter binding with PropertyEditors through Spring's
+`WebDataBinder`, you can use `@InitBinder`-annotated methods within your controller,
+`@InitBinder` methods within an `@ControllerAdvice` class, or provide a custom
+`WebBindingInitializer`. See the <<mvc-ann-controller-advice>> section for more details.
+
+[[mvc-ann-initbinder]]
+====== 使用 @InitBinder 自定义数据绑定
+使用 @InitBinder 注解的控制器，可以直接配置绑定 web 数据。`@InitBinder` 表示那些用于初始化 `WebDataBinder` 的方法，将用于填充 注解 handler 方法的命名/表单对象参数。
+
+除了命令/表单对象和类似验证结果对象，这些初始化绑定方法支持 `@RequestMapping` 所支持的所有参数。初始化绑定方法规定没有返回值。因此，这些方法常声明为 `void`，通常也会包含 `WebDataBinder` 参数，与 `WebRequest` 或 `java.util.Locale` 结合使用，可注册上下文特定的编辑器。
+
+如下例子，演示了 `@InitBinder` 的使用 —— 配置一个解释所有表单 `java.util.Date` 属性的 `CustomDateEditor`：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Controller
+	public class MyFormController {
+
+		**@InitBinder**
+		public void initBinder(WebDataBinder binder) {
+			SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+			dateFormat.setLenient(false);
+			binder.registerCustomEditor(Date.class, new CustomDateEditor(dateFormat, false));
+		}
+
+		// ...
+
+	}
+----
+
+[[mvc-ann-webbindinginitializer]]
+====== 配置自定义的 WebBindingInitializer
+
+需要详细初始化数据绑定的，你可以提供一个 `WebBindingInitializer` 接口的自定义实现，然后再提供一个 `AnnotationMethodHandlerAdapter` 的自定义以配置 bean，便可覆盖数据绑定默认的配置。
+
+来自 PetClinic 应用的例子，演示了如何配置：使用了 `WebBindingInitializer` 接口的自定义实现，和一个 `org.springframework.samples.petclinic.web.ClinicBindingInitializer`类(这个类配置了 PetClinic 多个控制器所使用的 PropertyEditors) ：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter">
+		<property name="cacheSeconds" value="0" />
+		<property name="webBindingInitializer">
+			<bean class="org.springframework.samples.petclinic.web.ClinicBindingInitializer" />
+		</property>
+	</bean>
+----
+
+`@InitBinder` 方法也可在 ++@ControllerAdvice++- 注解的类中使用， 这种情况下，`@InitBinder` 用于映射控制器。这也提供另外一种选择 —— 使用 `WebBindingInitializer`，详情可查看 <<mvc-ann-controller-advice>>。
+
+[[mvc-ann-lastmodified]]
+===== 支持 Last-Modified 响应头，方便缓存内容
+依据 Servlet API 对 `getLastModified` 方法的定义，`@RequestMapping` 方法也可以支持 `'Last-Modified'` HTTP 请求，以方便内容缓存，加快响应。`getLastModified`  方法的调用，需要计算给定请求的 lastModified 值（long 类型），并将其与请求头 `'If-Modified-Since'` 相互比较，若认为其没有更新，返回状态码为 304 的 response。注解控制器可如此实现这一需求：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RequestMapping
+	public String myHandleMethod(WebRequest webRequest, Model model) {
+
+		long lastModified = // 1. 应用指定的计算值
+
+		if (request.checkNotModified(lastModified)) {
+			// 2. 快速退出 —— 不作进一步处理
+			return null;
+		}
+		// 3. 否则，进一步处理请求，本质是准备内容
+		model.addAttribute(...);
+		return "myViewName";
+	}
+----
+
+注意两个关键点：调用 `request.checkNotModified(lastModified)` 和 返回 `null`。前者将 response 的状态设置为 304 后才返回 `true`。后者，与前者的使用结合，告知 Spring MVC 不对请求作进一步的处理。
+
+[[mvc-ann-controller-advice]]
+===== 使用 `@ControllerAdvice` 注解增强控制器
+`@ControllerAdvice` 注解可以让实现类通过类路径自动检测出来。当使用 MVC 命名空间或 MVC Java 配置时，此此功能是默认启动的。
+
+带有 `@ControllerAdvice` 注解的类，可以包含 `@ExceptionHandler`、`@InitBinder`, 和 `@ModelAttribute` 注解的方法，并且这些注解的方法会通过控制器层次应用到所有 `@RequestMapping` 方法中，而不用一一在控制器内部声明。
+
+Classes annotated with `@ControllerAdvice` can contain `@ExceptionHandler`,
+`@InitBinder`, and `@ModelAttribute` annotated methods, and these methods will apply to
+`@RequestMapping` methods across all controller hierarchies as opposed to the controller
+hierarchy within which they are declared.
+
+
+
+`@ControllerAdvice` 注解也可在属性中注明，将应用到哪些目标控制器：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	// 应用到所有 @RestController 控制器
+	@ControllerAdvice(annotations = RestController.class)
+	public class AnnotationAdvice {}
+
+	// 应用到指定包下的控制器
+	@ControllerAdvice("org.example.controllers")
+	public class BasePackageAdvice {}
+
+	// 应用到指定类型的控制器
+	@ControllerAdvice(assignableTypes = {ControllerInterface.class, AbstractController.class})
+	public class AssignableTypesAdvice {}
+----
+
+希望加深了解的，可以 Check out 
+{javadoc-baseurl}/org/springframework/web/bind/annotation/ControllerAdvice.html[`@ControllerAdvice`
+文档]。
+
+[[mvc-ann-jsonview]]
+===== 支持 Jackson 序列化视图
+
+在将对象序列化到响应体时，偶尔需要过滤敏感的数据。为了提供这一功能，Spring MVC 内置支持使用 http://wiki.fasterxml.com/JacksonJsonViews[Jackson 序列化视图]。
+
+可在带有 `@ResponseBody` 注解的方法或返回`ResponseEntity` 的方法中使用Jackson 序列化视图，只需要添加一个带 class 参数的`@JsonView`即可（class 参数指定所使用的视图类或接口）。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RestController
+	public class UserController {
+
+		@RequestMapping(value = "/user", method = RequestMethod.GET)
+		@JsonView(User.WithoutPasswordView.class)
+		public User getUser() {
+			return new User("eric", "7!jd#h23");
+		}
+	}
+
+	public class User {
+
+		public interface WithoutPasswordView {};
+		public interface WithPasswordView extends WithoutPasswordView {};
+
+		private String username;
+		private String password;
+
+		public User() {
+		}
+
+		public User(String username, String password) {
+			this.username = username;
+			this.password = password;
+		}
+
+		@JsonView(WithoutPasswordView.class)
+		public String getUsername() {
+			return this.username;
+		}
+
+		@JsonView(WithPasswordView.class)
+		public String getPassword() {
+			return this.password;
+		}
+	}
+----
+
+[NOTE]
+====
+注意：尽管 `@JsonView` 支持序列化多个类，但控制器方法只支持 `@JsonView` 序列化一个类。如果需要序列化多个视图，可以使用多个接口组合的方式。
+====
+
+对于控制器依赖于视图解析的情况，只需将序列化的视图类添加到模型里，即可。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Controller
+	public class UserController extends AbstractController {
+
+		@RequestMapping(value = "/user", method = RequestMethod.GET)
+		public String getUser(Model model) {
+			model.addAttribute("user", new User("eric", "7!jd#h23"));
+			model.addAttribute(JsonView.class.getName(), User.WithoutPasswordView.class);
+			return "userView";
+		}
+	}
+----
+
+[[mvc-ann-jsonp]]
+===== 支持 Jackson JSONP
+
+若需要支持在 `@ResponseBody` 和 `ResponseEntity` 方法中支持 http://en.wikipedia.org/wiki/JSONP[JSONP] 的使用，可以定一个 `@ControllerAdvice` bean 并继承 `AbstractJsonpResponseBodyAdvice` 类。`AbstractJsonpResponseBodyAdvice` 的构造器说明 JSONP 的查询参数。具体例子如下：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@ControllerAdvice
+	public class JsonpAdvice extends AbstractJsonpResponseBodyAdvice {
+
+		public JsonpAdvice() {
+			super("callback");
+		}
+	}
+----
+
+对于控制器依赖于视图解析的情况，只需要请求带有 `jsonp` 或 `callback` 查询参数，JSONP 会自动激活。JSONP 查询参数可以通过 `jsonpParameterNames` 属性自定义。
+
+
+[[mvc-ann-async]]
+==== 异步请求处理
+Spring MVC 引入了基于异步请求的 Servlet 3。在异步请求中，控制器方法通常会返回 `java.util.concurrent.Callable` 对象后再使用一个独立的线程产生返回值，而不是直接返回一个值。同时释放 Servlet 容器的主线程和允许处理其他请求。Spring MVC 借助 `TaskExecutor` ，在一个独立线程中调用 `Callable`，当 `Callable` 返回时，将请求转发到 Servlet 容器并继续处理 `Callable` 返回值。例子如下：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RequestMapping(method=RequestMethod.POST)
+	public Callable<String> processUpload(final MultipartFile file) {
+
+		return new Callable<String>() {
+			public String call() throws Exception {
+				// ...
+				return "someView";
+			}
+		};
+
+	}
+----
+
+异步请求的另外一种方式，是让控制器返回 `DeferredResult` 实例。这种情况下，依然是从一个独立线程处理并产生返回值。然而，Spring MVC 并不知晓这个线程的后续处理。比如说，这个返回结果可以用来响应某些外部事件（如 JMS 信息，计划任务等）。例子如下：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RequestMapping("/quotes")
+	@ResponseBody
+	public DeferredResult<String> quotes() {
+		DeferredResult<String> deferredResult = new DeferredResult<String>();
+		// 将 deferredResult 保存到内存队列
+		return deferredResult;
+	}
+
+	// 在其他线程中...
+	deferredResult.setResult(data);
+----
+
+如果不了解 Servlet 3 异步处理的细节，理解起来可能会一定的难度。当然，这里会帮助你去理解。我们最少需要知道以下事实：
+
+* 一个 `ServletRequest` 请求可通过调用 `request.startAsync()` 方法设置为异步模式。此步骤最主要的作用是，在此 Servlet 和其他过滤器退出的情况下，response 依然可以保持打开状态，以便其他线程来完成处理。
+* 调用 `request.startAsync()` 方法返回一个 `AsyncContext`。在异步处理中，`AsyncContext` 可以用来做进一步的控制。比如说，`AsyncContext` 提供的 `dispatch` 方法，可以在应用线程中调用，将请求转发回 Servlet 容器。异步 dispatch(转发)类似于平时使用的 forward 方法。不同的是，异步 dispatch(转发)是从应用里的一个线程转发到 Servlet 容器中的另一个线程，而 forward 方法则是在 Servlet 容器里的同一个线程间转发。
+* `ServletRequest` 可以方位当前的 `DispatcherType`（转发类型），此功能可以用于判断 'Servlet' 或 'Filter' 是在原始请求线程上处理请求，还是在异步转发线程中处理。
+
+记住以上事实之后，接着了解一下异步请求处理 `Callable` 的过程：(1) 控制器返回一个 `Callable` ,(2) Spring MVC 开始异步处理，将 `Callable` 提交给 `TaskExecutor`，`TaskExecutor` 在一个独立线程中处理，(3) `DispatcherServlet` 和所有过滤器退出请求处理线程，不过保持 response 为打开状态，(4) `Callable` 产生一个结果之后，Spring MVC 将这个请求转发回 Servlet 容器，(5) 再次调用 `DispatcherServlet`，并重新处理 `Callable` 异步产生的结果。(2),(3),(4) 的准确顺序在不同情况下可能有所不同，这个取决于并发线程的处理速度。
+
+异步请求处理 `DeferredResult` 的事件顺序大体上和处理 `Callable` 的顺序相同。不同的是，这里是由应用程序的某些线程来处理异步结果:(1) 控制器返回一个 `DeferredResult` 对象，并将其保存到可访问的内存队列或列表中，(2) Spring MVC 开始异步处理，(3) `DispatcherServlet` 和所有过滤器退出请求处理线程，不过保持 response 为打开状态，(4) 应用程序在某些线程中设置 `DeferredResult`，之后 Spring MVC 将这个请求转发回 Servlet 容器，(5) 再次调用 `DispatcherServlet`，并重新处理异步产生的结果。
+
+解释了异步请求处理的机制，至于何时和为什么使用异常请求处理，就超出了此文档的介绍范围。需要深入了解的，可以查看 https://spring.io/blog/2012/05/07/spring-mvc-3-2-preview-introducing-servlet-3-async-support[这一系列博客].
+
+[[mvc-ann-async-exceptions]]
+===== 异步请求的异常处理
+当控制器返回的 `Callable` 在执行时反生了异常，会出现什么情况？这种情况类似于控制器发生异常时的情况。所出现的异常会由同一控制器里的 `@ExceptionHandler` 方法处理，或由所配置的 `HandlerExceptionResolver` 实例来处理。 
+
+[NOTE]
+====
+在后台，当 `Callable` 执行发生了异常时，Spring MVC 仍然会就将其转发会 Servlet 容器，继续器后续处理。唯一不同的是，执行 `Callable` 返回的结果是一个异常，此异常必须有所配置的 `HandlerExceptionResolver` 实例来处理。
+====
+
+如果是执行 `DeferredResult` 时出现异常，你可以选择调用 `DeferredResult` 提供的 `setErrorResult(Object)` 方法，该方法须提供一个异常或其他你设置设置的对象。 当结果是一个 `Exception` 时，会由同一控制器里的 `@ExceptionHandler` 方法处理，或由所配置的 `HandlerExceptionResolver` 实例来处理。
+
+[[mvc-ann-async-interception]]
+===== 拦截异步请求
+`HandlerInterceptor` 可以实现 `AsyncHandlerInterceptor` 接口，此接口额外提供一个 `afterConcurrentHandlingStarted` 方法。该方法会在初始请求处线程退出 和 异步处理开始之后调用。详细信息可参考 `AsyncHandlerInterceptor` javadocs 。
+
+也可以选择使用 `DeferredResult` 直接提供的异步请求生命周期回调函数，当中包括了 `onTimeout(Runnable)` 和 `onCompletion(Runnable)` 方法。这两个方法会分别在异步请求超时或完成时调用。超时事件可通过设置 `DeferredResult` 部分值来处理，然而，完成时的回调意味着结束，即不能再设置返回结果。
+
+`Callable` 也可以使用类似的回调功能。可是，你需要将 `Callable` 封装成 `WebAsyncTask` 实例，接着使用这个实例注册超时和完成时事件。如此便可像 `DeferredResult` 那样，处理超时时间和在完成时返回一个值。
+
+你可以通过 MVC Java 配置或 MVC 命名空间，注册全局性的 `CallableProcessingInterceptor` 或 `DeferredResultProcessingInterceptor`。这两个拦截器提供了完成的回调机制，而且每次使用 `Callable` 或 `DeferredResult` 都会应用这两个拦截器。
+
+[[mvc-ann-async-configuration]]
+===== 一步请求处理的配置
+
+[[mvc-ann-async-configuration-servlet3]]
+====== Servlet 3 异步配置
+使用 Servlet 3 的异步请求处理，需要将 `web.xml` 的版本更新为 3.0。
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<web-app xmlns="http://java.sun.com/xml/ns/javaee"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+				http://java.sun.com/xml/ns/javaee
+				http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd"
+		version="3.0">
+
+		...
+
+	</web-app>
+----
+
+`DispatcherServlet` 和任意 `Filter` 的配置都需要有 `<async-supported>true</async-supported>` 子元件。另外，任意会在异步转发中调用的 'Filter' 都需要支持 ASYNC 转发类型。提示，使用 Spring 框架时，让所有过滤器都支持 ASYNC 转发类型是安全的，因为除非是需要用到，否则他们在异步转发中也不会被调用。
+
+[WARNING]
+====
+注意，对部分过滤器来说，请确保它们会在异步转发时被映射调用。比如，当一个过滤器是负责释放数据库连接的（如`OpenEntityManagerInViewFilter`），这个过滤器必须在异步请求最后一步才调用。
+
+如下，是一个过滤器配置的样例：
+====
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<web-app xmlns="http://java.sun.com/xml/ns/javaee"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="
+				http://java.sun.com/xml/ns/javaee
+				http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd"
+		version="3.0">
+
+		<filter>
+			<filter-name>Spring OpenEntityManagerInViewFilter</filter-name>
+			<filter-class>org.springframework.~.OpenEntityManagerInViewFilter</filter-class>
+			<async-supported>true</async-supported>
+		</filter>
+
+		<filter-mapping>
+			<filter-name>Spring OpenEntityManagerInViewFilter</filter-name>
+			<url-pattern>/*</url-pattern>
+			<dispatcher>REQUEST</dispatcher>
+			<dispatcher>ASYNC</dispatcher>
+		</filter-mapping>
+
+	</web-app>
+
+----
+
+如果使用 Servlet 3，Java 基础配置（如使用 `WebApplicationInitializer`）等，除了需要在 '`web.xml` 配置 ASYNC 转发类型，你还需要设置 "asyncSupported" 标识。如果想简化这些配置的，可以继承 `AbstractDispatcherServletInitializer`或`AbstractAnnotationConfigDispatcherServletInitializer`，这两个抽象类或设置以上标识，如此便可轻松地注册 `Filter` 实例。
+
+[[mvc-ann-async-configuration-spring-mvc]]
+====== Spring MVC 异步配置
+MVC Java 配置和 MVC 命名空间都提供了异步请求处理配置的选项。`WebMvcConfigurer` 可以通过 `configureAsyncSupport` 方法设置，<mvc:annotation-driven>则可通过子元件 <async-support> 设置。
+
+如果没有配置异步请求超时时间，以上两种配置都会使用默认的超时时间值(取决于底层 Servlet 容器，如 Tomcat 是 10 秒)。也可以配置 `AsyncTaskExecutor`，用来执行控制器方法返回的 `Callable` 实例。另外，强烈推荐你配置 `AsyncTaskExecutor` 属性,因为 Spring MVC 默认是使用 `SimpleAsyncTaskExecutor`。MVC Java 配置和 MVC 命名空间都允许注册 `CallableProcessingInterceptor`和`DeferredResultProcessingInterceptor`实例。
+
+如果需要覆盖指定 `DeferredResult` 的默认超时值，可以使用其合适的构造器。类似地，如果是覆盖 `Callable` 的默认超时值，可以将其封装为 `WebAsyncTask` 对象并使用合适的构造器来自定义超时值。`WebAsyncTask` 构造器也提供了  `AsyncTaskExecutor`。
+
+
+[[mvc-ann-tests]]
+==== 测试控制器
+`spring-test` 模块提供了一流的测试类，支持测试注解控制器。详情可查看<<spring-mvc-test-framework>>.
+
+
+
+
+[[mvc-handlermapping]]
+=== Handler 映射
+Spring 的前几个版本，开发者都需要在 web 应用的上下文定义(多个) `HandlerMapping` bean，用来将 web 请求映射到指定的 handler。可当引入注解控制器时，开发者基本不再需要这样配置。因为 `RequestMappingHandlerMapping` 会自动寻找所有 `@Controller` bean 中的 `@RequestMapping` 注解。另外提醒一下，所有从 `AbstractHandlerMapping` 继承过来的 `HandlerMapping` 类，都以通过设置以下属性来自定义其行为：
+
+* `interceptors` 拦截器链。 ++HandlerInterceptor++s 会在
+  <<mvc-handlermapping-interceptor>> 谈论。
+* `defaultHandler` 默认 handler。此 handler 不影响其他 handler 的使用。
+* `order` order 属性 (可查看 `org.springframework.core.Ordered` 接口), 	Spring会对可匹配的 handler 进行排序，并应用第一个匹配到 handler。
+* `alwaysUseFullPath` 当此属性为 `true` 时，Spring 会使用当前 Servlet 上下文的全路径去寻找合适的 handler。当为 `false` 时(默认值)，Spring 会使用相对路径来寻找合适的 handler。举个例子，当 某个 Servlet 映射 `/testing/*` 请求时，若 `alwaysUseFullPath` 属性为 `true`,会使用 `/testing/viewPage.html`；反之，使用 `/viewPage.html`。
+* `urlDecode` 从 Spring 2.5 开始，此属性默认为 `true`。如果你更需要编码路基路径，可将此属性设置为 true。然而，`HttpServletRequest` 总会暴露解码后的 Servlet 路径。另外注意的是，当比较编码后的路径时，Servlet 路径是不会再匹配的。
+
+如下例子，演示了如何配置一个拦截器：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<beans>
+		<bean id="handlerMapping" class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping">
+			<property name="interceptors">
+				<bean class="example.MyInterceptor"/>
+			</property>
+		</bean>
+	<beans>
+----
+
+
+
+[[mvc-handlermapping-interceptor]]
+==== 使用 HandlerInterceptor 拦截请求
+
+Spring 的 handler 映射机制包含了 handler 拦截器。使用handler 拦截器，可以在某些的请求中应用的特殊的功能，比如说，检查权限。
+
+handler 映射的拦截器必须实现 `HandlerInterceptor` 接口(此节接口位于 `org.springframework
+.web.servlet` 包中)。这个接口定义了三个方法：`preHandle(..)` 在 handler 
+执行前调用；`postHandle(..)` 在handler 执行后调用；`afterCompletion(..)` 
+在整一个请求完成后调用。这三个方法基本足够应对各种预处理和后处理的状况。
+
+`preHandle(..)` 方法返回一个 boolean 值。你可以使用这个方法来中断或继续处理 handler 
+执行链。当此方法返回 `true` 时，hadler 执行链会继续执行；反之，`DispatcherServlet` 
+会认为此拦截器已处理完成该请求(和渲染一个视图)，之后不再执行余下的拦截器，也不在执行 
+handler 执行链。
+
+可以使用 `interceptors` 属性配置拦截器。所有从  `AbstractHandlerMapping` 继承过来的 `HandlerMapping` 类都拥有此属性。演示例子如下：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<beans>
+		<bean id="handlerMapping"
+				class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping">
+			<property name="interceptors">
+				<list>
+					<ref bean="officeHoursInterceptor"/>
+				</list>
+			</property>
+		</bean>
+
+		<bean id="officeHoursInterceptor"
+				class="samples.TimeBasedAccessInterceptor">
+			<property name="openingTime" value="9"/>
+			<property name="closingTime" value="18"/>
+		</bean>
+	<beans>
+----
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package samples;
+
+	public class TimeBasedAccessInterceptor extends HandlerInterceptorAdapter {
+
+		private int openingTime;
+		private int closingTime;
+
+		public void setOpeningTime(int openingTime) {
+			this.openingTime = openingTime;
+		}
+
+		public void setClosingTime(int closingTime) {
+			this.closingTime = closingTime;
+		}
+
+		public boolean preHandle(HttpServletRequest request, HttpServletResponse response,
+				Object handler) throws Exception {
+			Calendar cal = Calendar.getInstance();
+			int hour = cal.get(HOUR_OF_DAY);
+			if (openingTime <= hour && hour < closingTime) {
+				return true;
+			}
+			response.sendRedirect("http://host.com/outsideOfficeHours.html");
+			return false;
+		}
+	}
+----
+
+通过这样的配置，所有请求 handler 都会被 `TimeBasedAccessInterceptor` 拦截。如果当前时间是下班时间，用户会重定向到一个静态页面，换句话说就是，你只能在上班时间访问该网站。
+
+[提示]
+====
+当使用 `RequestMappingHandlerMapping` 时，真实的 handler 是一个`HandlerMethod` 实例，该实例指定了会被调用的控制器方法。
+====
+
+如你所见，Spring 的适配器类 `HandlerInterceptorAdapter`，使继承 `HandlerInterceptor` 接口变得更加简单。
+
+[TIP]
+====
+在上述例子中，所配置的拦截器会应用到所有带注解的请求处理器。如果需要缩窄拦截器的拦截 url 路径范围，可以使用 MVC 命名空间或 MVC Java 配置，或声明 `MappedInterceptor` 类型的 bean 来缩窄拦截器的拦截范围，详情可参考 <<mvc-config-enable>>。
+====
+
+注意，`HandlerInterceptor` 的 `postHandle` 方法不一定适用于`@ResponseBody`和`ResponseEntity`方法。在这种情况下，`HttpMessageConverter` 实例会在 `postHandle` 方法执行之前就将数据写到 response 并提交 response，所以 `postHandle` 方法不可能再处理 response（如添加一个 Header）。相反，应用程序可以实现 `ResponseBodyAdvice` ，将其声明为 `@ControllerAdvice` bean 或将其直接在 `RequestMappingHandlerAdapter` 中配置它。
+
+
+
+
+
+
+
+
+[[mvc-viewresolver]]
+=== 视图解析
+所有 web 应用的 MVC 框架都会提了视图解析的方案，Spring 提供的视图解析，可以让你在不指定特定视图技术的前提下，便可在浏览器中渲染模型。Spring 支持使用 USP，Veloctiy 模板和 XSLT 视图技术，这些视图技术都是开箱即用的。查看<<view>>，可以了解到如何集成和使用多种不同的视图技术。
+
+`ViewResolver` 和 `View` 是 Spring 处理视图的两个重要接口。当中，`ViewResolver` 提供了视图名称和真实视图之间的映射，`View` 则是负责解决某个视图的技术的请求预处理和请求的后续处理。
+
+
+
+[[mvc-viewresolver-resolver]]
+==== 使用 ViewResolver 接口解析视图
+
+如 <<mvc-controller>> 所述，Spring web MVC 中的所有 handler 方法都需要解析某一个逻辑视图名称，可以是显式的，如如返回 `String`, `View`, 或 `ModelAndView` 实例，也可以是隐式的(这个需基于事先约定）。Spring 中视图通过逻辑视图名称来定位，并使用视图解析器解析。Spring 提供了一系列的视图解析其，如下表：
+
+[[mvc-view-resolvers-tbl]]
+.视图解析器
+|===
+| 视图解析器| 描述
+
+| `AbstractCachingViewResolver`
+| 抽象视图解析器用于缓存视图。通常，在视图使用之前，都需要经过预处理；继承此解析器可用来缓存视图。
+
+| `XmlViewResolver`
+| `ViewResolver` 的实现类，接收一个 xml 的配置文件（使用与 Spring xml bean 工厂一直的 dtd）。默认的配置文件路径是`/WEB-INF/views.xml`.
+
+| `ResourceBundleViewResolver`
+| `ViewResolver` 实现类，使用`ResourceBundle` 中的 bean 定义，其通过 bundle 名称来指定。通常，你可以选择在类路径中，通过 properties 文件来定义 bundle。默认的文件名是 `views.properties`。
+
+| `UrlBasedViewResolver`
+| `ViewResolver` 的简易实现。
+Simple implementation of the `ViewResolver` interface that effects the direct
+  resolution of logical view names to URLs, without an explicit mapping definition. This
+  is appropriate if your logical names match the names of your view resources in a
+  straightforward manner, without the need for arbitrary mappings.
+
+| `InternalResourceViewResolver`
+| Convenient subclass of `UrlBasedViewResolver` that supports `InternalResourceView` (in
+  effect, Servlets and JSPs) and subclasses such as `JstlView` and `TilesView`. You can
+  specify the view class for all views generated by this resolver by using
+  `setViewClass(..)`. See the `UrlBasedViewResolver` javadocs for details.
+
+| `VelocityViewResolver` / `FreeMarkerViewResolver`
+| `UrlBasedViewResolver` 的子类，分别支持 `VelocityView`（Velocity 模版）和 `FreeMarkerView`，也支持自定义它们的子类。
+
+| `ContentNegotiatingViewResolver`
+| `ViewResolver` 的实现类，此解析器可通过请求文件名或 `Accept` 头字段值来解析视图。详情可查看 <<mvc-multiple-representations>>。
+|===
+
+
+举个例子，解析 JSP 视图技术，可以使用 `UrlBasedViewResolver` 解析器。此解析器会将视图名称转换为 url，和传递请求到 RequestDispatcher，以便渲染视图。
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="viewResolver"
+			class="org.springframework.web.servlet.view.UrlBasedViewResolver">
+		<property name="viewClass" value="org.springframework.web.servlet.view.JstlView"/>
+		<property name="prefix" value="/WEB-INF/jsp/"/>
+		<property name="suffix" value=".jsp"/>
+	</bean>
+----
+
+当返回 `test` 逻辑逻辑视图名时，此视图解析器会将请求转发到 `RequestDispatcher`，接着 `RequestDispatcher` 将请求发送到 `/WEB-INF/jsp/test.jsp`。
+
+当你需要在 web 应用中联合使用不同的视图技术时，可以使用 `ResourceBundleViewResolver` 解析器。
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="viewResolver"
+			class="org.springframework.web.servlet.view.ResourceBundleViewResolver">
+		<property name="basename" value="views"/>
+		<property name="defaultParentView" value="parentView"/>
+	</bean>
+----
+
+The `ResourceBundleViewResolver` inspects the `ResourceBundle` identified by the
+basename, and for each view it is supposed to resolve, it uses the value of the property
+`[viewname].(class)` as the view class and the value of the property `[viewname].url` as
+the view url. Examples can be found in the next chapter which covers view technologies.
+As you can see, you can identify a parent view, from which all views in the properties
+file "extend". This way you can specify a default view class, for example.
+
+[NOTE]
+====
+`AbstractCachingViewResolver` 的子类会缓存其解析的视图实例。缓存提高某些视图技术的性能。当然，也可以放弃该缓存功能，只需将 `cache` 属性设置为 `false` 即可。此外，如果必须在运行时刷新视图的(如 Veloctiy 模版更新)，可以使用 `removeFromCache(String viewName, Locale loc)` 方法。
+====
+
+
+
+[[mvc-viewresolver-chaining]]
+==== 视图解析器链
+Spring 提供多种视图技术。因此，你可以定义解析器链，比如，可在某些情况下覆盖指定视图。可通过在应用上下文中添加多个解析器来定义解析器链，如有需要的，也可指定这些解析器的顺序。记住，order 属性越高，解析器的链上位置约靠后。
+
+如下例子，定义了包含两个解析器的解析器链。当中一个是 `InternalResourceViewResolver`，此解析器总是自动定位到解析器链中最后一个；另外一个是 `XmlViewResolver`，用来指定 Excel 视图。`InternalResourceViewResolver` 不支持 Excel 视图。
+
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="jspViewResolver" class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+		<property name="viewClass" value="org.springframework.web.servlet.view.JstlView"/>
+		<property name="prefix" value="/WEB-INF/jsp/"/>
+		<property name="suffix" value=".jsp"/>
+	</bean>
+
+	<bean id="excelViewResolver" class="org.springframework.web.servlet.view.XmlViewResolver">
+		<property name="order" value="1"/>
+		<property name="location" value="/WEB-INF/views.xml"/>
+	</bean>
+
+	<!-- in views.xml -->
+
+	<beans>
+		<bean name="report" class="org.springframework.example.ReportExcelView"/>
+	</beans>
+----
+
+如果一个视图解析器不能导出一个视图，Spring 会检索上下文，查找其他视图解析器。如果查找到其他视图解析器，Spring 会继续处理，直到有解析器导出一个视图。如果没有解析器返回一个视图，Spring 会抛出 `ServletException`。
+
+视图解析协议规定视图解析器可以返回 null，表示没有找到指定的视图。然而，不是所有的视图解析器返回null，都表示没有找到视图。因为某些情况下，视图解析器也无法检测视图是否存在。比如，`InternalResourceViewResolver` 在内部逻辑里使用 `RequestDispatcher`，如果 JSP 文件存在，那分发是唯一可以找到 JSP 文件的方式，可分发只能执行一次。`VelocityViewResolver` 和其他解析器也类似。可查看对应视图解析器的 javaDoc 文件，理解其是否报告不存在的视图。
+
+The contract of a view resolver specifies that a view resolver __can__ return null to
+indicate the view could not be found. Not all view resolvers do this, however, because
+in some cases, the resolver simply cannot detect whether or not the view exists. For
+example, the `InternalResourceViewResolver` uses the `RequestDispatcher` internally, and
+dispatching is the only way to figure out if a JSP exists, but this action can only
+execute once. The same holds for the `VelocityViewResolver` and some others. Check the
+javadocs of the specific view resolver to see whether it reports non-existing views.
+Thus, putting an `InternalResourceViewResolver` in the chain in a place other than
+the last results in the chain not being fully inspected, because the
+`InternalResourceViewResolver` will __always__ return a view!
+
+
+
+[[mvc-redirecting]]
+==== 重定向到视图
+如前文所述，控制器通常返回一个逻辑视图名，再由对应视图解析器解析。对于通过 Servlet 或 JSP 引擎来处理的视图技术(如 JSP)，其解决方式通常会结合  `InternalResourceViewResolver` 和 `InternalResourceView`来处理，使用 Servlet API 的 `RequestDispatcher.forward(..)` 方法或 `RequestDispatcher.include()` 方法发出内部跳转或包含的动作。对于其他视图技术(如Velocity, XSLT 等)，视图会自身内容直接写到响应流。
+
+在渲染视图前，有时候需要将 HTTP 请求重定向回客户端。比如：当一个控制器处理完 'POST' 数据，并将响应委托给另一个控制器（如成功提交表单时）。这种情况下，使用正规的内部跳转会让另一个控制器也可检索到 `POST` 数据，若另一个控制器期待的数据与 `POST` 数据混淆，则会已发一些潜在的问题。在显示数据前执行重定向的另一个一个原因是：排除用户多次提交表单的可能性。这种情境下，浏览器首先发送初始化好的 `POST` 请求，接着浏览器接收一个重定向到另一个 URL 的响应，最后，浏览器对后续 URL(上一步响应里的 URL) 执行 `GET` 请求。因此，从浏览器角度来看，当前页面对应的不是 `POST` 的结果，而是 `GET` 的结果。最终的效果就是用户不会因刷新而不小心重新提交一次 `POST` 数据 —— 刷新是 `GET` 一次结果的页面，而不是重新发送 `POST` 数据。
+
+[[mvc-redirecting-redirect-view]]
+===== RedirectView
+
+One way to force a redirect as the result of a controller response is for the controller
+to create and return an instance of Spring's `RedirectView`. In this case,
+`DispatcherServlet` does not use the normal view resolution mechanism. Rather because it
+has been given the (redirect) view already, the `DispatcherServlet` simply instructs the
+view to do its work.
+
+The `RedirectView` issues an `HttpServletResponse.sendRedirect()` call that returns to
+the client browser as an HTTP redirect. By default all model attributes are considered
+to be exposed as URI template variables in the redirect URL. Of the remaining attributes
+those that are primitive types or collections/arrays of primitive types are
+automatically appended as query parameters.
+
+Appending primitive type attributes as query parameters may be the desired result if a
+model instance was prepared specifically for the redirect. However, in annotated
+controllers the model may contain additional attributes added for rendering purposes
+(e.g. drop-down field values). To avoid the possibility of having such attributes appear
+in the URL an annotated controller can declare an argument of type `RedirectAttributes`
+and use it to specify the exact attributes to make available to `RedirectView`. If the
+controller method decides to redirect, the content of `RedirectAttributes` is used.
+Otherwise the content of the model is used.
+
+Note that URI template variables from the present request are automatically made
+available when expanding a redirect URL and do not need to be added explicitly neither
+through `Model` nor `RedirectAttributes`. For example:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RequestMapping(value = "/files/{path}", method = RequestMethod.POST)
+	public String upload(...) {
+		// ...
+		return "redirect:files/{path}";
+	}
+----
+
+If you use `RedirectView` and the view is created by the controller itself, it is
+recommended that you configure the redirect URL to be injected into the controller so
+that it is not baked into the controller but configured in the context along with the
+view names. The next section discusses this process.
+
+
+[[mvc-redirecting-redirect-prefix]]
+===== redirect: 前缀
+
+尽管使用 `RedirectView` 工作正常，可控制器本身创建 `RedirectView` 这一事实，不可否认其是在执行重定向操作。这是不够理想的，两者之间的关系耦合严重。控制器不应该关心响应如何处理。一般而言，控制器只需操作注入的逻辑的视图名即可。
+
+
+`redirect:` 前缀允许你达到上述效果。当逻辑视图名带上 `redirect:` 前缀时，`UrlBasedViewResolver` 及其子类会识别该前缀执行重定向操作。视图名的余下部分会将重定向的 url。
+
+
+`redirect:` 的作用与控制器返回 `RedirectView` 的效果一致，不过使用 `redirect:`，控制器本身只需操作逻辑视图名即可。逻辑视图名（如 `redirect:/myapp/some/resource`）会相对当前 Servlet 容器重定向，另外如 `redirect:http://myhost.com/some/arbitrary/path` 的逻辑视图，会根据绝对 url 重定向。
+
+
+[[mvc-redirecting-forward-prefix]]
+===== forward: 前缀
+
+也可在逻辑视图名前使用 `forward:`，`forward:` 前缀本质也是由`UrlBasedViewResolver`及其子类所处理。使用 `forward:` 前缀，会根据逻辑视图名的余下部分(url)创建`InternalResourceView` 对象（本质是使用 `RequestDispatcher.forward()`）.
+
+It is also possible to use a special `forward:` prefix for view names that are
+ultimately resolved by `UrlBasedViewResolver` and subclasses. This creates an
+`InternalResourceView` (which ultimately does a `RequestDispatcher.forward()`) around
+the rest of the view name, which is considered a URL. Therefore, this prefix is not
+useful with `InternalResourceViewResolver` and `InternalResourceView` (for JSPs for
+example). But the prefix can be helpful when you are primarily using another view
+technology, but still want to force a forward of a resource to be handled by the
+Servlet/JSP engine. (Note that you may also chain multiple view resolvers, instead.)
+
+与 `redirect:` 前缀类型，当带上 `forward:` 前缀的视图名注入控制器时，控制器不会察觉将如何处理响应。
+
+
+
+[[mvc-multiple-representations]]
+==== ContentNegotiatingViewResolver
+
+`ContentNegotiatingViewResolver` 自身并没有去解析视图，而是将其委派给其他视图解析器，选择指定响应表述返回给客户端。有以下两种策略，允许客户端请求指定表述方式的资源：
+
+* 不同的资源使用不同的 URI 表示：通常使用文件拓展名来表示不同的响应表述，如 `http://www.example.com/users/fred.pdf` 请求用户 fred 的 pdf 视图表述，`http://www.example.com/users/fred.xml` 则是请求用户 fred 的 xml 视图表述。
+
+* 使用相同的 uri 加载指定资源，不过使用 `Accept` HTTP 请求头表示其请求的http://en.wikipedia.org/wiki/Internet_media_type[媒体类型]。如uri `http://www.example.com/users/fred`，当 `Accept` 为 `application/pdf` ，表示请求用户 fred 的pdf视图表述，当 `Accept` 为 `application/xml` 表示请求用户 fred 的xml 视图表述。这种策略也可称为 http://en.wikipedia.org/wiki/Content_negotiation[内容协商].
+
+[提示]
+====
+与 `Accept` 头字段的有关一个 issue，就在不能通过 web 浏览器设置 `Accept` 头字段值。比如说，在 firefox，`Accept` 字段是固定的：
+
+[literal]
+[subs="verbatim"]
+----
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+----
+
+由于这个原因，在开发基于浏览器的web应用时，通常会选择使用不同的uri来表示不同的视图表述.
+====
+
+为了支持同一资源的多种表述,Spring 提供了 `ContentNegotiatingViewResolver`,可根据文件拓展名或 `Accept` 头字段值选择指定资源的表述.`ContentNegotiatingViewResolver` 自身并解释视图,而是将其转发给通过 `ViewResolvers` 属性配置的视图解析器.
+
+The `ContentNegotiatingViewResolver` selects an appropriate `View` to handle the request
+by comparing the request media type(s) with the media type (also known as
+`Content-Type`) supported by the `View` associated with each of its `ViewResolvers`. The
+first `View` in the list that has a compatible `Content-Type` returns the representation
+to the client. If a compatible view cannot be supplied by the `ViewResolver` chain, then
+the list of views specified through the `DefaultViews` property will be consulted. This
+latter option is appropriate for singleton `Views` that can render an appropriate
+representation of the current resource regardless of the logical view name. The `Accept`
+header may include wild cards, for example `text/*`, in which case a `View` whose
+Content-Type was `text/xml` is a compatible match.
+
+为了支持基于文件拓展名的解析，可以使用 `ContentNegotiatingViewResolver` 的属性 `mediaTypes` 配置可匹配的媒体类型。关于选择哪一种媒体类型的算法的详细信息，可参考 `ContentNegotiatingViewResolver` API 文档。
+
+如下，是一个 `ContentNegotiatingViewResolver` 配置样例：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean class="org.springframework.web.servlet.view.ContentNegotiatingViewResolver">
+		<property name="mediaTypes">
+			<map>
+				<entry key="atom" value="application/atom+xml"/>
+				<entry key="html" value="text/html"/>
+				<entry key="json" value="application/json"/>
+			</map>
+		</property>
+		<property name="viewResolvers">
+			<list>
+				<bean class="org.springframework.web.servlet.view.BeanNameViewResolver"/>
+				<bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+					<property name="prefix" value="/WEB-INF/jsp/"/>
+					<property name="suffix" value=".jsp"/>
+				</bean>
+			</list>
+		</property>
+		<property name="defaultViews">
+			<list>
+				<bean class="org.springframework.web.servlet.view.json.MappingJackson2JsonView" />
+			</list>
+		</property>
+	</bean>
+
+	<bean id="content" class="com.foo.samples.rest.SampleContentAtomView"/>
+----
+
+`InternalResourceViewResolver` 处理试图名称的解析和 JSP 页面，另外，`BeanNameViewResolver`会返回基于 bean 名称的视图（可参考 "<<mvc-viewresolver-resolver,使用 ViewResolver 解析视图>>，了解 Spring 如何寻找和初始化一个视图"）。在上述例子中，`content` bean 是一个继承 `AbstractAtomFeedView` 的类，这个bean 可以返回一个 RSS 原子。创建 一个原子表述的详细信息，可参考原子视图的那一章。
+
+在上述配置中，当请求是由 `.html`拓展名组成时，视图解析器会去寻找一个匹配 `text/html` 的视图。`InternalResourceViewResolver` 提供了 `text/html` 的映射。当请求是由 `.atom` 拓展名组成时，视图解析器会去寻找一个匹配 `.atom` 的视图。这个视图 `BeanNameViewResolver` 有提供，若视图名称为 `content`,则映射到 `SampleContentAtomView`。当请求是由 `.json`拓展名组成时，会选择 `DefaultViews` 提供的 `MappingJackson2JsonView` 接口，注意这个映射与视图名称无关。另外，客户端的请求不带拓展名，通过 `Accept` 头字段指定媒体类型时，也会执行和文件拓展名一样的处理逻辑。
+
+[NOTE]
+====
+当 `ContentNegotiatingViewResolver` 没有明确定义一系列视图解析器时，会随机使用应用上下文的任一解析器。
+====
+
+可以根据 `http://localhost/content.atom` 或 `http://localhost/content`和`Accept`字段值为 application/atom+xml 两种情况，返回原子视图的控制器代码如下：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Controller
+	public class ContentController {
+
+		private List<SampleContent> contentList = new ArrayList<SampleContent>();
+
+		@RequestMapping(value="/content", method=RequestMethod.GET)
+		public ModelAndView getContent() {
+			ModelAndView mav = new ModelAndView();
+			mav.setViewName("content");
+			mav.addObject("sampleContentList", contentList);
+			return mav;
+		}
+
+	}
+----
+
+
+
+
+[[mvc-flash-attributes]]
+=== 使用 flash 属性
+Flash attributes provide a way for one request to store attributes intended for use in
+another. This is most commonly needed when redirecting -- for example, the
+__Post/Redirect/Get__ pattern. Flash attributes are saved temporarily before the
+redirect (typically in the session) to be made available to the request after the
+redirect and removed immediately.
+
+Spring MVC has two main abstractions in support of flash attributes. `FlashMap` is used
+to hold flash attributes while `FlashMapManager` is used to store, retrieve, and manage
+`FlashMap` instances.
+
+Flash attribute support is always "on" and does not need to enabled explicitly although
+if not used, it never causes HTTP session creation. On each request there is an "input"
+`FlashMap` with attributes passed from a previous request (if any) and an "output"
+`FlashMap` with attributes to save for a subsequent request. Both `FlashMap` instances
+are accessible from anywhere in Spring MVC through static methods in
+`RequestContextUtils`.
+
+Annotated controllers typically do not need to work with `FlashMap` directly. Instead an
+`@RequestMapping` method can accept an argument of type `RedirectAttributes` and use it
+to add flash attributes for a redirect scenario. Flash attributes added via
+`RedirectAttributes` are automatically propagated to the "output" FlashMap. Similarly
+after the redirect attributes from the "input" `FlashMap` are automatically added to the
+`Model` of the controller serving the target URL.
+
+.Matching requests to flash attributes
+****
+The concept of flash attributes exists in many other Web frameworks and has proven to be
+exposed sometimes to concurrency issues. This is because by definition flash attributes
+are to be stored until the next request. However the very "next" request may not be the
+intended recipient but another asynchronous request (e.g. polling or resource requests)
+in which case the flash attributes are removed too early.
+
+To reduce the possibility of such issues, `RedirectView` automatically "stamps"
+`FlashMap` instances with the path and query parameters of the target redirect URL. In
+turn the default `FlashMapManager` matches that information to incoming requests when
+looking up the "input" `FlashMap`.
+
+This does not eliminate the possibility of a concurrency issue entirely but nevertheless
+reduces it greatly with information that is already available in the redirect URL.
+Therefore the use of flash attributes is recommended mainly for redirect scenarios .
+****
+
+
+
+
+[[mvc-uri-building]]
+=== 构建 URI
+
+Spring MVC 提供了构建和编码 URI 的机制，这种机制的使用需要通过 `UriComponentsBuilder` 和 `UriComponents`.
+
+如下，你可以如此展开和编码 URI 模版字符串：
+For example you can expand and encode a URI template string:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	UriComponents uriComponents = UriComponentsBuilder.fromUriString(
+			"http://example.com/hotels/{hotel}/bookings/{booking}").build();
+
+	URI uri = uriComponents.expand("42", "21").encode().toUri();
+----
+
+注意，`UriComponents` 是不可变的；如果有需要的，`expand()` 和 `encode()` 操作会返回一个新的实例。
+Note that `UriComponents` is immutable and the `expand()` and `encode()` operations
+return new instances if necessary.
+
+你可以单独使用一个 URI 原件展开和编码 URI 模版字符串：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	UriComponents uriComponents = UriComponentsBuilder.newInstance()
+			.scheme("http").host("example.com").path("/hotels/{hotel}/bookings/{booking}").build()
+			.expand("42", "21")
+			.encode();
+----
+
+Servlet 环境中，`ServletUriComponentsBuilder` 的子类提供了从 Servlet 请求复制 URL 信息的静态方法：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	HttpServletRequest request = ...
+
+	// 重用 host, scheme, port, path 和 query 
+	// 替换 "accountId" 查询参数
+
+	ServletUriComponentsBuilder ucb = ServletUriComponentsBuilder.fromRequest(request)
+			.replaceQueryParam("accountId", "{id}").build()
+			.expand("123")
+			.encode();
+----
+
+另外，你也可以复制上下文和路径信息的某个子集，
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	// 重用 host，port 和 上下文路径
+	// 将 "/accounts" 附加到路径中
+
+	ServletUriComponentsBuilder ucb = ServletUriComponentsBuilder.fromContextPath(request)
+			.path("/accounts").build()
+----
+
+若 `DispatcherServlet` 是通过名称映射的（如，`/main/*`),你也可获取到 servlet 映射的文字部分：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	// 重用 host，port 和 上下文路径
+	// 将 Servlet 映射的文字部分附加到路径中
+	// 将 "/accounts" 附加到路径中
+
+	ServletUriComponentsBuilder ucb = ServletUriComponentsBuilder.fromServletMapping(request)
+			.path("/accounts").build()
+----
+
+[[mvc-links-to-controllers]]
+==== 根据控制器和方法构建 URI
+
+Spring MVC 还提供了另外一种构建和编码 URI 的机制，这种机制可根据应用中对应的控制器和方法来生成 URI。
+
+Spring MVC provides another mechanism for building and encoding URIs that link to
+Controllers and methods defined within an application.
+{javadoc-baseurl}/org/springframework/web/servlet/mvc/method/annotation/MvcUriComponentsBuilder.html[`MvcUriComponentsBuilder`] 提供了这种机制，这个类继承了 `UriComponentsBuilder`。
+
+假设控制器的定义如下:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Controller
+	@RequestMapping("/hotels/{hotel}")
+	public class BookingController {
+
+		@RequestMapping("/bookings/{booking}")
+		public String getBooking(@PathVariable Long booking) {
+
+		// ...
+
+	}
+----
+
+现在使用 `MvcUriComponentsBuilder` ，那前面构建的例子可以这样写：
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	UriComponents uriComponents = MvcUriComponentsBuilder
+		.fromMethodName(BookingController.class, "getBooking",21).buildAndExpand(42);
+
+	URI uri = uriComponents.encode().toUri();
+----
+`MvcUriComponentsBuilder` 也可以创建 "模拟控制器"，相对控制器 API 来说，`MvcUriComponentsBuilder`可通过代码来创建 URI。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	UriComponents uriComponents = MvcUriComponentsBuilder
+		.fromMethodCall(on(BookingController.class).getBooking(21)).buildAndExpand(42);
+
+	URI uri = uriComponents.encode().toUri();
+----
+
+[[mvc-links-to-controllers-from-views]]
+==== Building URIs to Controllers and methods from views
+
+It is also useful to build links to annotated controllers from views (e.g. JSP).
+This can be done through a method on `MvcUriComponentsBuilder` which refers to mappings
+by name called `fromMappingName`.
+
+As of 4.1 every `@RequestMapping` is assigned a default name based on the
+capital letters of the class and the full method name. For example, the method `getFoo` in class
+`FooController` is assigned the name "FC#getFoo". This naming strategy is pluggable
+by implementing `HandlerMethodMappingNamingStrategy` and configuring it on your
+`RequestMappingHandlerMapping`. Furthermore the `@RequestMapping` annotation includes
+a name attribute that can be used to override the default strategy.
+
+[NOTE]
+====
+指定的请求匹配名称会在启动时以 TRACE 级别输出日志。
+====
+Spring JSP 标签库提供的 `mvcUrl` 函数，可以用来准备控制器方法的链接，原理就是基于上述机制。
+
+样例：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+    @RequestMapping("/people/{id}/addresses")
+    public class MyController {
+
+        @RequestMapping("/{country}")
+        public HttpEntity getAddress(@PathVariable String country) { ... }
+    }
+----
+
+如下 JSP 代码可以准备一个链接：
+
+[source,jsp,indent=0]
+[subs="verbatim,quotes"]
+----
+<%@ taglib uri="http://www.springframework.org/tags" prefix="s" %>
+...
+<a href="${s:mvcUrl(''PC#getPerson'').arg(0,''US'').buildAndExpand(''123'')}">Get Person</a>
+----
+
+
+
+
+
+[[mvc-localeresolver]]
+=== 使用本地化
+Sopring 架构中很大的一部分都支持国际化，Spring  web mvc 框架就是其中的一部分。`DispatcherServlet` 可以根据客户端本地化解析消息。这是通过 `LocaleResolver` 对象完成的。
+
+当请求到来时，`DispatcherServlet` 会查找本地化解析器，当找到时，会使用其来设置当前语言环境。通过 `RequestContext.getLocale()` 方法，你总可以获取到被本地化解析器解析的语言。
+
+除了自动完成本地化解析，对于某些特定情况，你也可以在映射 handler 时添加一个拦截器，动态指定当前语言环境，比如说基于请求中的一个参数。（handler 映射拦截器的详细信息可餐卡 <<mvc-handlermapping-interceptor>>）
+
+本地化解析器和拦截器在 `org.springframework.web.servlet.i18n` 包中定义，都可通过常规方式配置到应用里。这是 Spring 为本地化解析器提供的一种选择。
+
+
+
+[[mvc-timezone]]
+==== 获得时区信息
+除了获得客户端的本地化信息，也常常需要获得客户端的时区信息。
+`LocaleContextResolver` 接口拓展了 `LocaleResolver`，提供一个功能更加丰富的 `LocaleContext`，当中就包含了时区信息的获取。
+
+在需要的时候，可以通过 `RequestContext.getTimeZone()` 方法获取用户的时区。时区信息将自动应用 日期/时间转换器和格式化对象（使用 `ConversionService` 注册）。
+
+
+[[mvc-localeresolver-acceptheader]]
+==== AcceptHeaderLocaleResolver
+AcceptHeaderLocaleResolver 会检查客户端(如 web 浏览器）所发送请求的 `accept-language` 头字段，通常这个头字段包含了客户端操作系统的本地化信息。__注意，AcceptHeaderLocaleResolver 不支持时区信息的解析。
+
+
+
+[[mvc-localeresolver-cookie]]
+==== CookieLocaleResolver
+CookieLocaleResolver 会检查客户端的 `Cookie`，判断是否存在 `Locale` 或者 `TimeZone` 的 cookie。如果存在，会使用 `Locale` 或者 `TimeZone` 指定的信息。通过 CookieLocaleResolver 的属性竖着，除了可以指定 cookie 的有效时间，也可以指定的 cookie 的名称。如下，定义了一个 `CookieLocaleResolver`：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="localeResolver" class="org.springframework.web.servlet.i18n.CookieLocaleResolver">
+
+		<property name="cookieName" value="clientlanguage"/>
+
+		<!-- in seconds. If set to -1, the cookie is not persisted (deleted when browser shuts down) -->
+		<property name="cookieMaxAge" value="100000">
+
+	</bean>
+----
+
+[[mvc-cookie-locale-resolver-props-tbl]]
+.CookieLocaleResolver 属性
+[cols="1,1,4"]
+|===
+| 属性| 默认值| 描述
+
+| cookieName
+| 类名称 + LOCALE
+| cookie 的名称
+
+| cookieMaxAge
+| Integer.MAX_INT
+| cookie 在客户端的最长有效时间。当为 -1 时，cookie 不会被持久化，在客户端关闭浏览器之后就会失效。
+
+| cookiePath
+| /
+| 限定 cookie 在网站的可见范围。当指定 cookiePath 时，cookie 就只在当前路径或其下路径可见。
+|===
+
+
+
+[[mvc-localeresolver-session]]
+==== SessionLocaleResolver
+
+`SessionLocaleResolver` 允许你通过 session 检索 `Locale` 和 `TimeZone`，此 session 或许与用户的请求有关联。
+
+
+
+[[mvc-localeresolver-interceptor]]
+==== LocaleChangeInterceptor
+
+通过在 handler 映射中添加 `LocaleChangeInterceptor` 拦截器（可查看<<mvc-handlermapping>>），可以修改本地化信息。 `LocaleChangeInterceptor` 会检测请求里的某一个参数，进而修改本地化信息。它调用了上下文的 `LocaleResolver` 中的 `setLocale()` 方法。如下例子，实现了所有包含 `siteLanguage` 的 `*.view` 资源，其本地化信息都会被改变。所以，如 `http://www.sf.net/home.view?siteLanguage=nl` 这个请求，其网站语言会被修改为荷兰语。
+
+[source,xml,indent=0]
+[subs="verbatim"]
+----
+	<bean id="localeChangeInterceptor"
+			class="org.springframework.web.servlet.i18n.LocaleChangeInterceptor">
+		<property name="paramName" value="siteLanguage"/>
+	</bean>
+
+	<bean id="localeResolver"
+			class="org.springframework.web.servlet.i18n.CookieLocaleResolver"/>
+
+	<bean id="urlMapping"
+			class="org.springframework.web.servlet.handler.SimpleUrlHandlerMapping">
+		<property name="interceptors">
+			<list>
+				<ref bean="localeChangeInterceptor"/>
+			</list>
+		</property>
+		<property name="mappings">
+			<value>/**/*.view=someController</value>
+		</property>
+	</bean>
+----
+
+
+
+
+[[mvc-themeresolver]]
+=== 主题的使用
+
+
+
+[[mvc-themeresolver-introduction]]
+==== 主题概览
+可以使用 Spring MVC 矿建的主题来设置应用的整体外观，从而提供用户的体验。主题其实就是一系列静态资源的集合，特指那些影响应用的视觉感受的样式表和图片。
+
+
+[[mvc-themeresolver-defining]]
+==== 视图定义
+要在应用中应用视图，必须在应用中建立一个  `org.springframework.ui.context.ThemeSource` 的实现。`WebApplicationContext` 接口继承了 `ThemeSource`，不过其将职责委托给一个专用的实现。默认情况下，委托是一个 `org.springframework.ui.context.support.ResourceBundleThemeSource` 的实现，其负载从根路径加载各种属性文件。要在应用中使用自定义的 `ThemeSource` 实现或配置 `ResourceBundleThemeSource` 名称前缀，你都需要在应用上下文中配置一个名为 `themeSource` 的 bean，那 web 应用将会自动注入该 bean 并使用它。
+
+当使用 `ResourceBundleThemeSource` 时，主题会被定义到一个简易的属性文件里。在这个属性文件里会列出组成这个主题的所有资源，如下面这个样例：
+
+[literal]
+[subs="verbatim,quotes"]
+----
+styleSheet=/themes/cool/style.css
+background=/themes/cool/img/coolBg.jpg
+----
+
+上述属性的 key 就是视图代码中主题元件的名称。在 JSP 里，你可以使用 `spring:theme` 这个自定义的标签来指向这些主题元件，这个标签的使用类似于 `spring:message` 标签的使用。如下的 JSP 片段，演示了如何使用上述主题来自定义外观：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
+	<html>
+		<head>
+			<link rel="stylesheet" href="<spring:theme code=''styleSheet''/>" type="text/css"/>
+		</head>
+		<body style="background=<spring:theme code=''background''/>">
+			...
+		</body>
+	</html>
+----
+
+默认情况下，`ResourceBundleThemeSource` 会使用一个空的名称前缀。因为，属性文件都会从根路径加载。所以你可以在根路径（如`/WEB-INF/classes`）中放置一个 `cool.properties` 的主题定义。 `ResourceBundleThemeSource` 使用标准的 Java 资源束加载机制，允许定义国际化的主题。比如说，我们可以用一个 `/WEB-INF/classes/cool_nl.properties` 文件指向一张荷兰文的背景图片。
+
+
+[[mvc-themeresolver-resolving]]
+==== 主题解析器
+定义好主题后，接着你可以决定使用哪一个主题，`DispatcherServlet` 将会寻找一个名为 `themeResolver` 的 bean，从而确定使用哪一个 `ThemeResolver` 的实现。主题解析器的工作原理类似于 `LocaleResolver`.它可以为每一个特定的请求准备一个主题，也可以更改请求所使用的主题。如下列出了 Spring 提供的主题解析器：
+
+[[mvc-theme-resolver-impls-tbl]]
+.ThemeResolver 实现
+[cols="1,4"]
+|===
+| Class| 描述
+
+| `FixedThemeResolver`
+| 使用一个固定主题，通过属性 `defaultThemeName` 设置
+
+| `SessionThemeResolver`
+| 这个主题维持在用户的 HTTP 会话中。对于每一个会话，都只需要设置一次，不过，其不会在会话中保存。
+
+| `CookieThemeResolver`
+| 所选的主题将会保存到客户端的 cookie 中。 
+|===
+
+Spring 也提供了一个 `ThemeChangeInterceptor` 拦截器，可根据请求参数动态改变每一个请求的主题。
+
+
+

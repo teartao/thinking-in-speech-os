@@ -1,0 +1,87 @@
+[[mvc-config]]
+=== Configuring Spring MVC
+
+<<mvc-servlet-special-bean-types>> 和 <<mvc-servlet-config>> 解释了 Spring MVC 的专用 bean，以及 `DispatcherServlet` 所使用的默认实现。在本小节中，你将学习配置 Spring MVC 的其他两种方式：MVC Java 配置，以及 MVC XML 命名空间。
+
+MVC Java 配置和 MVC 命名空间均提供了类似的默认配置，以覆盖 `DispatcherServlet` 的默认值。其目标是使大多数应用程序不必创建相同的配置。另外还为配置 Spring MVC 提供了更高层次的结构，可以作为简易的起点，并且几乎不需要关于底层配置的先行知识。
+
+你可以根据自己的喜好来选用 MVC Java 配置或者 MVC 命名空间。另外，正如你将在下面所看到的，使用 MVC Java 配置会更容易了解底层配置，还能直接对创建的 Spring MVC bean 进行细粒度的自定义。不过我们还是从头开始吧。
+
+[[mvc-config-enable]]
+==== 启用 MVC Java 配置或 MVC XML 命名空间
+
+要启用 MVC Java 配置，需要在一个 `@Configuration` 类上添加 `@EnableWebMvc` 注解：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Configuration
+	@EnableWebMvc
+	public class WebConfig {
+
+	}
+----
+
+要在 XML 中达到相同的效果，可以在 DispatcherServlet 上下文中使用 `mvc:annotation-driven` 元素（如果没有定义 DispatcherServlet 上下文的话，就是在根上下文中）：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:mvc="http://www.springframework.org/schema/mvc"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="
+			http://www.springframework.org/schema/beans
+			http://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.springframework.org/schema/mvc
+			http://www.springframework.org/schema/mvc/spring-mvc.xsd">
+
+		<mvc:annotation-driven />
+
+	</beans>
+----
+
+上面的代码注册了 `RequestMappingHandlerMapping`、`RequestMappingHandlerAdapter` 以及 `ExceptionHandlerExceptionResolver` 等等。对于使用了 `@RequestMapping`、`@ExceptionHandler` 以及其他等等注解的注解式控制器方法，它们会帮助处理请求。
+
+它同时启用了以下内容：
+
+. Spring 3 风格的类型转换。这是通过 <<core-convert, ConversionService>> 实例，以及用于数据绑定的 JavaBeans PropertyEditor 来实现的。
+. 支持使用 `@NumberFormat` 注解 <<format, 格式化>> 数值字段。这是通过 `ConversionService` 来实现的。
+. 支持使用 `@DateTimeFormat` 注解 <<format, 格式化>> `Date`、`Calendar`、`Long` 和 Joda 时间字段。
+. 如果在类路径下存在 JSR-303 供应商的话，则支持使用 `@Valid` <<validation-mvc-jsr303, 验证>> `@Controller` 的输入。
+. `HttpMessageConverter` 支持来自 `@RequestMapping` 或 `@ExceptionHandler` 方法的 `@RequestBody` 方法参数和 `@ResponseBody` 方法返回值。
++
+这是 `mvc:annotation-driven` 设置的 HttpMessageConverter 的完整列表：
++
+.. `ByteArrayHttpMessageConverter` 用于转换字节数组。
+.. `StringHttpMessageConverter` 用于转换字符串。
+.. `ResourceHttpMessageConverter` 用于 `org.springframework.core.io.Resource` 和所有媒体类型之间的互相转换。
+.. `SourceHttpMessageConverter` 用于数据和 `javax.xml.transform.Source` 之间的互相转换。
+.. `FormHttpMessageConverter` 用于表单数据和 `MultiValueMap<String,String>` 之间的互相转换。
+.. `Jaxb2RootElementHttpMessageConverter` 用于 Java 对象与 XML 之间的互相转换 —— 前提类路径下存在 JAXB2 且不存在 Jackson 2 XML 扩展。
+.. `MappingJackson2HttpMessageConverter` 用于数据和 JSON 之间的互相转换 —— 前提是在类路径下存在 Jackson 2。
+.. `MappingJackson2XmlHttpMessageConverter` converts to/from XML -- added if
+https://github.com/FasterXML/jackson-dataformat-xml[Jackson 2 XML extension] is present
+on the classpath.
+用于数据和 XML之间的互相转换 —— 前提是类路径下存在 https://github.com/FasterXML/jackson-dataformat-xml[Jackson 2 XML 扩展]。
+.. `AtomFeedHttpMessageConverter` 用于转换 Atom 源 —— 前提是类路径下存在 Rome。
+.. `RssChannelHttpMessageConverter` 用于转换 RSS 源 —— 前提是类路径下存在 Rome。
+
+要了解如何进一步定制这些默认的转换器，可以参考<<mvc-config-message-converters>>。
+
+[NOTE]
+====
+为了提供更好的默认配置，使用了 `Jackson2ObjectMapperBuilder` 所创建的 `ObjectMapper` 实例来创建 Jackson JSON 和 XML 转换器。
+该构造器会使用下面的值来对设置 Jackson 的默认属性：
+
+. 禁用 `DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES`。
+. 禁用 `MapperFeature.DEFAULT_VIEW_INCLUSION`。
+
+如果在类路径下检测到了下面这些众所周知的模块，它也会自动地注册它们：
+
+. https://github.com/FasterXML/jackson-datatype-jdk7[jackson-datatype-jdk7]：支持 Java 7 的一些类型，比如 `java.nio.file.Path`。
+. https://github.com/FasterXML/jackson-datatype-joda[jackson-datatype-joda]：支持 Joda-Time 类型。
+. https://github.com/FasterXML/jackson-datatype-jsr310[jackson-datatype-jsr310]：Java 8 的 Date 和 Time API 类型。
+. https://github.com/FasterXML/jackson-datatype-jdk8[jackson-datatype-jdk8]：支持 Java 8 的其他一些类型，比如 `Optional`。
+====

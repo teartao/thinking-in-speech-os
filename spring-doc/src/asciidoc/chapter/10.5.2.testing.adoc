@@ -1,0 +1,67 @@
+[[spring-mvc-test-server-performing-requests]]
+====== 发起请求
+要发起请求，可以使用恰当的 HTTP 方法，以及 `MockHttpServletRequest` 相应的属性构造器方法。例如：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	mockMvc.perform(post("/hotels/{id}", 42).accept(MediaType.APPLICATION_JSON));
+----
+
+除了这些 HTTP 方法外，你也可以发起文件上传 file upload 请求，其内部会创建一个 `MockMultipartHttpServletRequest` 实例
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	mockMvc.perform(fileUpload("/doc").file("a1", "ABC".getBytes("UTF-8")));
+----
+
+可以使用 URI 模板（译者注：GET 方法）设置查询字符串：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	mockMvc.perform(get("/hotels?foo={foo}", "bar"));
+----
+
+或添加 Servlet 请求参数（译者注：POST 方法）：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	mockMvc.perform(get("/hotels").param("foo", "bar"));
+----
+
+就像在大部分情况下，如果应用程序依赖于 Servlet 请求参数，而且不检查查询字符串，
+那么应用程序不会关心参数是怎样被加进来的。但是请记住， URI 模板（译者注：GET 方法）提供的参数需要手工解码，
+而通过  `param(...)` 方法提供的参数会由 Servlet 容器自动解码。
+
+在大多数情况下，最好将上下文路径（context path） 和Servlet路径 （Servlet path ） 从请求URI 中分离。
+如果你一定要按照全路径进行测试，请确保设置了相应的 `contextPath`  和 `servletPath` ，请求映射才能正常工作。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	mockMvc.perform(get("/app/main/hotels/{id}").contextPath("/app").servletPath("/main"))
+----
+
+上面的代码中，每次发起请求都要设置 contextPath  和servletPath 是件很麻烦的事情，你可以在构造 `MockMVC` 时定义默认的请求属性。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class MyWebTests {
+
+		private MockMvc mockMvc;
+
+		@Before
+		public void setup() {
+			mockMvc = standaloneSetup(new AccountController())
+				.defaultRequest(get("/")
+				.contextPath("/app").servletPath("/main")
+				.accept(MediaType.APPLICATION_JSON).build();
+		}
+----
+
+在上述代码中，每次通过 `MockMVC` 发起请求时都会使用这些默认的请求属性。如果在一个特定的请求中设置了某个属性，就会覆盖它的默认值。
+这也就是为什么不需要设置 HTTP 方法和 URI 的默认值，因为每次发起请求都会设置，默认值都会被覆盖掉。

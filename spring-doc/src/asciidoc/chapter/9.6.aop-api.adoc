@@ -1,0 +1,76 @@
+[[aop-api-advised]]
+=== 操作通知对象
+当你创建了AOP代理, 你可以通过`org.springframework.aop.framework.Advised`接口来操作它们. 所有的
+AOP代理都可以类型转换到这个接口, 不管它实现的其他接口. 该接口包含了如下的方法:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	Advisor[] getAdvisors();
+
+	void addAdvice(Advice advice) throws AopConfigException;
+
+	void addAdvice(int pos, Advice advice) throws AopConfigException;
+
+	void addAdvisor(Advisor advisor) throws AopConfigException;
+
+	void addAdvisor(int pos, Advisor advisor) throws AopConfigException;
+
+	int indexOf(Advisor advisor);
+
+	boolean removeAdvisor(Advisor advisor) throws AopConfigException;
+
+	void removeAdvisor(int index) throws AopConfigException;
+
+	boolean replaceAdvisor(Advisor a, Advisor b) throws AopConfigException;
+
+	boolean isFrozen();
+----
+
+方法`getAdvisors()`将会返回一个包含了所有通知器的Advisor、拦截器或者其他的添加到工厂的通知类型. 如果
+你添加了一个Advisor, 那么在返回的通知器中其索引对应的对象将会对应你所添加的. 如果你添加的是拦截器或者
+其他的通知类型, Spring将会将其包装在一个拥有始终返回true的切入点的通知器中. 也就是说, 如果你添加了
+一个`MethodInterceptor`, 那么通知器中在对应索引处将会是一个`DefaultPointcutAdvisor`来表示你的
+`MethodInterceptor`以及一个匹配所有类和方法的切入点.
+
+`addAdvisor()`方法可以用来添加任何的Advisor. 通常用于持有切入点和通知器的advisor是通用的
+`DefaultPointcutAdvisor`, 它可以用于任何的通知器或者切入点(但不用于介绍).
+
+默认情况下, 添加或者删除advisor或者拦截器在代理创建好之后是可行的. 唯一的限制是有可能当你添加或者移除
+了一个介绍型advisor后, 从工厂类创建的已经存在了的代理不会表现出接口的修改来. (你可以通过从工厂重新获取
+一个新的代理来解决这个问题.)
+
+下面是一个转换面向切面代理(AOP proxy)为一个`Advised`接口并且检查和操作他的通知器的简单例子:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	Advised advised = (Advised) myObject;
+	Advisor[] advisors = advised.getAdvisors();
+	int oldAdvisorCount = advisors.length;
+	System.out.println(oldAdvisorCount + " advisors");
+
+	// 添加通知器例如不带切入点的拦截器
+	// 将会匹配所有的代理方法
+	// 可用于拦截器、在返回或者抛出异常之前、之后
+	advised.addAdvice(new DebugInterceptor());
+
+	// 使用切入点添加选择的通知器
+	advised.addAdvisor(new DefaultPointcutAdvisor(mySpecialPointcut, myAdvice));
+
+	assertEquals("Added two advisors", oldAdvisorCount + 2, advised.getAdvisors().length);
+----
+
+[NOTE]
+====
+对业务对象修改通知器是否是明智的(没有双关语意), 即使那是没有疑问的合法使用, 这是富有争议的. 然而, 它在
+开发中是很有用的: 例如, 在测试中. 我有时候发觉它是很有用的用来向拦截器的表单里面添加代码或者其他通知器,
+使得进入我想测试的方法调用. (例如, 通知器可以进入一个方法创建好的事务中: 例如, 在标记事务回滚之前, 运行
+一个SQL来检查数据库已经被正确的更新了.)
+====
+
+取决于你是怎样创建的代理, 你通常都可以设置一个`frozen`标志位, 这样`Advised` `isFrozen()`方法都将
+返回true, 并且任何试图通过添加或者移除修改通知器都将产生`AopConfigException`. 一个advised对象的封冻
+状态的能力在某些情况下是很有用的, 例如, 阻止调用代码来移除安全拦截器. 它也可以被用于Spring 1.1中来允许
+积极的优化如果运行时的通知器修改是已知的不需要的.
+

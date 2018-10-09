@@ -1,0 +1,101 @@
+[[cci-objects-mapping-comm-area-example]]
+==== Example for MappingCommAreaOperation usage
+
+In this section, the usage of the `MappingCommAreaOperation` will be shown: accessing a
+CICS with ECI mode with the IBM CICS ECI connector.
+
+Firstly, the CCI `InteractionSpec` needs to be initialized to specify which CICS program
+to access and how to interact with it.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public abstract class EciMappingOperation extends MappingCommAreaOperation {
+
+		public EciMappingOperation(ConnectionFactory connectionFactory, String programName) {
+			setConnectionFactory(connectionFactory);
+			ECIInteractionSpec interactionSpec = new ECIInteractionSpec(),
+			interactionSpec.setFunctionName(programName);
+			interactionSpec.setInteractionVerb(ECIInteractionSpec.SYNC_SEND_RECEIVE);
+			interactionSpec.setCommareaLength(30);
+			setInteractionSpec(interactionSpec);
+			setOutputRecordCreator(new EciOutputRecordCreator());
+		}
+
+		private static class EciOutputRecordCreator implements RecordCreator {
+			public Record createRecord(RecordFactory recordFactory) throws ResourceException {
+				return new CommAreaRecord();
+			}
+		}
+
+	}
+----
+
+The abstract `EciMappingOperation` class can then be subclassed to specify mappings
+between custom objects and `Records`.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class MyDaoImpl extends CciDaoSupport implements MyDao {
+
+		public OutputObject getData(Integer id) {
+			EciMappingOperation query = new EciMappingOperation(getConnectionFactory(), "MYPROG") {
+
+				protected abstract byte[] objectToBytes(Object inObject) throws IOException {
+					Integer id = (Integer) inObject;
+					return String.valueOf(id);
+				}
+
+				protected abstract Object bytesToObject(byte[] bytes) throws IOException;
+					String str = new String(bytes);
+					String field1 = str.substring(0,6);
+					String field2 = str.substring(6,1);
+					String field3 = str.substring(7,1);
+					return new OutputObject(field1, field2, field3);
+				}
+			});
+
+			return (OutputObject) query.execute(new Integer(id));
+		}
+
+	}
+----
+
+The corresponding configuration of Spring beans could look as follows in non-managed mode:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="managedConnectionFactory" class="com.ibm.connector2.cics.ECIManagedConnectionFactory">
+		<property name="serverName" value="TXSERIES"/>
+		<property name="connectionURL" value="local:"/>
+		<property name="userName" value="CICSUSER"/>
+		<property name="password" value="CICS"/>
+	</bean>
+
+	<bean id="connectionFactory" class="org.springframework.jca.support.LocalConnectionFactoryBean">
+		<property name="managedConnectionFactory" ref="managedConnectionFactory"/>
+	</bean>
+
+	<bean id="component" class="MyDaoImpl">
+		<property name="connectionFactory" ref="connectionFactory"/>
+	</bean>
+----
+
+In managed mode (that is, in a Java EE environment), the configuration could look as
+follows:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<jee:jndi-lookup id="connectionFactory" jndi-name="eis/cicseci"/>
+
+	<bean id="component" class="MyDaoImpl">
+		<property name="connectionFactory" ref="connectionFactory"/>
+	</bean>
+----
+
+
+
+

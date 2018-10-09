@@ -1,0 +1,50 @@
+[[cache-annotations-caching]]
+==== @Caching annotation
+
+There are cases when multiple annotations of the same type, such as `@CacheEvict` or
+`@CachePut` need to be specified, for example because the condition or the key
+expression is different between different caches. Unfortunately Java does not support
+such declarations however there is a workaround - using an __enclosing__ annotation, in
+this case, `@Caching`. `@Caching` allows multiple nested `@Cacheable`, `@CachePut` and
+`@CacheEvict` to be used on the same method:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Caching(evict = { @CacheEvict("primary"), @CacheEvict(value="secondary", key="#p0") })
+	public Book importBooks(String deposit, Date date)
+----
+
+
+[[cache-annotations-config]]
+==== @CacheConfig annotation
+
+So far we have seen that caching operations offered many customization options and
+these can be set on an operation basis. However, some of the customization options
+can be tedious to configure if they apply to all operations of the class. For
+instance, specifying the name of the cache to use for every cache operation of the
+class could be replaced by a single class-level definition. This is where `@CacheConfig`
+comes into play.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	**@CacheConfig("books")**
+	public class BookRepositoryImpl implements BookRepository {
+
+		@Cacheable
+		public Book findBook(ISBN isbn) {...}
+	}
+----
+
+`@CacheConfig` is a class-level annotation that allows to share the cache names, the custom
+`KeyGenerator`, the custom `CacheManager` and finally the custom `CacheResolver`. Placing
+this annotation on the class does not turn on any caching operation.
+
+An operation-level customization will always override a customization set on `@CacheConfig`. This
+gives therefore three levels of customizations per cache operation:
+
+* Globally configured, available for `CacheManager`, `KeyGenerator`
+* At class level, using `@CacheConfig`
+* At the operation level
+

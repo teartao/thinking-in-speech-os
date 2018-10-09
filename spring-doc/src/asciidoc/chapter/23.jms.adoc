@@ -1,0 +1,166 @@
+[[jms]]
+== JMS (Java消息服务 )
+
+
+
+
+[[jms-introduction]]
+=== 介绍
+Spring整合JMS，就像对JDBC API的整合一样，简化了 JMS API的使用。JMS大概可以分为两个功能区，消息生产和消费。
+`JmsTemplate`类用于消息生产和同步消息的接收。对于异步消息的接收与Java EE的消息驱动bean风格相似，Spring提
+供大量的消息监听容器用于创建消息驱动POJOs(MDPs)。Spring也支持声明式方式创建消息监听。
+`org.springframework.jms.core`包提供了使用JMS的核心功能。它包含了JMS模板类，通过处理资源的创建和释放，简化
+了JMS的使用，更像是`JdbcTemplate`类为JDBC所做的。Spring模板类共同的设计准则是提供帮助器方法执行通用的操作和更
+复杂的使用，将处理任务的本质委托给实现回调接口的用户。JMS模板遵循同样的设计准则，提供了多种方便的方法用于发送消息，异
+步接收消息，还提供JMS会话和消息生产者给用户。`org.springframework.jms.support`包提供了`JMSException`的
+转换功能，将受检查的`JMSException`层转换到不受检查异常的镜像层。如果有一个受检查的`javax.jms.JMSException`
+类的子类，这个子类异常被封装到了不受检查的`UncategorizedJmsException`异常中。 
+`org.springframework.jms.support.converter`包提供一个 `MessageConverter`抽象层用于Java对象 和 JMS消
+息间的相互转换。 
+`org.springframework.jms.support.destination`包提供多种策略管理JMS目的地，如为存储在JNDI的目的地提供定位器。 
+`org.springframework.jms.annotation`包提供必要的基础支持使用`@JmsListener`注解驱动的端点侦听器。
+`org.springframework.jms.config`包提供解析器实现`jms`命名空间以及java配置支持监听器容器配置和创建监听器端。
+最后， `org.springframework.jms.connection`包提供了`ConnectionFactory`接口的实现，适合用在独立的应用程序中。
+它也 包含Spring的`PlatformTransactionManager`接口实现，JMS模块中当前被命名为`JmsTransactionManager`。这使得
+JMS作为一种事务性资源无缝集成到Spring的事务管理机制中来。
+
+
+
+
+[[jms-using]]
+=== 使用 Spring JMS
+
+
+
+[[jms-jmstemplate]]
+==== JmsTemplate类
+
+`JmsTemplate`类是JMS核心包中的中心类，它简化了JMS的使用，因为当发送消息或者同步接收消息的时候，它处理资源的创建和释放。 
+
+代码使用`JmsTemplate`仅仅需要实现回调接口，给他们一个十分清晰的高层次的约定。`MessageCreator`回调接口通过调用`JmsTemplate`
+类中的代码提供`Session`，创建一则消息。为了允许JMS API更复杂的使用，回调接口`SessionCallback`提供给用户使用JMS session，
+`ProducerCallback`提供给用户成对的`Session`和`MessageProducer`。
+
+JMS API提供两种类型的发送方法，一种使用传递模式、优先级、存活时间任务服务质量参数，别一种没有使用服务质量参数而使用默认值。因为在
+`JmsTemplate`有许多发送方法，暴露出的bean属性对应QOS（Quarity of Service）参数的设置避免了大量发送方法的重复。同样地，异步接收方法使用属性`setReceiveTimeout`
+设置超时值。
+
+一些JMS提供者通过配置`ConnectionFactory`，管理方式上允许默认的QOS值的设置。`MessageProducer`的发送方法 `send(Destination destination, Message message)`
+在那些专有的JMS中将会使用不一样的QOS默认值。为了提供对QOS值一致的管理，`JmsTemplate`因此必须设置属性`isExplicitQosEnabled`为`true`明确的指定使用默认的QOS值。
+
+为了方便，`JmsTemplate`也提供一个基本的请求响应操作，允许在一个操作部分所创建的临时队列中发送消息并等待回复。
+
+[NOTE]
+====
+一旦被配置`JmsTemplate`类实例是线程安全的。这是很重要的，因为这意味着你可以配置`JmsTemplate`的单例并且把它安全注入到多个协作中。
+要明确的是， `JmsTemplate`是有状态的，它维持着对`ConnectionFactory`的引用，但这种状态不是会话状态。
+====
+从Spring框架4.1开始，`JmsMessagingTemplate`构建在 `JmsTemplate`基础之上，并且提供了和消息抽象层（如`org.springframework.messaging.Message`）
+的整合，这允许让你用通用的方式创建消息发送消息。
+
+
+[[jms-connections]]
+==== 连接
+`JmsTemplate`需要一个对`ConnectionFactory`的引用 。`ConnectionFactory`是JMS规范的一部分，作为
+使用JMS的入口点。它被客户端程序用作一个工厂创建与JMS提供者的连接并且压缩许多配置参数，大多数配置参数是消息提供
+商指定的，如SSL配置选择。
+
+当在EJB中使用JMS时，消息提供商提供了JMS接口的实现，所以他们可以参与到声明式事务管理和执行的连接池和会话中。
+为了使用这个实现，J2EE容器通常需要你声明一个JMS连接工厂作为EJB或者servlet部署描述器内部的一个`resource-ref`，
+客户端程序应该确保它引用`ConnectionFactory`被spring管理起来的实现。
+
+
+[[jms-caching-resources]]
+===== 缓存消息资源
+标准API涉及创建许多中间对象。要创建一个消息，下面的'API'步骤被执行
+
+[literal]
+[subs="verbatim,quotes"]
+----
+ConnectionFactory->Connection->Session->MessageProducer->send
+----
+在ConnectionFactory和Send操作之间有三个中间对象被创建和销毁。为了优化资源的使用提升性能，`ConnectionFactory`
+提供两种实现方式。
+
+[[jms-connection-factory]]
+===== SingleConnectionFactory类
+Spring提供`ConnectionFactory`接口的一个实现`SingleConnectionFactory`，它将在所有的`createConnection()`方法调用上返回
+同样的 `Connection`并且不需要调用 `close()`。这是用于测试和独立的环境，以至于同一个连接能够被`JmsTemplate`多次使用，`JmsTemplate`
+调用可能跨任意多个事务。`SingleConnectionFactory`参考一个标准的，通常来自于JNDI的`ConnectionFactory`。
+
+
+[[jdbc-connection-factory-caching]]
+===== CachingConnectionFactory类
+`CachingConnectionFactory`类扩展了 `SingleConnectionFactory`类的功能并且添加了会话缓存，消息生产者和消息消费者。
+初始化缓存大小设置为1，使用属性`SessionCacheSize`增加被缓存会话的数量。注意实际被缓存会话的数量将远比基于应答模式缓存的会
+话数量多，因此对于每一个`AcknowledgementMode`，当`SessionCacheSize`设置为1时，缓存的会话实例提升到4。当缓存的时候，
+消息生产者和消息消费者被缓存在他们自己的会话中同时也考虑到生产者和消费者的唯一属性。消息生产者基于他们的目的地被缓存，消息消费者
+基于目的地，选择器，非本地传送标识和持久订阅名称（假设创建持久消费者）的关键组成被缓存。
+
+
+
+[[jms-destinations]]
+==== 目的地管理
+目的地，就像连接工厂一样，是JMS管理的对象，可以在JNDI中存储和获取。当配置一个Spring应用上下文时，你可以使用JNDI工厂类
+`JndiObjectFactoryBean` / `<jee:jndi-lookup>`执行依赖注入，在你对JMS目的地对象的引用上面。然而，通常这种策略是
+麻烦的，如果在应用程序中有大量的目的地，或者如果独特的JMS提供商有先进的目的地管理功能。例如，这个先进的目的地管理是动态的创建
+目的地或者支持目的地的层次化命名空间的。`JmsTemplate`类委托一个目的地名的解析给实现`DestinationResolver`接口的一个
+JMS目的地对象。`DynamicDestinationResolver`被`JmsTemplate`使用，默认实现`DestinationResolver`并且提供动态
+目的地的解析。`JndiDestinationResolver`也被提供，作为目的在服务定位器包含在JNDI中，和ptionally falls back to the behavior
+包含在`DynamicDestinationResolver`中。
+
+
+很多时候在JMS应用程序中被使用的destinations只有在运行的时候才知道，因此不能够在部署应用程序的时候通过管理方式创建。
+这通常是因为在两个相互作用的系统组件之间，根据命名约定在运行时创建destinations。虽然动态的创建destinations并不是
+JMS规范的一部分，但大多数的厂商提供了这个功能。动态destinations根据用户的定义进行创建区别于临时的destinations，
+另外它并不总是在JNDI中注册。用于创建动态destinations的API在厂商之间是不一样的，因为与destination相关的属
+性是厂商特有的。然而，有时候厂商做一个简单实现选择，而忽略了JMS规范的警告，使用`TopicSession`类的`createTopic(
+String topicName)`方法或者`QueueSession`类的`createQueue(StringqueueName)`方法，加上默认的destinat
+ion属性配置，创建一个新的destination。根据厂商的实现，`DynamicDestinationResolver`也有可能创建一个实实在在的
+destination而不是对其进行解析。
+
+
+`JmsTemplate`使用布尔类型属性`pubSubDomain`进行配置，了解JMS哪个域被使用。默认是false,表示采用点对点的Queues。
+通过对`DestinationResolver`接口的实现，它决定了动态destination解析的行为。
+
+
+你也可以使用`JmsTemplate`类的`defaultDestination`属性配置默认的destination。默认的destination将用来发送和
+接收消息，不引用指定的destination。
+
+
+
+[[jms-mdp]]
+==== 消息监听容器
+在EJB中JMS消息最常用的一种是驱动消息驱动beans(MDBs)。Spring提供了一种创建消息驱动POJOs(MDPs)方案，不用将一个用户
+绑定到EJB容器中。（参看<<jms-asynchronousMessageReception>>了解更多Spring支持MDP的详细信息。）从Spring4.1
+开始，端点方法可以简单使用注解`@JmsListener`参看<<jms-annotated>>了解更多信息。
+
+
+一个消息监听容器用于接收JMS消息队列的消息并驱动`MessageListener`注入进来。它负责所有消息接收线程并分配给监听器处理。它
+是MDP和消息供应者间的桥梁，并且负责注册接收消息，参与事务，获取和释放资源，异常转换等等。这允许你写与接收消息（可能需要回应）
+相关的业务逻辑（可能复杂），并且delegates boilerplate JMS infrastructure concerns to the framework.
+
+
+有两个标准的JMS消息监听容器包含在Spring中，每一个都有它特殊的功能集。
+
+
+[[jms-mdp-simple]]
+===== SimpleMessageListenerContainer类
+这个消息监听容器是两种标准风格中比较简单的一个，它在启动时创建固定数量的JMS会话和消费者，使用标准的JMS方法`MessageConsumer.setMessageListener()`
+注册监听，并且让JMS提供者做监听回调。它不适于动态运行要求或者参与额外管理事务。兼容上，它与标准的JMS规范很近，但它通常情况下不兼容Java EE的JMS限制条件。
+
+[[jms-mdp-default]]
+===== DefaultMessageListenerContainer类
+这个消息监听容器用于大部分的案例中。与`SimpleMessageListenerContainer`相反的是，这个容器适于动态运行要求并且能参与额外管理事务。
+在配置`JtaTransactionManager`的时候，每一个被接收的消息使用XA事务注册，因此可能利用XA事务语法处理。这个监听容器在JMS供应者低要求，
+先进功能（如事务参与）和与JavaEE环境兼容性之间取得了平衡。
+
+容器缓存等级可以定制，注意当缓存不可用的时候，每一次消息接收，一个新的connection和新的session被创建。使用高负载的非持久化订阅可能导致
+消息丢失，在这种情况下，确保使用合适的缓存等级。
+
+This container also has recoverable capabilities when the broker goes down. By default,
+a simple `BackOff` implementation retries every 5 seconds. It is possible to specify
+a custom `BackOff` implementation for more fine-grained recovery options, see
+`ExponentialBackOff` for an example.
+
+

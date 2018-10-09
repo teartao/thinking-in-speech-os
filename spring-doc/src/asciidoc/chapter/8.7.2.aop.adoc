@@ -1,0 +1,145 @@
+[[aop-schema-params]]
+===== Advice parameters
+The schema based declaration style supports fully typed advice in the same way as
+described for the @AspectJ support - by matching pointcut parameters by name against
+advice method parameters. See <<aop-ataspectj-advice-params>> for details. If you wish
+to explicitly specify argument names for the advice methods (not relying on the
+detection strategies previously described) then this is done using the `arg-names`
+attribute of the advice element, which is treated in the same manner to the "argNames"
+attribute in an advice annotation as described in <<aop-ataspectj-advice-params-names>>.
+For example:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<aop:before
+		pointcut="com.xyz.lib.Pointcuts.anyPublicMethod() and @annotation(auditable)"
+		method="audit"
+		arg-names="auditable"/>
+----
+
+The `arg-names` attribute accepts a comma-delimited list of parameter names.
+
+Find below a slightly more involved example of the XSD-based approach that illustrates
+some around advice used in conjunction with a number of strongly typed parameters.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package x.y.service;
+
+	public interface FooService {
+
+		Foo getFoo(String fooName, int age);
+	}
+
+	public class DefaultFooService implements FooService {
+
+		public Foo getFoo(String name, int age) {
+			return new Foo(name, age);
+		}
+	}
+----
+
+Next up is the aspect. Notice the fact that the `profile(..)` method accepts a number of
+strongly-typed parameters, the first of which happens to be the join point used to
+proceed with the method call: the presence of this parameter is an indication that the
+`profile(..)` is to be used as `around` advice:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package x.y;
+
+	import org.aspectj.lang.ProceedingJoinPoint;
+	import org.springframework.util.StopWatch;
+
+	public class SimpleProfiler {
+
+		public Object profile(ProceedingJoinPoint call, String name, int age) throws Throwable {
+			StopWatch clock = new StopWatch("Profiling for ''" + name + "'' and ''" + age + "''");
+			try {
+				clock.start(call.toShortString());
+				return call.proceed();
+			} finally {
+				clock.stop();
+				System.out.println(clock.prettyPrint());
+			}
+		}
+	}
+----
+
+Finally, here is the XML configuration that is required to effect the execution of the
+above advice for a particular join point:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns:aop="http://www.springframework.org/schema/aop"
+		xsi:schemaLocation="
+			http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd">
+
+		<!-- this is the object that will be proxied by Spring's AOP infrastructure -->
+		<bean id="fooService" class="x.y.service.DefaultFooService"/>
+
+		<!-- this is the actual advice itself -->
+		<bean id="profiler" class="x.y.SimpleProfiler"/>
+
+		<aop:config>
+			<aop:aspect ref="profiler">
+
+				<aop:pointcut id="theExecutionOfSomeFooServiceMethod"
+					expression="execution(* x.y.service.FooService.getFoo(String,int))
+					and args(name, age)"/>
+
+				<aop:around pointcut-ref="theExecutionOfSomeFooServiceMethod"
+					method="profile"/>
+
+			</aop:aspect>
+		</aop:config>
+
+	</beans>
+----
+
+If we had the following driver script, we would get output something like this on
+standard output:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	import org.springframework.beans.factory.BeanFactory;
+	import org.springframework.context.support.ClassPathXmlApplicationContext;
+	import x.y.service.FooService;
+
+	public final class Boot {
+
+		public static void main(final String[] args) throws Exception {
+			BeanFactory ctx = new ClassPathXmlApplicationContext("x/y/plain.xml");
+			FooService foo = (FooService) ctx.getBean("fooService");
+			foo.getFoo("Pengo", 12);
+		}
+	}
+----
+
+[literal]
+[subs="verbatim,quotes"]
+----
+StopWatch 'Profiling for 'Pengo' and '12'': running time (millis) = 0
+-----------------------------------------
+ms     %     Task name
+-----------------------------------------
+00000  ?  execution(getFoo)
+----
+
+
+[[aop-ordering]]
+===== Advice ordering
+When multiple advice needs to execute at the same join point (executing method) the
+ordering rules are as described in <<aop-ataspectj-advice-ordering>>. The precedence
+between aspects is determined by either adding the `Order` annotation to the bean
+backing the aspect or by having the bean implement the `Ordered` interface.
+
+

@@ -1,0 +1,231 @@
+[[extensible-xml-custom-nested]]
+==== Nesting custom tags within custom tags
+This example illustrates how you might go about writing the various artifacts required
+to satisfy a target of the following configuration:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns:foo="http://www.foo.com/schema/component"
+		xsi:schemaLocation="
+			http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.foo.com/schema/component http://www.foo.com/schema/component/component.xsd">
+
+		<foo:component id="bionic-family" name="Bionic-1">
+			<foo:component name="Mother-1">
+				<foo:component name="Karate-1"/>
+				<foo:component name="Sport-1"/>
+			</foo:component>
+			<foo:component name="Rock-1"/>
+		</foo:component>
+
+	</beans>
+----
+
+The above configuration actually nests custom extensions within each other. The class
+that is actually configured by the above `<foo:component/>` element is the `Component`
+class (shown directly below). Notice how the `Component` class does __not__ expose a
+setter method for the `'components'` property; this makes it hard (or rather impossible)
+to configure a bean definition for the `Component` class using setter injection.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package com.foo;
+
+	import java.util.ArrayList;
+	import java.util.List;
+
+	public class Component {
+
+		private String name;
+		private List<Component> components = new ArrayList<Component> ();
+
+		// mmm, there is no setter method for the 'components'
+		public void addComponent(Component component) {
+			this.components.add(component);
+		}
+
+		public List<Component> getComponents() {
+			return components;
+		}
+
+		public String getName() {
+			return name;
+		}
+
+		public void setName(String name) {
+			this.name = name;
+		}
+
+	}
+----
+
+The typical solution to this issue is to create a custom `FactoryBean` that exposes a
+setter property for the `'components'` property.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package com.foo;
+
+	import org.springframework.beans.factory.FactoryBean;
+
+	import java.util.List;
+
+	public class ComponentFactoryBean implements FactoryBean<Component> {
+
+		private Component parent;
+		private List<Component> children;
+
+		public void setParent(Component parent) {
+			this.parent = parent;
+		}
+
+		public void setChildren(List<Component> children) {
+			this.children = children;
+		}
+
+		public Component getObject() throws Exception {
+			if (this.children != null && this.children.size() > 0) {
+				for (Component child : children) {
+					this.parent.addComponent(child);
+				}
+			}
+			return this.parent;
+		}
+
+		public Class<Component> getObjectType() {
+			return Component.class;
+		}
+
+		public boolean isSingleton() {
+			return true;
+		}
+
+	}
+----
+
+This is all very well, and does work nicely, but exposes a lot of Spring plumbing to the
+end user. What we are going to do is write a custom extension that hides away all of
+this Spring plumbing. If we stick to <<extensible-xml-introduction,the steps described
+previously>>, we'll start off by creating the XSD schema to define the structure of our
+custom tag.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+	<xsd:schema xmlns="http://www.foo.com/schema/component"
+			xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+			targetNamespace="http://www.foo.com/schema/component"
+			elementFormDefault="qualified"
+			attributeFormDefault="unqualified">
+
+		<xsd:element name="component">
+			<xsd:complexType>
+				<xsd:choice minOccurs="0" maxOccurs="unbounded">
+					<xsd:element ref="component"/>
+				</xsd:choice>
+				<xsd:attribute name="id" type="xsd:ID"/>
+				<xsd:attribute name="name" use="required" type="xsd:string"/>
+			</xsd:complexType>
+		</xsd:element>
+
+	</xsd:schema>
+----
+
+We'll then create a custom `NamespaceHandler`.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package com.foo;
+
+	import org.springframework.beans.factory.xml.NamespaceHandlerSupport;
+
+	public class ComponentNamespaceHandler extends NamespaceHandlerSupport {
+
+		public void init() {
+			registerBeanDefinitionParser("component", new ComponentBeanDefinitionParser());
+		}
+
+	}
+----
+
+Next up is the custom `BeanDefinitionParser`. Remember that what we are creating is a
+`BeanDefinition` describing a `ComponentFactoryBean`.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package com.foo;
+
+	import org.springframework.beans.factory.config.BeanDefinition;
+	import org.springframework.beans.factory.support.AbstractBeanDefinition;
+	import org.springframework.beans.factory.support.BeanDefinitionBuilder;
+	import org.springframework.beans.factory.support.ManagedList;
+	import org.springframework.beans.factory.xml.AbstractBeanDefinitionParser;
+	import org.springframework.beans.factory.xml.ParserContext;
+	import org.springframework.util.xml.DomUtils;
+	import org.w3c.dom.Element;
+
+	import java.util.List;
+
+	public class ComponentBeanDefinitionParser extends AbstractBeanDefinitionParser {
+
+		protected AbstractBeanDefinition parseInternal(Element element, ParserContext parserContext) {
+			return parseComponentElement(element);
+		}
+
+		private static AbstractBeanDefinition parseComponentElement(Element element) {
+			BeanDefinitionBuilder factory = BeanDefinitionBuilder.rootBeanDefinition(ComponentFactoryBean.class);
+			factory.addPropertyValue("parent", parseComponent(element));
+
+			List<Element> childElements = DomUtils.getChildElementsByTagName(element, "component");
+			if (childElements != null && childElements.size() > 0) {
+				parseChildComponents(childElements, factory);
+			}
+
+			return factory.getBeanDefinition();
+		}
+
+		private static BeanDefinition parseComponent(Element element) {
+			BeanDefinitionBuilder component = BeanDefinitionBuilder.rootBeanDefinition(Component.class);
+			component.addPropertyValue("name", element.getAttribute("name"));
+			return component.getBeanDefinition();
+		}
+
+		private static void parseChildComponents(List<Element> childElements, BeanDefinitionBuilder factory) {
+			ManagedList<BeanDefinition> children = new ManagedList<BeanDefinition>(childElements.size());
+			for (Element element : childElements) {
+				children.add(parseComponentElement(element));
+			}
+			factory.addPropertyValue("children", children);
+		}
+
+	}
+----
+
+Lastly, the various artifacts need to be registered with the Spring XML infrastructure.
+
+[literal]
+[subs="verbatim,quotes"]
+----
+# in 'META-INF/spring.handlers'
+http\://www.foo.com/schema/component=com.foo.ComponentNamespaceHandler
+----
+
+[literal]
+[subs="verbatim,quotes"]
+----
+# in 'META-INF/spring.schemas'
+http\://www.foo.com/schema/component/component.xsd=com/foo/component.xsd
+----
+
+
+

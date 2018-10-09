@@ -1,0 +1,71 @@
+[[aop-targetsource]]
+=== Using TargetSources
+Spring offers the concept of a __TargetSource__, expressed in the
+`org.springframework.aop.TargetSource` interface. This interface is responsible for
+returning the "target object" implementing the join point. The `TargetSource`
+implementation is asked for a target instance each time the AOP proxy handles a method
+invocation.
+
+Developers using Spring AOP don't normally need to work directly with TargetSources, but
+this provides a powerful means of supporting pooling, hot swappable and other
+sophisticated targets. For example, a pooling TargetSource can return a different target
+instance for each invocation, using a pool to manage instances.
+
+If you do not specify a TargetSource, a default implementation is used that wraps a
+local object. The same target is returned for each invocation (as you would expect).
+
+Let's look at the standard target sources provided with Spring, and how you can use them.
+
+[TIP]
+====
+
+When using a custom target source, your target will usually need to be a prototype
+rather than a singleton bean definition. This allows Spring to create a new target
+instance when required.
+====
+
+
+
+[[aop-ts-swap]]
+==== Hot swappable target sources
+The `org.springframework.aop.target.HotSwappableTargetSource` exists to allow the target
+of an AOP proxy to be switched while allowing callers to keep their references to it.
+
+Changing the target source's target takes effect immediately. The
+`HotSwappableTargetSource` is threadsafe.
+
+You can change the target via the `swap()` method on HotSwappableTargetSource as follows:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	HotSwappableTargetSource swapper = (HotSwappableTargetSource) beanFactory.getBean("swapper");
+	Object oldTarget = swapper.swap(newTarget);
+----
+
+The XML definitions required look as follows:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="initialTarget" class="mycompany.OldTarget"/>
+
+	<bean id="swapper" class="org.springframework.aop.target.HotSwappableTargetSource">
+		<constructor-arg ref="initialTarget"/>
+	</bean>
+
+	<bean id="swappable" class="org.springframework.aop.framework.ProxyFactoryBean">
+		<property name="targetSource" ref="swapper"/>
+	</bean>
+----
+
+The above `swap()` call changes the target of the swappable bean. Clients who hold a
+reference to that bean will be unaware of the change, but will immediately start hitting
+the new target.
+
+Although this example doesn't add any advice - and it's not necessary to add advice to
+use a `TargetSource` - of course any `TargetSource` can be used in conjunction with
+arbitrary advice.
+
+
+

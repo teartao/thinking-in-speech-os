@@ -1,0 +1,72 @@
+[[testcontext-ctx-management-caching]]
+====== Context caching
+
+Once the TestContext framework loads an `ApplicationContext` (or `WebApplicationContext`)
+for a test, that context will be cached and reused for __all__ subsequent tests that
+declare the same unique context configuration within the same test suite. To understand
+how caching works, it is important to understand what is meant by __unique__ and __test
+suite__.
+
+An `ApplicationContext` can be __uniquely__ identified by the combination of
+configuration parameters that are used to load it. Consequently, the unique combination
+of configuration parameters are used to generate a __key__ under which the context is
+cached. The TestContext framework uses the following configuration parameters to build
+the context cache key:
+
+* `locations` __(from @ContextConfiguration)__
+* `classes` __(from @ContextConfiguration)__
+* `contextInitializerClasses` __(from @ContextConfiguration)__
+* `contextLoader` __(from @ContextConfiguration)__
+* `parent` __(from @ContextHierarchy)__
+* `activeProfiles` __(from @ActiveProfiles)__
+* `propertySourceLocations` __(from @TestPropertySource)__
+* `propertySourceProperties` __(from @TestPropertySource)__
+* `resourceBasePath` __(from @WebAppConfiguration)__
+
+For example, if `TestClassA` specifies `{"app-config.xml", "test-config.xml"}` for the
+`locations` (or `value`) attribute of `@ContextConfiguration`, the TestContext framework
+will load the corresponding `ApplicationContext` and store it in a `static` context cache
+under a key that is based solely on those locations. So if `TestClassB` also defines
+`{"app-config.xml", "test-config.xml"}` for its locations (either explicitly or
+implicitly through inheritance) but does not define `@WebAppConfiguration`, a different
+`ContextLoader`, different active profiles, different context initializers, different
+test property sources, or a different parent context, then the same `ApplicationContext`
+will be shared by both test classes. This means that the setup cost for loading an
+application context is incurred only once (per test suite), and subsequent test execution
+is much faster.
+
+.Test suites and forked processes
+[NOTE]
+====
+The Spring TestContext framework stores application contexts in a __static__ cache. This
+means that the context is literally stored in a `static` variable. In other words, if
+tests execute in separate processes the static cache will be cleared between each test
+execution, and this will effectively disable the caching mechanism.
+
+To benefit from the caching mechanism, all tests must run within the same process or
+test suite. This can be achieved by executing all tests as a group within an IDE.
+Similarly, when executing tests with a build framework such as Ant, Maven, or Gradle it
+is important to make sure that the build framework does not __fork__ between tests. For
+example, if the
+http://maven.apache.org/plugins/maven-surefire-plugin/test-mojo.html#forkMode[forkMode]
+for the Maven Surefire plug-in is set to `always` or `pertest`, the TestContext
+framework will not be able to cache application contexts between test classes and the
+build process will run significantly slower as a result.
+====
+
+Since having a large number of application contexts loaded within a given test suite can
+cause the suite to take an unnecessarily long time to execute, it is often beneficial to
+know exactly how many contexts have been loaded and cached. To view the statistics for
+the underlying context cache, simply set the log level for the
+`org.springframework.test.context.cache` logging category to `DEBUG`.
+
+In the unlikely case that a test corrupts the application context and requires reloading
+-- for example, by modifying a bean definition or the state of an application object --
+you can annotate your test class or test method with `@DirtiesContext` (see the
+discussion of `@DirtiesContext` in <<integration-testing-annotations-spring>>). This
+instructs Spring to remove the context from the cache and rebuild the application
+context before executing the next test. Note that support for the `@DirtiesContext`
+annotation is provided by the `DirtiesContextTestExecutionListener` which is enabled by
+default.
+
+

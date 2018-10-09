@@ -1,0 +1,102 @@
+[[mvc-config-customize]]
+==== Customizing the Provided Configuration
+To customize the default configuration in Java you simply implement the
+`WebMvcConfigurer` interface or more likely extend the class `WebMvcConfigurerAdapter`
+and override the methods you need. Below is an example of some of the available methods
+to override. See
+{javadoc-baseurl}/org/springframework/web/servlet/config/annotation/WebMvcConfigurer.html[`WebMvcConfigurer`]
+for a list of all methods and the javadocs for further details:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Configuration
+	@EnableWebMvc
+	public class WebConfig extends WebMvcConfigurerAdapter {
+
+		@Override
+		protected void addFormatters(FormatterRegistry registry) {
+			// Add formatters and/or converters
+		}
+
+		@Override
+		public void configureMessageConverters(List<HttpMessageConverter<?>> converters) {
+			// Configure the list of HttpMessageConverters to use
+		}
+
+	}
+----
+
+To customize the default configuration of `<mvc:annotation-driven />` check what
+attributes and sub-elements it supports. You can view the
+http://schema.spring.io/mvc/spring-mvc.xsd[Spring MVC XML schema] or use the code
+completion feature of your IDE to discover what attributes and sub-elements are
+available. The sample below shows a subset of what is available:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<mvc:annotation-driven conversion-service="conversionService">
+		<mvc:message-converters>
+			<bean class="org.example.MyHttpMessageConverter"/>
+			<bean class="org.example.MyOtherHttpMessageConverter"/>
+		</mvc:message-converters>
+	</mvc:annotation-driven>
+
+	<bean id="conversionService" class="org.springframework.format.support.FormattingConversionServiceFactoryBean">
+		<property name="formatters">
+			<list>
+				<bean class="org.example.MyFormatter"/>
+				<bean class="org.example.MyOtherFormatter"/>
+			</list>
+		</property>
+	</bean>
+----
+
+
+
+[[mvc-config-interceptors]]
+==== Interceptors
+You can configure `HandlerInterceptors` or `WebRequestInterceptors` to be applied to all
+incoming requests or restricted to specific URL path patterns.
+
+An example of registering interceptors in Java:
+
+[source,java,indent=0]
+[subs="verbatim"]
+----
+	@Configuration
+	@EnableWebMvc
+	public class WebConfig extends WebMvcConfigurerAdapter {
+
+		@Override
+		public void addInterceptors(InterceptorRegistry registry) {
+			registry.addInterceptor(new LocaleInterceptor());
+			registry.addInterceptor(new ThemeInterceptor()).addPathPatterns("/**").excludePathPatterns("/admin/**");
+			registry.addInterceptor(new SecurityInterceptor()).addPathPatterns("/secure/*");
+		}
+
+	}
+----
+
+And in XML use the `<mvc:interceptors>` element:
+
+[source,xml,indent=0]
+[subs="verbatim"]
+----
+	<mvc:interceptors>
+		<bean class="org.springframework.web.servlet.i18n.LocaleChangeInterceptor" />
+		<mvc:interceptor>
+			<mvc:mapping path="/**"/>
+			<mvc:exclude-mapping path="/admin/**"/>
+			<bean class="org.springframework.web.servlet.theme.ThemeChangeInterceptor" />
+		</mvc:interceptor>
+		<mvc:interceptor>
+			<mvc:mapping path="/secure/*"/>
+			<bean class="org.example.SecurityInterceptor" />
+		</mvc:interceptor>
+	</mvc:interceptors>
+----
+
+
+

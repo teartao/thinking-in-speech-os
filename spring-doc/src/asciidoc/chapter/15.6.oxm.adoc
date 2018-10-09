@@ -1,0 +1,102 @@
+[[oxm-jibx-xsd]]
+===== XML Schema-based Configuration
+The `jibx-marshaller` tag configures a `org.springframework.oxm.jibx.JibxMarshaller`.
+Here is an example:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<oxm:jibx-marshaller id="marshaller" target-class="org.springframework.ws.samples.airline.schema.Flight"/>
+----
+
+Available attributes are:
+
+|===
+| Attribute| Description| Required
+
+| `id`
+| the id of the marshaller
+| no
+
+| `target-class`
+| the target class for this marshaller
+| yes
+
+| `bindingName`
+| the binding name used by this marshaller
+| no
+|===
+
+
+
+
+[[oxm-xstream]]
+=== XStream
+XStream is a simple library to serialize objects to XML and back again. It does not
+require any mapping, and generates clean XML.
+
+For more information on XStream, refer to the http://xstream.codehaus.org/[__XStream
+web site__]. The Spring integration classes reside in the
+`org.springframework.oxm.xstream` package.
+
+
+
+[[oxm-xstream-marshaller]]
+==== XStreamMarshaller
+The `XStreamMarshaller` does not require any configuration, and can be configured in an
+application context directly. To further customize the XML, you can set an__alias map__,
+which consists of string aliases mapped to classes:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<beans>
+		<bean id="xstreamMarshaller" class="org.springframework.oxm.xstream.XStreamMarshaller">
+			<property name="aliases">
+				<props>
+					<prop key="Flight">org.springframework.oxm.xstream.Flight</prop>
+				</props>
+			</property>
+		</bean>
+		...
+	</beans>
+----
+
+[WARNING]
+====
+
+By default, XStream allows for arbitrary classes to be unmarshalled, which can result in
+security vulnerabilities. As such, it is __not recommended to use the
+`XStreamMarshaller` to unmarshal XML from external sources__ (i.e. the Web), as this can
+result in __security vulnerabilities__. If you do use the `XStreamMarshaller` to
+unmarshal XML from an external source, set the `supportedClasses` property on the
+`XStreamMarshaller`, like so:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="xstreamMarshaller" class="org.springframework.oxm.xstream.XStreamMarshaller">
+		<property name="supportedClasses" value="org.springframework.oxm.xstream.Flight"/>
+		...
+	</bean>
+----
+
+This will make sure that only the registered classes are eligible for unmarshalling.
+
+Additionally, you can register
+{javadoc-baseurl}/org/springframework/oxm/xstream/XStreamMarshaller.html#setConverters(com.thoughtworks.xstream.converters.ConverterMatcher...)[custom
+converters] to make sure that only your supported classes can be unmarshalled. You might
+want to add a `CatchAllConverter` as the last converter in the list, in addition to
+converters that explicitly support the domain classes that should be supported. As a
+result, default XStream converters with lower priorities and possible security
+vulnerabilities do not get invoked.
+====
+
+NOTE: Note that XStream is an XML serialization library, not a data binding library.
+Therefore, it has limited namespace support. As such, it is rather unsuitable for usage
+within Web services.
+
+
+
+
+

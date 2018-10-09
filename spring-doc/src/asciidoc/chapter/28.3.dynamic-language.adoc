@@ -1,0 +1,134 @@
+[[dynamic-language-refreshable-beans]]
+===== Refreshable beans
+One of the (if not __the__) most compelling value adds of the dynamic language support
+in Spring is the__'refreshable bean'__ feature.
+
+A refreshable bean is a dynamic-language-backed bean that with a small amount of
+configuration, a dynamic-language-backed bean can monitor changes in its underlying
+source file resource, and then reload itself when the dynamic language source file is
+changed (for example when a developer edits and saves changes to the file on the
+filesystem).
+
+This allows a developer to deploy any number of dynamic language source files as part of
+an application, configure the Spring container to create beans backed by dynamic
+language source files (using the mechanisms described in this chapter), and then later,
+as requirements change or some other external factor comes into play, simply edit a
+dynamic language source file and have any change they make reflected in the bean that is
+backed by the changed dynamic language source file. There is no need to shut down a
+running application (or redeploy in the case of a web application). The
+dynamic-language-backed bean so amended will pick up the new state and logic from the
+changed dynamic language source file.
+
+[NOTE]
+====
+Please note that this feature is __off__ by default.
+====
+
+Let's take a look at an example to see just how easy it is to start using refreshable
+beans. To __turn on__ the refreshable beans feature, you simply have to specify exactly
+__one__ additional attribute on the `<lang:language/>` element of your bean definition.
+So if we stick with <<dynamic-language-a-first-example,the example>> from earlier in this
+chapter, here's what we would change in the Spring XML configuration to effect
+refreshable beans:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<beans>
+
+		<!-- this bean is now 'refreshable' due to the presence of the 'refresh-check-delay' attribute -->
+		<lang:groovy id="messenger"
+				refresh-check-delay="5000" <!-- switches refreshing on with 5 seconds between checks -->
+				script-source="classpath:Messenger.groovy">
+			<lang:property name="message" value="I Can Do The Frug" />
+		</lang:groovy>
+
+		<bean id="bookingService" class="x.y.DefaultBookingService">
+			<property name="messenger" ref="messenger" />
+		</bean>
+
+	</beans>
+----
+
+That really is all you have to do. The `'refresh-check-delay'` attribute defined on the
+`'messenger'` bean definition is the number of milliseconds after which the bean will be
+refreshed with any changes made to the underlying dynamic language source file. You can
+turn off the refresh behavior by assigning a negative value to the
+`'refresh-check-delay'` attribute. Remember that, by default, the refresh behavior is
+disabled. If you don't want the refresh behavior, then simply don't define the attribute.
+
+If we then run the following application we can exercise the refreshable feature; please
+do excuse the __'jumping-through-hoops-to-pause-the-execution'__ shenanigans in this
+next slice of code. The `System.in.read()` call is only there so that the execution of
+the program pauses while I (the author) go off and edit the underlying dynamic language
+source file so that the refresh will trigger on the dynamic-language-backed bean when
+the program resumes execution.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	import org.springframework.context.ApplicationContext;
+	import org.springframework.context.support.ClassPathXmlApplicationContext;
+	import org.springframework.scripting.Messenger;
+
+	public final class Boot {
+
+		public static void main(final String[] args) throws Exception {
+			ApplicationContext ctx = new ClassPathXmlApplicationContext("beans.xml");
+			Messenger messenger = (Messenger) ctx.getBean("messenger");
+			System.out.println(messenger.getMessage());
+			// pause execution while I go off and make changes to the source file...
+			System.in.read();
+			System.out.println(messenger.getMessage());
+		}
+	}
+----
+
+Let's assume then, for the purposes of this example, that all calls to the
+`getMessage()` method of `Messenger` implementations have to be changed such that the
+message is surrounded by quotes. Below are the changes that I (the author) make to the
+`Messenger.groovy` source file when the execution of the program is paused.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package org.springframework.scripting
+
+	class GroovyMessenger implements Messenger {
+
+		private String message = "Bingo"
+
+		public String getMessage() {
+			// change the implementation to surround the message in quotes
+			return "''" + this.message + "''"
+		}
+
+		public void setMessage(String message) {
+			this.message = message
+		}
+	}
+----
+
+When the program executes, the output before the input pause will be __I Can Do The
+Frug__. After the change to the source file is made and saved, and the program resumes
+execution, the result of calling the `getMessage()` method on the
+dynamic-language-backed `Messenger` implementation will be __'I Can Do The Frug'__
+(notice the inclusion of the additional quotes).
+
+It is important to understand that changes to a script will __not__ trigger a refresh if
+the changes occur within the window of the `'refresh-check-delay'` value. It is equally
+important to understand that changes to the script are __not__ actually 'picked up' until
+a method is called on the dynamic-language-backed bean. It is only when a method is
+called on a dynamic-language-backed bean that it checks to see if its underlying script
+source has changed. Any exceptions relating to refreshing the script (such as
+encountering a compilation error, or finding that the script file has been deleted) will
+result in a __fatal__ exception being propagated to the calling code.
+
+The refreshable bean behavior described above does __not__ apply to dynamic language
+source files defined using the `<lang:inline-script/>` element notation (see
+<<dynamic-language-beans-inline>>). Additionally, it __only__ applies to beans where
+changes to the underlying source file can actually be detected; for example, by code
+that checks the last modified date of a dynamic language source file that exists on the
+filesystem.
+
+

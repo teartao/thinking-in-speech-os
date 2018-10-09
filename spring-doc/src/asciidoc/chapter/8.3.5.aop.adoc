@@ -1,0 +1,48 @@
+[[aop-ataspectj-advice-proceeding-with-the-call]]
+====== Proceeding with arguments
+We remarked earlier that we would describe how to write a proceed call __with
+arguments__ that works consistently across Spring AOP and AspectJ. The solution is
+simply to ensure that the advice signature binds each of the method parameters in order.
+For example:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Around("execution(List<Account> find*(..)) && " +
+			"com.xyz.myapp.SystemArchitecture.inDataAccessLayer() && " +
+			"args(accountHolderNamePattern)")
+	public Object preProcessQueryPattern(ProceedingJoinPoint pjp,
+			String accountHolderNamePattern) throws Throwable {
+		String newPattern = preProcess(accountHolderNamePattern);
+		return pjp.proceed(new Object[] {newPattern});
+	}
+----
+
+In many cases you will be doing this binding anyway (as in the example above).
+
+
+[[aop-ataspectj-advice-ordering]]
+===== Advice ordering
+What happens when multiple pieces of advice all want to run at the same join point?
+Spring AOP follows the same precedence rules as AspectJ to determine the order of advice
+execution. The highest precedence advice runs first "on the way in" (so given two pieces
+of before advice, the one with highest precedence runs first). "On the way out" from a
+join point, the highest precedence advice runs last (so given two pieces of after
+advice, the one with the highest precedence will run second).
+
+When two pieces of advice defined in __different__ aspects both need to run at the same
+join point, unless you specify otherwise the order of execution is undefined. You can
+control the order of execution by specifying precedence. This is done in the normal
+Spring way by either implementing the `org.springframework.core.Ordered` interface in
+the aspect class or annotating it with the `Order` annotation. Given two aspects, the
+aspect returning the lower value from `Ordered.getValue()` (or the annotation value) has
+the higher precedence.
+
+When two pieces of advice defined in __the same__ aspect both need to run at the same
+join point, the ordering is undefined (since there is no way to retrieve the declaration
+order via reflection for javac-compiled classes). Consider collapsing such advice
+methods into one advice method per join point in each aspect class, or refactor the
+pieces of advice into separate aspect classes - which can be ordered at the aspect level.
+
+
+

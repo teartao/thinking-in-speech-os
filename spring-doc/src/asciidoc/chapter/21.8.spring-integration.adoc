@@ -1,0 +1,54 @@
+[[remoting-jms-client]]
+==== Client-side configuration
+The client merely needs to create a client-side proxy that will implement the agreed
+upon interface ( `CheckingAccountService`). The resulting object created off the back of
+the following bean definition can be injected into other client side objects, and the
+proxy will take care of forwarding the call to the server-side object via JMS.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://www.springframework.org/schema/beans
+			http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+		<bean id="checkingAccountService"
+				class="org.springframework.jms.remoting.JmsInvokerProxyFactoryBean">
+			<property name="serviceInterface" value="com.foo.CheckingAccountService"/>
+			<property name="connectionFactory" ref="connectionFactory"/>
+			<property name="queue" ref="queue"/>
+		</bean>
+
+	</beans>
+----
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package com.foo;
+
+	import org.springframework.context.ApplicationContext;
+	import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+	public class Client {
+
+		public static void main(String[] args) throws Exception {
+			ApplicationContext ctx = new ClassPathXmlApplicationContext(
+					new String[] {"com/foo/client.xml", "com/foo/jms.xml"});
+			CheckingAccountService service = (CheckingAccountService) ctx.getBean("checkingAccountService");
+			service.cancelAccount(new Long(10));
+		}
+
+	}
+----
+
+You may also wish to investigate the support provided by the
+http://lingo.codehaus.org/[Lingo] project, which (to quote the homepage blurb) "__... is
+a lightweight POJO based remoting and messaging library based on the Spring Framework's
+remoting libraries which extends it to support JMS.__"
+
+
+
+

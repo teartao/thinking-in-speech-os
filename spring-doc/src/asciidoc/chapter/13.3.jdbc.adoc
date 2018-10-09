@@ -1,0 +1,130 @@
+[[jdbc-JdbcTemplate]]
+==== JdbcTemplate
+
+The `JdbcTemplate` class is the central class in the JDBC core package. It handles the
+creation and release of resources, which helps you avoid common errors such as
+forgetting to close the connection. It performs the basic tasks of the core JDBC
+workflow such as statement creation and execution, leaving application code to provide
+SQL and extract results. The `JdbcTemplate` class executes SQL queries, update
+statements and stored procedure calls, performs iteration over ++ResultSet++s and
+extraction of returned parameter values. It also catches JDBC exceptions and translates
+them to the generic, more informative, exception hierarchy defined in the
+`org.springframework.dao` package.
+
+When you use the `JdbcTemplate` for your code, you only need to implement callback
+interfaces, giving them a clearly defined contract. The `PreparedStatementCreator`
+callback interface creates a prepared statement given a `Connection` provided by this
+class, providing SQL and any necessary parameters. The same is true for the
+`CallableStatementCreator` interface, which creates callable statements. The
+`RowCallbackHandler` interface extracts values from each row of a `ResultSet`.
+
+The `JdbcTemplate` can be used within a DAO implementation through direct instantiation
+with a `DataSource` reference, or be configured in a Spring IoC container and given to
+DAOs as a bean reference.
+[NOTE]
+====
+The `DataSource` should always be configured as a bean in the Spring IoC container. In
+the first case the bean is given to the service directly; in the second case it is given
+to the prepared template.
+====
+
+All SQL issued by this class is logged at the `DEBUG` level under the category
+corresponding to the fully qualified class name of the template instance (typically
+`JdbcTemplate`, but it may be different if you are using a custom subclass of the
+`JdbcTemplate` class).
+
+
+[[jdbc-JdbcTemplate-examples]]
+===== Examples of JdbcTemplate class usage
+This section provides some examples of `JdbcTemplate` class usage. These examples are
+not an exhaustive list of all of the functionality exposed by the `JdbcTemplate`; see
+the attendant javadocs for that.
+
+[[jdbc-JdbcTemplate-examples-query]]
+====== Querying (SELECT)
+Here is a simple query for getting the number of rows in a relation:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	int rowCount = this.jdbcTemplate.queryForObject("select count(*) from t_actor", Integer.class);
+----
+
+A simple query using a bind variable:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	int countOfActorsNamedJoe = this.jdbcTemplate.queryForObject(
+			"select count(*) from t_actor where first_name = ?", Integer.class, "Joe");
+----
+
+Querying for a `String`:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	String lastName = this.jdbcTemplate.queryForObject(
+			"select last_name from t_actor where id = ?",
+			new Object[]{1212L}, String.class);
+----
+
+Querying and populating a __single__ domain object:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	Actor actor = this.jdbcTemplate.queryForObject(
+			"select first_name, last_name from t_actor where id = ?",
+			new Object[]{1212L},
+			new RowMapper<Actor>() {
+				public Actor mapRow(ResultSet rs, int rowNum) throws SQLException {
+					Actor actor = new Actor();
+					actor.setFirstName(rs.getString("first_name"));
+					actor.setLastName(rs.getString("last_name"));
+					return actor;
+				}
+			});
+----
+
+Querying and populating a number of domain objects:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	List<Actor> actors = this.jdbcTemplate.query(
+			"select first_name, last_name from t_actor",
+			new RowMapper<Actor>() {
+				public Actor mapRow(ResultSet rs, int rowNum) throws SQLException {
+					Actor actor = new Actor();
+					actor.setFirstName(rs.getString("first_name"));
+					actor.setLastName(rs.getString("last_name"));
+					return actor;
+				}
+			});
+----
+
+If the last two snippets of code actually existed in the same application, it would make
+sense to remove the duplication present in the two `RowMapper` anonymous inner classes,
+and extract them out into a single class (typically a `static` inner class) that can
+then be referenced by DAO methods as needed. For example, it may be better to write the
+last code snippet as follows:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public List<Actor> findAllActors() {
+		return this.jdbcTemplate.query( "select first_name, last_name from t_actor", new ActorMapper());
+	}
+
+	private static final class ActorMapper implements RowMapper<Actor> {
+
+		public Actor mapRow(ResultSet rs, int rowNum) throws SQLException {
+			Actor actor = new Actor();
+			actor.setFirstName(rs.getString("first_name"));
+			actor.setLastName(rs.getString("last_name"));
+			return actor;
+		}
+	}
+----
+

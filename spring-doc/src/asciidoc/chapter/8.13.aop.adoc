@@ -1,0 +1,108 @@
+[[aop-ajlib-other]]
+==== Other Spring aspects for AspectJ
+In addition to the `@Configurable` aspect, `spring-aspects.jar` contains an AspectJ
+aspect that can be used to drive Spring's transaction management for types and methods
+annotated with the `@Transactional` annotation. This is primarily intended for users who
+want to use the Spring Framework's transaction support outside of the Spring container.
+
+The aspect that interprets `@Transactional` annotations is the
+`AnnotationTransactionAspect`. When using this aspect, you must annotate the
+__implementation__ class (and/or methods within that class), __not__ the interface (if
+any) that the class implements. AspectJ follows Java's rule that annotations on
+interfaces are __not inherited__.
+
+A `@Transactional` annotation on a class specifies the default transaction semantics for
+the execution of any __public__ operation in the class.
+
+A `@Transactional` annotation on a method within the class overrides the default
+transaction semantics given by the class annotation (if present). Methods with `public`,
+`protected`, and default visibility may all be annotated. Annotating `protected` and
+default visibility methods directly is the only way to get transaction demarcation for
+the execution of such methods.
+
+For AspectJ programmers that want to use the Spring configuration and transaction
+management support but don't want to (or cannot) use annotations, `spring-aspects.jar`
+also contains `abstract` aspects you can extend to provide your own pointcut
+definitions. See the sources for the `AbstractBeanConfigurerAspect` and
+`AbstractTransactionAspect` aspects for more information. As an example, the following
+excerpt shows how you could write an aspect to configure all instances of objects
+defined in the domain model using prototype bean definitions that match the
+fully-qualified class names:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public aspect DomainObjectConfiguration extends AbstractBeanConfigurerAspect {
+
+		public DomainObjectConfiguration() {
+			setBeanWiringInfoResolver(new ClassNameBeanWiringInfoResolver());
+		}
+
+		// the creation of a new bean (any object in the domain model)
+		protected pointcut beanCreation(Object beanInstance) :
+			initialization(new(..)) &&
+			SystemArchitecture.inDomainModel() &&
+			this(beanInstance);
+
+	}
+----
+
+
+
+[[aop-aj-configure]]
+==== Configuring AspectJ aspects using Spring IoC
+When using AspectJ aspects with Spring applications, it is natural to both want and
+expect to be able to configure such aspects using Spring. The AspectJ runtime itself is
+responsible for aspect creation, and the means of configuring the AspectJ created
+aspects via Spring depends on the AspectJ instantiation model (the '++per-xxx++' clause)
+used by the aspect.
+
+The majority of AspectJ aspects are __singleton__ aspects. Configuration of these
+aspects is very easy: simply create a bean definition referencing the aspect type as
+normal, and include the bean attribute `'factory-method="aspectOf"'`. This ensures that
+Spring obtains the aspect instance by asking AspectJ for it rather than trying to create
+an instance itself. For example:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="profiler" class="com.xyz.profiler.Profiler"
+			**factory-method="aspectOf"**>
+
+		<property name="profilingStrategy" ref="jamonProfilingStrategy"/>
+	</bean>
+----
+
+Non-singleton aspects are harder to configure: however it is possible to do so by
+creating prototype bean definitions and using the `@Configurable` support from
+`spring-aspects.jar` to configure the aspect instances once they have bean created by
+the AspectJ runtime.
+
+If you have some @AspectJ aspects that you want to weave with AspectJ (for example,
+using load-time weaving for domain model types) and other @AspectJ aspects that you want
+to use with Spring AOP, and these aspects are all configured using Spring, then you will
+need to tell the Spring AOP @AspectJ autoproxying support which exact subset of the
+@AspectJ aspects defined in the configuration should be used for autoproxying. You can
+do this by using one or more `<include/>` elements inside the `<aop:aspectj-autoproxy/>`
+declaration. Each `<include/>` element specifies a name pattern, and only beans with
+names matched by at least one of the patterns will be used for Spring AOP autoproxy
+configuration:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<aop:aspectj-autoproxy>
+		<aop:include name="thisBean"/>
+		<aop:include name="thatBean"/>
+	</aop:aspectj-autoproxy>
+----
+
+[NOTE]
+====
+Do not be misled by the name of the `<aop:aspectj-autoproxy/>` element: using it will
+result in the creation of __Spring AOP proxies__. The @AspectJ style of aspect
+declaration is just being used here, but the AspectJ runtime is __not__ involved.
+====
+
+
+

@@ -1,0 +1,76 @@
+[[cci-using-dao]]
+==== DAO support
+Spring's CCI support provides a abstract class for DAOs, supporting injection of a
+`ConnectionFactory` or a `CciTemplate` instances. The name of the class is
+`CciDaoSupport`: It provides simple `setConnectionFactory` and `setCciTemplate` methods.
+Internally, this class will create a `CciTemplate` instance for a passed-in
+`ConnectionFactory`, exposing it to concrete data access implementations in subclasses.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public abstract class CciDaoSupport {
+
+		public void setConnectionFactory(ConnectionFactory connectionFactory) {
+			// ...
+		}
+
+		public ConnectionFactory getConnectionFactory() {
+			// ...
+		}
+
+		public void setCciTemplate(CciTemplate cciTemplate) {
+			// ...
+		}
+
+		public CciTemplate getCciTemplate() {
+			// ...
+		}
+
+	}
+----
+
+
+
+[[automatic-output-generation]]
+==== Automatic output record generation
+If the connector used only supports the `Interaction.execute(..)` method with input and
+output records as parameters (that is, it requires the desired output record to be
+passed in instead of returning an appropriate output record), you can set the
+`outputRecordCreator` property of the `CciTemplate` to automatically generate an output
+record to be filled by the JCA connector when the response is received. This record will
+be then returned to the caller of the template.
+
+This property simply holds an implementation of the `RecordCreator` interface, used for
+that purpose. The `RecordCreator` interface has already been discussed in
+<<cci-record-creator>>. The `outputRecordCreator` property must be directly specified on
+the `CciTemplate`. This could be done in the application code like so:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	cciTemplate.setOutputRecordCreator(new EciOutputRecordCreator());
+----
+
+Or (recommended) in the Spring configuration, if the `CciTemplate` is configured as a
+dedicated bean instance:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="eciOutputRecordCreator" class="eci.EciOutputRecordCreator"/>
+
+	<bean id="cciTemplate" class="org.springframework.jca.cci.core.CciTemplate">
+		<property name="connectionFactory" ref="eciConnectionFactory"/>
+		<property name="outputRecordCreator" ref="eciOutputRecordCreator"/>
+	</bean>
+----
+
+[NOTE]
+====
+As the `CciTemplate` class is thread-safe, it will usually be configured as a shared
+instance.
+====
+
+
+

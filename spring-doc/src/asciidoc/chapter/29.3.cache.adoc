@@ -1,0 +1,53 @@
+[[cache-annotations-cacheable-key]]
+===== 自定义键值声明
+由于缓存是通用的，因此目标方法很可能具有不能简单地映射到缓存结构之上的各种签名。当目标方法具有多个参数时，这一点往往变得明显，其中只有一些参数适合于缓存（而其余的仅由方法逻辑使用）。例如：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Cacheable("books")
+	public Book findBook(ISBN isbn, boolean checkWarehouse, boolean includeUsed)
+----
+
+乍一看，虽然这两个`boolean`参数影响着书籍的获取方式，但它们对于缓存来说没有用处。更进一步，如果两者之中只有一个是重要的，而另一个则不重要呢？
+
+对于这种情况，`@Cacheable`注解允许用户指定如何通过其`key`属性生成键值。开发人员可以使用<<expressions,SpEL>>来选择感兴趣的参数（或其嵌套属性），执行操作甚至调用任意方法而无需编写任何代码或实现任何接口。这是<<cache-annotations-cacheable-default-key,默认生成器>>的推荐方法，因为在代码库增长时在方法签名方面往往是非常不同的; 而默认策略可能适用于某些方法，但不适合所有的方法。
+
+以下是各种SpEL声明的一些示例 - 如果您不熟悉它，可以参考<<expressions>>：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Cacheable(value="books", **key="#isbn"**)
+	public Book findBook(ISBN isbn, boolean checkWarehouse, boolean includeUsed)
+
+	@Cacheable(value="books", **key="#isbn.rawNumber"**)
+	public Book findBook(ISBN isbn, boolean checkWarehouse, boolean includeUsed)
+
+	@Cacheable(value="books", **key="T(someType).hash(#isbn)"**)
+	public Book findBook(ISBN isbn, boolean checkWarehouse, boolean includeUsed)
+----
+
+上面的代码片段显示了选择某个参数，嵌套属性甚至是任意的（静态）方法是多么简单。
+
+如果负责生成键值的算法太具体或需要共享，可以定义一个`keyGenerator`。为此，请指定为要使用的`KeyGenerator` bean实现的名称：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Cacheable(value="books", **keyGenerator="myKeyGenerator"**)
+	public Book findBook(ISBN isbn, boolean checkWarehouse, boolean includeUsed)
+----
+
+
+[NOTE]
+====
+参数`key`和`keyGenerator`参数是互斥的，同时指定两者将产生异常。
+====
+
+[[cache-annotations-cacheable-default-cache-resolver]]
+===== 默认缓存实现
+
+开箱即用，抽象缓存使用简单的`CacheResolver`来检索在操作级别定义的缓存 `CacheManager`。
+
+要提供不同的__默认__缓存解析器，需要实现 `org.springframework.cache.interceptor.CacheResolver` 接口。

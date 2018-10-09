@@ -1,0 +1,70 @@
+[[beans-child-bean-definitions]]
+===  Bean定义的继承
+在一个bean定义中，可以包含配置信息，包括构造器参数，属性值，以及容器的特定信息，比如初始化方法，
+静态工厂方法名等等。子bean定义，从它的父bean定义继承配置数据；子bean定义可以覆盖一些值，
+或者根据需要添加一些其他值。使用父子bean定义，可以避免很多配置填写。事实上，这是一种模板设计模式。
+
+如果在工作中，你编程式地使用`ApplicationContext`接口，子bean定义由`ChildBeanDefinition` 类来表示；
+大多数的使用者，在工作中不在这个层面上使用它，而是声明式配置bean定义，比如使用`ClassPathXmlApplicationContext`
+当使用基于XML的配置元数据，你可以指明一个子bean定义使用`parent`属性，指定父类bean作为这个属性的值
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="inheritedTestBean" abstract="true"
+			class="org.springframework.beans.TestBean">
+		<property name="name" value="parent"/>
+		<property name="age" value="1"/>
+	</bean>
+
+	<bean id="inheritsWithDifferentClass"
+			class="org.springframework.beans.DerivedTestBean"
+			**parent="inheritedTestBean"** init-method="initialize">
+		<property name="name" value="override"/>
+		<!--age属性的值1，将会从父类继承-->
+	</bean>
+----
+
+一个子bean定义如果没有指定class，他可以使用父bean定义的class，也可以覆盖它；在后一种情形中子bean定义，
+必须兼容父类，也就是说，他要接受父类的属性值
+
+子bean定义从父类继承构造器参数，属性值，和可以重写的方法，另外也可以增加新的值。你指定的任何初始化方法，
+销毁方法，和/或者静态工厂方法设置，都会覆盖相应的父类设置。
+
+其余的设置 _总是_ 取自子bean定义：__depends on__,
+__autowire mode__, __dependency check__, __singleton__, __scope__, __lazy init__.
+
+下面的例子，通过使用`abstract`属性，明确地标明这个父类bean定义是抽象的。如果，父类bean定义
+没有明确地指出所属的类，那么标记父bean定义为为`abstract`是必须的，如下：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="inheritedTestBeanWithoutClass" abstract="true">
+		<property name="name" value="parent"/>
+		<property name="age" value="1"/>
+	</bean>
+
+	<bean id="inheritsWithClass" class="org.springframework.beans.DerivedTestBean"
+			parent="inheritedTestBeanWithoutClass" init-method="initialize">
+		<property name="name" value="override"/>
+		<!--age属性的值1，将会从父类继承-->
+	</bean>
+----
+这个父bean不能自主实例化，因为它是不完整的，同时它也明确地被标注为`abstract`；像这样，
+一个bean定义为`abstract` 的，它只能作为一个纯粹的bean模板，为子bean定义，充当父bean定义。
+尝试独立地使用这样一个`abstract`的父bean，把他作为另一个bean 的引用，或者根据这个父bean的id显式调用`getBean()`方法，
+将会返回一个错误。类似地，容器内部的`preInstantiateSingletons()` 方法，也忽略定义为抽象的bean定义。
+
+
+[注意]
+====
+`ApplicationContext`默认地预实例化所有单例bean。因此，如果你打算把一个(父)bean定义仅仅作为模板来使用，
+同时给它指定了类属性，你必须确保设置 __abstract__ 属性为 __true__,否则，应用程序上下文，会(尝试)
+预实例化这个`abstract` bean。
+
+====
+
+
+
+

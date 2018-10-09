@@ -1,0 +1,136 @@
+[[jdbc-advanced-jdbc]]
+=== JDBC batch operations
+Most JDBC drivers provide improved performance if you batch multiple calls to the same
+prepared statement. By grouping updates into batches you limit the number of round trips
+to the database.
+
+
+
+[[jdbc-batch-classic]]
+==== Basic batch operations with the JdbcTemplate
+You accomplish `JdbcTemplate` batch processing by implementing two methods of a special
+interface, `BatchPreparedStatementSetter`, and passing that in as the second parameter
+in your `batchUpdate` method call. Use the `getBatchSize` method to provide the size of
+the current batch. Use the `setValues` method to set the values for the parameters of
+the prepared statement. This method will be called the number of times that you
+specified in the `getBatchSize` call. The following example updates the actor table
+based on entries in a list. The entire list is used as the batch in this example:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class JdbcActorDao implements ActorDao {
+		private JdbcTemplate jdbcTemplate;
+
+		public void setDataSource(DataSource dataSource) {
+			this.jdbcTemplate = new JdbcTemplate(dataSource);
+		}
+
+		public int[] batchUpdate(final List<Actor> actors) {
+			int[] updateCounts = jdbcTemplate.batchUpdate("update t_actor set first_name = ?, " +
+					"last_name = ? where id = ?",
+				new BatchPreparedStatementSetter() {
+					public void setValues(PreparedStatement ps, int i) throws SQLException {
+							ps.setString(1, actors.get(i).getFirstName());
+							ps.setString(2, actors.get(i).getLastName());
+							ps.setLong(3, actors.get(i).getId().longValue());
+						}
+
+						public int getBatchSize() {
+							return actors.size();
+						}
+					});
+			return updateCounts;
+		}
+
+		// ... additional methods
+	}
+----
+
+If you are processing a stream of updates or reading from a file, then you might have a
+preferred batch size, but the last batch might not have that number of entries. In this
+case you can use the `InterruptibleBatchPreparedStatementSetter` interface, which allows
+you to interrupt a batch once the input source is exhausted. The `isBatchExhausted` method
+allows you to signal the end of the batch.
+
+
+
+[[jdbc-batch-list]]
+==== Batch operations with a List of objects
+Both the `JdbcTemplate` and the `NamedParameterJdbcTemplate` provides an alternate way
+of providing the batch update. Instead of implementing a special batch interface, you
+provide all parameter values in the call as a list. The framework loops over these
+values and uses an internal prepared statement setter. The API varies depending on
+whether you use named parameters. For the named parameters you provide an array of
+`SqlParameterSource`, one entry for each member of the batch. You can use the
+`SqlParameterSource.createBatch` method to create this array, passing in either an array
+of JavaBeans or an array of Maps containing the parameter values.
+
+This example shows a batch update using named parameters:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class JdbcActorDao implements ActorDao {
+		private NamedParameterTemplate namedParameterJdbcTemplate;
+
+		public void setDataSource(DataSource dataSource) {
+			this.namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(dataSource);
+		}
+
+		public int[] batchUpdate(final List<Actor> actors) {
+			SqlParameterSource[] batch = SqlParameterSourceUtils.createBatch(actors.toArray());
+			int[] updateCounts = namedParameterJdbcTemplate.batchUpdate(
+					"update t_actor set first_name = :firstName, last_name = :lastName where id = :id",
+					batch);
+			return updateCounts;
+		}
+
+		// ... additional methods
+	}
+----
+
+For an SQL statement using the classic "?" placeholders, you pass in a list containing an
+object array with the update values. This object array must have one entry for each
+placeholder in the SQL statement, and they must be in the same order as they are defined
+in the SQL statement.
+
+The same example using classic JDBC "?" placeholders:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class JdbcActorDao implements ActorDao {
+
+		private JdbcTemplate jdbcTemplate;
+
+		public void setDataSource(DataSource dataSource) {
+			this.jdbcTemplate = new JdbcTemplate(dataSource);
+		}
+
+		public int[] batchUpdate(final List<Actor> actors) {
+			List<Object[]> batch = new ArrayList<Object[]>();
+			for (Actor actor : actors) {
+				Object[] values = new Object[] {
+						actor.getFirstName(),
+						actor.getLastName(),
+						actor.getId()};
+				batch.add(values);
+			}
+			int[] updateCounts = jdbcTemplate.batchUpdate(
+					"update t_actor set first_name = ?, last_name = ? where id = ?",
+					batch);
+			return updateCounts;
+		}
+
+		// ... additional methods
+
+	}
+----
+
+All of the above batch update methods return an int array containing the number of
+affected rows for each batch entry. This count is reported by the JDBC driver. If the
+count is not available, the JDBC driver returns a -2 value.
+
+
+

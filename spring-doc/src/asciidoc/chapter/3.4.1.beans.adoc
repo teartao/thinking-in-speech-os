@@ -1,0 +1,116 @@
+[[beans-factory-scopes-prototype]]
+==== 原型作用域
+bean使用原型作用域而不是单例作用域的话，会在每次请求该bean，也就是bean被注入至另一个bean、
+或通过调用Spring容器的 `getBean()` 方法时，__创建一个新的bean实例__ 。
+通常，对于有状态的bean使用原型作用域，无状态的bean则使用单例作用域。
+
+
+下图展示了Spring的原型作用域。__一般来说，数据访问对象（data access object, DAO ）不会保存任何会话状态，
+因此是无状态的，不该被配置为原型作用域。作者之所以在下图使用DAO，只是为了能重用上面单例的那张图，节约工作量。__ 
+
+image::images/prototype.png[width=400]
+
+这段样例代码展示了如何在xml配置文件中定义一个原型作用域的bean：
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="accountService" class="com.foo.DefaultAccountService" scope="prototype"/>
+----
+
+与其他作用域不同的是，Spring容器不会管理原型域bean的完整生命周期：Spring容器会初始化、
+配置，亦或者组装原型域的bean对象，然后交给客户端，之后就再也不会管这个bean对象了。
+因此，对于bean的生命周期方法来说，尽管所有作用域的 __初始化方法__ 都会被调用，
+但是原型域bean的 __销毁方法__ __不会__ 被Spring容器调用。客户端代码要自己负责销毁原型域bean
+以及和bean相关的资源（特别是开销大的资源）。如果想让Spring负责这些事（销毁bean、释放资源），
+就得自定义bean的后处理器 <<beans-factory-extension-bpp,bean post-processor>>  ，它会持用原型域bean的引用。
+
+从某种意义上说，对于原型域bean，Spring容器代替了Java 的 `new` 操作符。所有在 `new` 之后的生命周期管理任务，
+都要由客户端自行处理。（想了解Spring容器具体如何管理bean的生命周期，请参考 <<beans-factory-lifecycle>>. ）
+
+
+
+[[beans-factory-scopes-sing-prot-interaction]]
+==== 依赖原型bean的单例bean
+如果你的单例bean依赖了原型bean，谨记这些依赖（的原型bean） __只在初始化时解析__ 。
+因此，假如你将原型bean依赖注入至单例bean，在注入时会初始化一个新的原型bean实例，
+这个被注入的原型bean实例是一个独立的实例。
+
+
+
+不过，假如你希望单例bean在运行时能够反复获得一个新的原型bean实例，你就不能用依赖注入的方式，
+因为这个注入只发生__一次__ ，即当Spring容器初始化单例bean并解析依赖时。
+如果你需要在运行时多次获得新的原型bean实例，请参阅 <<beans-factory-method-injection>>
+
+
+
+
+
+[[beans-factory-scopes-other]]
+==== 请求作用域、会话作用域和全局会话作用域
+__仅当__ 你使用web相关的Spring `ApplicationContext`（例如 `XmlWebApplicationContext`）时，
+请求 `request` 、会话 `session` 和全局会话 `global session` 作用域才会起作用。如果你在普通的Spring IoC 容器（例如 `ClassPathXmlApplicationContext`）中使用这几个作用域，会抛出异常 `IllegalStateException` ，告知你这是一个未知的bean作用域
+
+The `request`, `session`, and `global session` scopes are __only__ available if you use
+a web-aware Spring `ApplicationContext` implementation (such as
+`XmlWebApplicationContext`). If you use these scopes with regular Spring IoC containers
+such as the `ClassPathXmlApplicationContext`, you get an `IllegalStateException`
+complaining about an unknown bean scope.
+
+
+[[beans-factory-scopes-other-web-configuration]]
+===== 基本的web配置
+
+为了使用请求 `request` 、会话 `session` 和全局会话 `global session` 等作用域（web作用域），
+在定义bean之前要做一些最基本的初始化配置。（如果使用单例和原型这类标准作用域，是 __不需要__ 这些初始化配置的）。
+
+
+具体如何组装这些初始化配置与你使用的特定的Servlet环境有关..
+
+
+事实上，如果你使用Spring Web MVC ，在 `DispatcherServlet` 或 `DispatcherPortlet` 处理的请求内去访问这些作用域的bean，
+那就不用做任何专门的配置：`DispatcherServlet` 和 `DispatcherPortlet` 已经帮你做了这些事情。
+
+
+如果你使用的是 Servlet2.5 标准的web容器，而且请求不是由 Spring的 DispatcherServlet 处理
+（例如使用了Struts或JSF），你就得注册 `org.springframework.web.context.request.RequestContextListener` 这一 `ServletRequestListener` 。
+对于Servlet 3.0 以上的环境，可以通过 `WebApplicationInitializer` 接口以代码的方式去实现。
+或者，对于比较老旧的web 容器，在 `web.xml` 配置文件中加入以下的声明：
+
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<web-app>
+		...
+		<listener>
+			<listener-class>
+				org.springframework.web.context.request.RequestContextListener
+			</listener-class>
+		</listener>
+		...
+	</web-app>
+----
+
+又或者，如果你在配置监听器时有问题，也可以使用 `RequestContextFilter` 。过滤器的映射与具体的web应用有关，所以你得自行修改映射的内容。
+
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<web-app>
+		...
+		<filter>
+			<filter-name>requestContextFilter</filter-name>
+			<filter-class>org.springframework.web.filter.RequestContextFilter</filter-class>
+		</filter>
+		<filter-mapping>
+			<filter-name>requestContextFilter</filter-name>
+			<url-pattern>/*</url-pattern>
+		</filter-mapping>
+		...
+	</web-app>
+----
+
+`DispatcherServlet`, `RequestContextListener` 和 `RequestContextFilter` 做的事情是一样的，都是把每个http请求对象绑定到处理线程 `Thread` 上，
+那么，请求、会话和全局会话作用域bean就可以沿着调用链继续往下走了。

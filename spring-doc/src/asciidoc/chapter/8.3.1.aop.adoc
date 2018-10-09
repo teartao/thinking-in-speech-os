@@ -1,0 +1,77 @@
+[[aop-advice-after-throwing]]
+===== After throwing advice
+After throwing advice runs when a matched method execution exits by throwing an
+exception. It is declared using the `@AfterThrowing` annotation:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	import org.aspectj.lang.annotation.Aspect;
+	import org.aspectj.lang.annotation.AfterThrowing;
+
+	@Aspect
+	public class AfterThrowingExample {
+
+		@AfterThrowing("com.xyz.myapp.SystemArchitecture.dataAccessOperation()")
+		public void doRecoveryActions() {
+			// ...
+		}
+
+	}
+----
+
+Often you want the advice to run only when exceptions of a given type are thrown, and
+you also often need access to the thrown exception in the advice body. Use the
+`throwing` attribute to both restrict matching (if desired, use `Throwable` as the
+exception type otherwise) and bind the thrown exception to an advice parameter.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	import org.aspectj.lang.annotation.Aspect;
+	import org.aspectj.lang.annotation.AfterThrowing;
+
+	@Aspect
+	public class AfterThrowingExample {
+
+		@AfterThrowing(
+			pointcut="com.xyz.myapp.SystemArchitecture.dataAccessOperation()",
+			throwing="ex")
+		public void doRecoveryActions(DataAccessException ex) {
+			// ...
+		}
+
+	}
+----
+
+The name used in the `throwing` attribute must correspond to the name of a parameter in
+the advice method. When a method execution exits by throwing an exception, the exception
+will be passed to the advice method as the corresponding argument value. A `throwing`
+clause also restricts matching to only those method executions that throw an exception
+of the specified type ( `DataAccessException` in this case).
+
+
+[[aop-advice-after-finally]]
+===== After (finally) advice
+After (finally) advice runs however a matched method execution exits. It is declared
+using the `@After` annotation. After advice must be prepared to handle both normal and
+exception return conditions. It is typically used for releasing resources, etc.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	import org.aspectj.lang.annotation.Aspect;
+	import org.aspectj.lang.annotation.After;
+
+	@Aspect
+	public class AfterFinallyExample {
+
+		@After("com.xyz.myapp.SystemArchitecture.dataAccessOperation()")
+		public void doReleaseLock() {
+			// ...
+		}
+
+	}
+----
+
+

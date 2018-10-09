@@ -1,0 +1,227 @@
+[[jmx-notifications]]
+=== Notifications
+Spring's JMX offering includes comprehensive support for JMX notifications.
+
+
+
+[[jmx-notifications-listeners]]
+==== Registering Listeners for Notifications
+Spring's JMX support makes it very easy to register any number of
+`NotificationListeners` with any number of MBeans (this includes MBeans exported by
+Spring's `MBeanExporter` and MBeans registered via some other mechanism). By way of an
+example, consider the scenario where one would like to be informed (via a
+`Notification`) each and every time an attribute of a target MBean changes.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package com.example;
+
+	import javax.management.AttributeChangeNotification;
+	import javax.management.Notification;
+	import javax.management.NotificationFilter;
+	import javax.management.NotificationListener;
+
+	public class ConsoleLoggingNotificationListener
+			implements NotificationListener, NotificationFilter {
+
+		public void handleNotification(Notification notification, Object handback) {
+			System.out.println(notification);
+			System.out.println(handback);
+		}
+
+		public boolean isNotificationEnabled(Notification notification) {
+			return AttributeChangeNotification.class.isAssignableFrom(notification.getClass());
+		}
+
+	}
+----
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<beans>
+
+		<bean id="exporter" class="org.springframework.jmx.export.MBeanExporter">
+			<property name="beans">
+				<map>
+					<entry key="bean:name=testBean1" value-ref="testBean"/>
+				</map>
+			</property>
+			<property name="notificationListenerMappings">
+				<map>
+					<entry key="bean:name=testBean1">
+						<bean class="com.example.ConsoleLoggingNotificationListener"/>
+					</entry>
+				</map>
+			</property>
+		</bean>
+
+		<bean id="testBean" class="org.springframework.jmx.JmxTestBean">
+			<property name="name" value="TEST"/>
+			<property name="age" value="100"/>
+		</bean>
+
+	</beans>
+----
+
+With the above configuration in place, every time a JMX `Notification` is broadcast from
+the target MBean ( `bean:name=testBean1`), the `ConsoleLoggingNotificationListener` bean
+that was registered as a listener via the `notificationListenerMappings` property will
+be notified. The `ConsoleLoggingNotificationListener` bean can then take whatever action
+it deems appropriate in response to the `Notification`.
+
+You can also use straight bean names as the link between exported beans and listeners:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<beans>
+
+		<bean id="exporter" class="org.springframework.jmx.export.MBeanExporter">
+			<property name="beans">
+				<map>
+					<entry key="bean:name=testBean1" value-ref="testBean"/>
+				</map>
+			</property>
+			<property name="notificationListenerMappings">
+				<map>
+					<entry key="__testBean__">
+						<bean class="com.example.ConsoleLoggingNotificationListener"/>
+					</entry>
+				</map>
+			</property>
+		</bean>
+
+		<bean id="__testBean__" class="org.springframework.jmx.JmxTestBean">
+			<property name="name" value="TEST"/>
+			<property name="age" value="100"/>
+		</bean>
+
+	</beans>
+----
+
+If one wants to register a single `NotificationListener` instance for all of the beans
+that the enclosing `MBeanExporter` is exporting, one can use the special wildcard `'*'`
+(sans quotes) as the key for an entry in the `notificationListenerMappings` property
+map; for example:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<property name="notificationListenerMappings">
+		<map>
+			<entry key="*">
+				<bean class="com.example.ConsoleLoggingNotificationListener"/>
+			</entry>
+		</map>
+	</property>
+----
+
+If one needs to do the inverse (that is, register a number of distinct listeners against
+an MBean), then one has to use the `notificationListeners` list property instead (and in
+preference to the `notificationListenerMappings` property). This time, instead of
+configuring simply a `NotificationListener` for a single MBean, one configures
+`NotificationListenerBean` instances... a `NotificationListenerBean` encapsulates a
+`NotificationListener` and the `ObjectName` (or `ObjectNames`) that it is to be
+registered against in an `MBeanServer`. The `NotificationListenerBean` also encapsulates
+a number of other properties such as a `NotificationFilter` and an arbitrary handback
+object that can be used in advanced JMX notification scenarios.
+
+The configuration when using `NotificationListenerBean` instances is not wildly
+different to what was presented previously:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<beans>
+
+		<bean id="exporter" class="org.springframework.jmx.export.MBeanExporter">
+			<property name="beans">
+				<map>
+					<entry key="bean:name=testBean1" value-ref="testBean"/>
+				</map>
+			</property>
+			<property name="notificationListeners">
+				<list>
+					<bean class="org.springframework.jmx.export.NotificationListenerBean">
+						<constructor-arg>
+							<bean class="com.example.ConsoleLoggingNotificationListener"/>
+						</constructor-arg>
+						<property name="mappedObjectNames">
+							<list>
+								<value>bean:name=testBean1</value>
+							</list>
+						</property>
+					</bean>
+				</list>
+			</property>
+		</bean>
+
+		<bean id="testBean" class="org.springframework.jmx.JmxTestBean">
+			<property name="name" value="TEST"/>
+			<property name="age" value="100"/>
+		</bean>
+
+	</beans>
+----
+
+The above example is equivalent to the first notification example. Lets assume then that
+we want to be given a handback object every time a `Notification` is raised, and that
+additionally we want to filter out extraneous `Notifications` by supplying a
+`NotificationFilter`. (For a full discussion of just what a handback object is, and
+indeed what a `NotificationFilter` is, please do consult that section of the JMX
+specification (1.2) entitled 'The JMX Notification Model'.)
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<beans>
+
+		<bean id="exporter" class="org.springframework.jmx.export.MBeanExporter">
+			<property name="beans">
+				<map>
+					<entry key="bean:name=testBean1" value-ref="testBean1"/>
+					<entry key="bean:name=testBean2" value-ref="testBean2"/>
+				</map>
+			</property>
+			<property name="notificationListeners">
+				<list>
+					<bean class="org.springframework.jmx.export.NotificationListenerBean">
+						<constructor-arg ref="customerNotificationListener"/>
+						<property name="mappedObjectNames">
+							<list>
+								<!-- handles notifications from two distinct MBeans -->
+								<value>bean:name=testBean1</value>
+								<value>bean:name=testBean2</value>
+							</list>
+						</property>
+						<property name="handback">
+							<bean class="java.lang.String">
+								<constructor-arg value="This could be anything..."/>
+							</bean>
+						</property>
+						<property name="notificationFilter" ref="customerNotificationListener"/>
+					</bean>
+				</list>
+			</property>
+		</bean>
+
+		<!-- implements both the NotificationListener and NotificationFilter interfaces -->
+		<bean id="customerNotificationListener" class="com.example.ConsoleLoggingNotificationListener"/>
+
+		<bean id="testBean1" class="org.springframework.jmx.JmxTestBean">
+			<property name="name" value="TEST"/>
+			<property name="age" value="100"/>
+		</bean>
+
+		<bean id="testBean2" class="org.springframework.jmx.JmxTestBean">
+			<property name="name" value="ANOTHER TEST"/>
+			<property name="age" value="200"/>
+		</bean>
+
+	</beans>
+----
+
+
+

@@ -1,0 +1,138 @@
+[[jdbc-DataSourceUtils]]
+==== DataSourceUtils
+
+The `DataSourceUtils` class is a convenient and powerful helper class that provides
+`static` methods to obtain connections from JNDI and close connections if necessary. It
+supports thread-bound connections with, for example, `DataSourceTransactionManager`.
+
+
+
+[[jdbc-SmartDataSource]]
+==== SmartDataSource
+
+The `SmartDataSource` interface should be implemented by classes that can provide a
+connection to a relational database. It extends the `DataSource` interface to allow
+classes using it to query whether the connection should be closed after a given
+operation. This usage is efficient when you know that you will reuse a connection.
+
+
+
+[[jdbc-AbstractDataSource]]
+==== AbstractDataSource
+
+`AbstractDataSource` is an `abstract` base class for Spring's `DataSource`
+implementations that implements code that is common to all `DataSource` implementations.
+You extend the `AbstractDataSource` class if you are writing your own `DataSource`
+implementation.
+
+
+
+[[jdbc-SingleConnectionDataSource]]
+==== SingleConnectionDataSource
+
+The `SingleConnectionDataSource` class is an implementation of the `SmartDataSource`
+interface that wraps a __single__ `Connection` that is __not__ closed after each use.
+Obviously, this is not multi-threading capable.
+
+If any client code calls `close` in the assumption of a pooled connection, as when using
+persistence tools, set the `suppressClose` property to `true`. This setting returns a
+close-suppressing proxy wrapping the physical connection. Be aware that you will not be
+able to cast this to a native Oracle `Connection` or the like anymore.
+
+This is primarily a test class. For example, it enables easy testing of code outside an
+application server, in conjunction with a simple JNDI environment. In contrast to
+`DriverManagerDataSource`, it reuses the same connection all the time, avoiding
+excessive creation of physical connections.
+
+
+
+[[jdbc-DriverManagerDataSource]]
+==== DriverManagerDataSource
+
+The `DriverManagerDataSource` class is an implementation of the standard `DataSource`
+interface that configures a plain JDBC driver through bean properties, and returns a new
+`Connection` every time.
+
+This implementation is useful for test and stand-alone environments outside of a Java EE
+container, either as a `DataSource` bean in a Spring IoC container, or in conjunction
+with a simple JNDI environment. Pool-assuming `Connection.close()` calls will simply
+close the connection, so any `DataSource`-aware persistence code should work. However,
+using JavaBean-style connection pools such as `commons-dbcp` is so easy, even in a test
+environment, that it is almost always preferable to use such a connection pool over
+`DriverManagerDataSource`.
+
+
+
+[[jdbc-TransactionAwareDataSourceProxy]]
+==== TransactionAwareDataSourceProxy
+
+`TransactionAwareDataSourceProxy` is a proxy for a target `DataSource`, which wraps that
+target `DataSource` to add awareness of Spring-managed transactions. In this respect, it
+is similar to a transactional JNDI `DataSource` as provided by a Java EE server.
+
+[NOTE]
+====
+It is rarely desirable to use this class, except when already existing code that must be
+called and passed a standard JDBC `DataSource` interface implementation. In this case,
+it's possible to still have this code be usable, and at the same time have this code
+participating in Spring managed transactions. It is generally preferable to write your
+own new code using the higher level abstractions for resource management, such as
+`JdbcTemplate` or `DataSourceUtils`.
+====
+
+__(See the `TransactionAwareDataSourceProxy` javadocs for more details.)__
+
+
+
+[[jdbc-DataSourceTransactionManager]]
+==== DataSourceTransactionManager
+
+The `DataSourceTransactionManager` class is a `PlatformTransactionManager`
+implementation for single JDBC datasources. It binds a JDBC connection from the
+specified data source to the currently executing thread, potentially allowing for one
+thread connection per data source.
+
+Application code is required to retrieve the JDBC connection through
+`DataSourceUtils.getConnection(DataSource)` instead of Java EE's standard
+`DataSource.getConnection`. It throws unchecked `org.springframework.dao` exceptions
+instead of checked `SQLExceptions`. All framework classes like `JdbcTemplate` use this
+strategy implicitly. If not used with this transaction manager, the lookup strategy
+behaves exactly like the common one - it can thus be used in any case.
+
+The `DataSourceTransactionManager` class supports custom isolation levels, and timeouts
+that get applied as appropriate JDBC statement query timeouts. To support the latter,
+application code must either use `JdbcTemplate` or call the
+`DataSourceUtils.applyTransactionTimeout(..)` method for each created statement.
+
+This implementation can be used instead of `JtaTransactionManager` in the single
+resource case, as it does not require the container to support JTA. Switching between
+both is just a matter of configuration, if you stick to the required connection lookup
+pattern. JTA does not support custom isolation levels!
+
+
+
+[[jdbc-NativeJdbcExtractor]]
+==== NativeJdbcExtractor
+Sometimes you need to access vendor specific JDBC methods that differ from the standard
+JDBC API. This can be problematic if you are running in an application server or with a
+`DataSource` that wraps the `Connection`, `Statement` and `ResultSet` objects with its
+own wrapper objects. To gain access to the native objects you can configure your
+`JdbcTemplate` or `OracleLobHandler` with a `NativeJdbcExtractor`.
+
+The `NativeJdbcExtractor` comes in a variety of flavors to match your execution
+environment:
+
+* SimpleNativeJdbcExtractor
+* C3P0NativeJdbcExtractor
+* CommonsDbcpNativeJdbcExtractor
+* JBossNativeJdbcExtractor
+* WebLogicNativeJdbcExtractor
+* WebSphereNativeJdbcExtractor
+* XAPoolNativeJdbcExtractor
+
+Usually the `SimpleNativeJdbcExtractor` is sufficient for unwrapping a `Connection`
+object in most environments. See the javadocs for more details.
+
+
+
+

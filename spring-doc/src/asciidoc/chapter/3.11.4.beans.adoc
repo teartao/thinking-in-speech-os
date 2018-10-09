@@ -1,0 +1,101 @@
+[[beans-java-specifying-bean-scope]]
+===== Specifying bean scope
+
+[[beans-java-available-scopes]]
+====== Using the @Scope annotation
+
+You can specify that your beans defined with the `@Bean` annotation should have a
+specific scope. You can use any of the standard scopes specified in the
+<<beans-factory-scopes,Bean Scopes>> section.
+
+The default scope is `singleton`, but you can override this with the `@Scope` annotation:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Configuration
+	public class MyConfiguration {
+
+		@Bean
+		**@Scope("prototype")**
+		public Encryptor encryptor() {
+			// ...
+		}
+
+	}
+----
+
+[[beans-java-scoped-proxy]]
+====== @Scope and scoped-proxy
+
+Spring offers a convenient way of working with scoped dependencies through
+<<beans-factory-scopes-other-injection,scoped proxies>>. The easiest way to create such
+a proxy when using the XML configuration is the `<aop:scoped-proxy/>` element.
+Configuring your beans in Java with a @Scope annotation offers equivalent support with
+the proxyMode attribute. The default is no proxy ( `ScopedProxyMode.NO`), but you can
+specify `ScopedProxyMode.TARGET_CLASS` or `ScopedProxyMode.INTERFACES`.
+
+If you port the scoped proxy example from the XML reference documentation (see preceding
+link) to our `@Bean` using Java, it would look like the following:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	// an HTTP Session-scoped bean exposed as a proxy
+	@Bean
+	**@Scope(value = "session", proxyMode = ScopedProxyMode.TARGET_CLASS)**
+	public UserPreferences userPreferences() {
+		return new UserPreferences();
+	}
+
+	@Bean
+	public Service userService() {
+		UserService service = new SimpleUserService();
+		// a reference to the proxied userPreferences bean
+		service.setUserPreferences(userPreferences());
+		return service;
+	}
+----
+
+
+[[beans-java-customizing-bean-naming]]
+===== Customizing bean naming
+By default, configuration classes use a `@Bean` method's name as the name of the
+resulting bean. This functionality can be overridden, however, with the `name` attribute.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Configuration
+	public class AppConfig {
+
+		@Bean(name = "myFoo")
+		public Foo foo() {
+			return new Foo();
+		}
+
+	}
+----
+
+
+[[beans-java-bean-aliasing]]
+===== Bean aliasing
+As discussed in <<beans-beanname>>, it is sometimes desirable to give a single bean
+multiple names, otherwise known as__bean aliasing__. The `name` attribute of the `@Bean`
+annotation accepts a String array for this purpose.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Configuration
+	public class AppConfig {
+
+		@Bean(name = { "dataSource", "subsystemA-dataSource", "subsystemB-dataSource" })
+		public DataSource dataSource() {
+			// instantiate, configure and return DataSource bean...
+		}
+
+	}
+----
+
+

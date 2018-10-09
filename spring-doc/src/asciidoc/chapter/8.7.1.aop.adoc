@@ -1,0 +1,114 @@
+[[aop-schema-advice-after-throwing]]
+===== After throwing advice
+After throwing advice executes when a matched method execution exits by throwing an
+exception. It is declared inside an `<aop:aspect>` using the after-throwing element:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<aop:aspect id="afterThrowingExample" ref="aBean">
+
+		<aop:after-throwing
+			pointcut-ref="dataAccessOperation"
+			method="doRecoveryActions"/>
+
+		...
+
+	</aop:aspect>
+----
+
+Just as in the @AspectJ style, it is possible to get hold of the thrown exception within
+the advice body. Use the throwing attribute to specify the name of the parameter to
+which the exception should be passed:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<aop:aspect id="afterThrowingExample" ref="aBean">
+
+		<aop:after-throwing
+			pointcut-ref="dataAccessOperation"
+			throwing="dataAccessEx"
+			method="doRecoveryActions"/>
+
+		...
+
+	</aop:aspect>
+----
+
+The doRecoveryActions method must declare a parameter named `dataAccessEx`. The type of
+this parameter constrains matching in the same way as described for @AfterThrowing. For
+example, the method signature may be declared as:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public void doRecoveryActions(DataAccessException dataAccessEx) {...
+----
+
+
+[[aop-schema-advice-after-finally]]
+===== After (finally) advice
+After (finally) advice runs however a matched method execution exits. It is declared
+using the `after` element:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<aop:aspect id="afterFinallyExample" ref="aBean">
+
+		<aop:after
+			pointcut-ref="dataAccessOperation"
+			method="doReleaseLock"/>
+
+		...
+
+	</aop:aspect>
+----
+
+
+[[aop-schema-advice-around]]
+===== Around advice
+The final kind of advice is around advice. Around advice runs "around" a matched method
+execution. It has the opportunity to do work both before and after the method executes,
+and to determine when, how, and even if, the method actually gets to execute at all.
+Around advice is often used if you need to share state before and after a method
+execution in a thread-safe manner (starting and stopping a timer for example). Always
+use the least powerful form of advice that meets your requirements; don't use around
+advice if simple before advice would do.
+
+Around advice is declared using the `aop:around` element. The first parameter of the
+advice method must be of type `ProceedingJoinPoint`. Within the body of the advice,
+calling `proceed()` on the `ProceedingJoinPoint` causes the underlying method to
+execute. The `proceed` method may also be calling passing in an `Object[]` - the values
+in the array will be used as the arguments to the method execution when it proceeds. See
+<<aop-ataspectj-around-advice>> for notes on calling proceed with an `Object[]`.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<aop:aspect id="aroundExample" ref="aBean">
+
+		<aop:around
+			pointcut-ref="businessService"
+			method="doBasicProfiling"/>
+
+		...
+
+	</aop:aspect>
+----
+
+The implementation of the `doBasicProfiling` advice would be exactly the same as in the
+@AspectJ example (minus the annotation of course):
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public Object doBasicProfiling(ProceedingJoinPoint pjp) throws Throwable {
+		// start stopwatch
+		Object retVal = pjp.proceed();
+		// stop stopwatch
+		return retVal;
+	}
+----
+

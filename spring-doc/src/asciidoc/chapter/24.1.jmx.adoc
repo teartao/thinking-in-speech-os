@@ -1,0 +1,86 @@
+[[jmx-exporting]]
+=== Exporting your beans to JMX
+The core class in Spring's JMX framework is the `MBeanExporter`. This class is
+responsible for taking your Spring beans and registering them with a JMX `MBeanServer`.
+For example, consider the following class:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package org.springframework.jmx;
+
+	public class JmxTestBean implements IJmxTestBean {
+
+		private String name;
+		private int age;
+		private boolean isSuperman;
+
+		public int getAge() {
+			return age;
+		}
+
+		public void setAge(int age) {
+			this.age = age;
+		}
+
+		public void setName(String name) {
+			this.name = name;
+		}
+
+		public String getName() {
+			return name;
+		}
+
+		public int add(int x, int y) {
+			return x + y;
+		}
+
+		public void dontExposeMe() {
+			throw new RuntimeException();
+		}
+	}
+----
+
+To expose the properties and methods of this bean as attributes and operations of an
+MBean you simply configure an instance of the `MBeanExporter` class in your
+configuration file and pass in the bean as shown below:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<beans>
+		<!-- this bean must not be lazily initialized if the exporting is to happen -->
+		<bean id="exporter" class="org.springframework.jmx.export.MBeanExporter" lazy-init="false">
+			<property name="beans">
+				<map>
+					<entry key="bean:name=testBean1" value-ref="testBean"/>
+				</map>
+			</property>
+		</bean>
+		<bean id="testBean" class="org.springframework.jmx.JmxTestBean">
+			<property name="name" value="TEST"/>
+			<property name="age" value="100"/>
+		</bean>
+	</beans>
+----
+
+The pertinent bean definition from the above configuration snippet is the `exporter`
+bean. The `beans` property tells the `MBeanExporter` exactly which of your beans must be
+exported to the JMX `MBeanServer`. In the default configuration, the key of each entry
+in the `beans` `Map` is used as the `ObjectName` for the bean referenced by the
+corresponding entry value. This behavior can be changed as described in <<jmx-naming>>.
+
+With this configuration the `testBean` bean is exposed as an MBean under the
+`ObjectName` `bean:name=testBean1`. By default, all __public__ properties of the bean
+are exposed as attributes and all __public__ methods (bar those inherited from the
+`Object` class) are exposed as operations.
+
+[NOTE]
+====
+`MBeanExporter` is a `Lifecycle` bean (see <<beans-factory-lifecycle-processor>>)
+and MBeans are exported as late as possible during the application lifecycle by default. It
+is possible to configure the `phase` at which the export happens or disable automatic
+registration by setting the `autoStartup` flag.
+====
+
+

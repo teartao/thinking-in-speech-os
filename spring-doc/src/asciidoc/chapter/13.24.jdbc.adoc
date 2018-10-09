@@ -1,0 +1,113 @@
+[[jdbc-embedded-database-dao-testing]]
+==== Testing data access logic with an embedded database
+Embedded databases provide a lightweight way to test data access code. The following is
+a data access unit test template that uses an embedded database:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public class DataAccessUnitTestTemplate {
+
+		private EmbeddedDatabase db;
+
+		@Before
+		public void setUp() {
+			// creates an HSQL in-memory database populated from default scripts
+			// classpath:schema.sql and classpath:data.sql
+			db = new EmbeddedDatabaseBuilder().addDefaultScripts().build();
+		}
+
+		@Test
+		public void testDataAccess() {
+			JdbcTemplate template = new JdbcTemplate(db);
+			template.query(...);
+		}
+
+		@After
+		public void tearDown() {
+			db.shutdown();
+		}
+
+	}
+----
+
+
+
+
+[[jdbc-intializing-datasource]]
+=== Initializing a DataSource
+The `org.springframework.jdbc.datasource.init` package provides support for initializing
+an existing `DataSource`. The embedded database support provides one option for creating
+and initializing a `DataSource` for an application, but sometimes you need to initialize
+an instance running on a server somewhere.
+
+
+
+[[jdbc-initializing-datasource-xml]]
+==== Initializing a database instance using Spring XML
+If you want to initialize a database and you can provide a reference to a DataSource
+bean, use the `initialize-database` tag in the `spring-jdbc` namespace:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<jdbc:initialize-database data-source="dataSource">
+		<jdbc:script location="classpath:com/foo/sql/db-schema.sql"/>
+		<jdbc:script location="classpath:com/foo/sql/db-test-data.sql"/>
+	</jdbc:initialize-database>
+----
+
+The example above runs the two scripts specified against the database: the first script
+is a schema creation, and the second is a test data set insert. The script locations can
+also be patterns with wildcards in the usual ant style used for resources in Spring
+(e.g. `classpath*:/com/foo/**/sql/*-data.sql`). If a pattern is used the scripts are
+executed in lexical order of their URL or filename.
+
+The default behavior of the database initializer is to unconditionally execute the
+scripts provided. This will not always be what you want, for instance if running against
+an existing database that already has test data in it. The likelihood of accidentally
+deleting data is reduced by the commonest pattern (as shown above) that creates the
+tables first and then inserts the data - the first step will fail if the tables already
+exist.
+
+However, to get more control over the creation and deletion of existing data, the XML
+namespace provides a couple more options. The first is flag to switch the initialization
+on and off. This can be set according to the environment (e.g. to pull a boolean value
+from system properties or an environment bean), e.g.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<jdbc:initialize-database data-source="dataSource"
+		**enabled="#{systemProperties.INITIALIZE_DATABASE}"**>
+		<jdbc:script location="..."/>
+	</jdbc:initialize-database>
+----
+
+The second option to control what happens with existing data is to be more tolerant of
+failures. To this end you can control the ability of the initializer to ignore certain
+errors in the SQL it executes from the scripts, e.g.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<jdbc:initialize-database data-source="dataSource" **ignore-failures="DROPS"**>
+		<jdbc:script location="..."/>
+	</jdbc:initialize-database>
+----
+
+In this example we are saying we expect that sometimes the scripts will be run against
+an empty database and there are some DROP statements in the scripts which would
+therefore fail. So failed SQL `DROP` statements will be ignored, but other failures will
+cause an exception. This is useful if your SQL dialect doesn't support `DROP ... IF
+EXISTS` (or similar) but you want to unconditionally remove all test data before
+re-creating it. In that case the first script is usually a set of drops, followed by a
+set of `CREATE` statements.
+
+The `ignore-failures` option can be set to `NONE` (the default), `DROPS` (ignore failed
+drops) or `ALL` (ignore all failures).
+
+If you need more control than you get from the XML namespace, you can simply use the
+`DataSourceInitializer` directly, and define it as a component in your application.
+
+

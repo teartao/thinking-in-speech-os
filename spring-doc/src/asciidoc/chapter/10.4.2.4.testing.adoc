@@ -1,0 +1,104 @@
+[[testcontext-tx-mgr-config]]
+====== Configuring a transaction manager
+
+`TransactionalTestExecutionListener` expects a `PlatformTransactionManager` bean to be
+defined in the Spring `ApplicationContext` for the test. In case there are multiple
+instances of `PlatformTransactionManager` within the test's `ApplicationContext`,
+`@TransactionConfiguration` supports configuring the bean name of the
+`PlatformTransactionManager` that should be used to drive transactions. Alternatively, a
+_qualifier_ may be declared via `@Transactional("myQualifier")`, or
+`TransactionManagementConfigurer` can be implemented by an `@Configuration` class.
+Consult the javadocs for `TestContextTransactionUtils.retrieveTransactionManager()` for
+details on the algorithm used to look up a transaction manager in the test's
+`ApplicationContext`.
+
+[[testcontext-tx-annotation-demo]]
+====== Demonstration of all transaction-related annotations
+
+The following JUnit-based example displays a fictitious integration testing scenario
+highlighting all transaction-related annotations. The example is **not** intended to
+demonstrate best practices but rather to demonstrate how these annotations can be used.
+Consult the <<integration-testing-annotations,annotation support>> section for further
+information and configuration examples. <<testcontext-executing-sql-declaratively-tx,
+Transaction management for `@Sql`>> contains an additional example using `@Sql` for
+declarative SQL script execution with default transaction rollback semantics.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@RunWith(SpringJUnit4ClassRunner.class)
+	@ContextConfiguration
+	**@TransactionConfiguration(transactionManager="txMgr", defaultRollback=false)
+	@Transactional**
+	public class FictitiousTransactionalTest {
+
+		**@BeforeTransaction**
+		public void verifyInitialDatabaseState() {
+			// logic to verify the initial state before a transaction is started
+		}
+
+		@Before
+		public void setUpTestDataWithinTransaction() {
+			// set up test data within the transaction
+		}
+
+		@Test
+		// overrides the class-level defaultRollback setting
+		**@Rollback(true)**
+		public void modifyDatabaseWithinTransaction() {
+			// logic which uses the test data and modifies database state
+		}
+
+		@After
+		public void tearDownWithinTransaction() {
+			// execute "tear down" logic within the transaction
+		}
+
+		**@AfterTransaction**
+		public void verifyFinalDatabaseState() {
+			// logic to verify the final state after transaction has rolled back
+		}
+
+	}
+----
+
+[[testcontext-tx-false-positives]]
+.Avoid false positives when testing ORM code
+[NOTE]
+====
+When you test application code that manipulates the state of the Hibernate session, make
+sure to __flush__ the underlying session within test methods that execute that code.
+Failing to flush the underlying session can produce __false positives__: your test may
+pass, but the same code throws an exception in a live, production environment. In the
+following Hibernate-based example test case, one method demonstrates a false positive,
+and the other method correctly exposes the results of flushing the session. Note that
+this applies to JPA and any other ORM frameworks that maintain an in-memory __unit of
+work__.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	// ...
+
+	@Autowired
+	private SessionFactory sessionFactory;
+
+	@Test // no expected exception!
+	public void falsePositive() {
+		updateEntityInHibernateSession();
+		// False positive: an exception will be thrown once the session is
+		// finally flushed (i.e., in production code)
+	}
+
+	@Test(expected = GenericJDBCException.class)
+	public void updateWithSessionFlush() {
+		updateEntityInHibernateSession();
+		// Manual flush is required to avoid false positive in test
+		sessionFactory.getCurrentSession().flush();
+	}
+
+	// ...
+----
+====
+
+

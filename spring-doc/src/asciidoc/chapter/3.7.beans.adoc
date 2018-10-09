@@ -1,0 +1,67 @@
+[[beans-factory-extension]]
+=== 容器拓展点
+通常，应用程序开发者，不需要继承`ApplicationContext`的实现类。相反，Spring IoC容器可以通过插入特殊的集成接口的实现，进行拓展。新的一节中，描述了这些集成接口。
+
+[[beans-factory-extension-bpp]]
+==== 使用BeanPostProcessor自定义beans
+`BeanPostProcessor` 定义了回调方法，通过实现这个回调方法，你可以提供你自己的(或者重写容器默认的)
+实例化逻辑，依赖分析逻辑等等。如果你想在Spring容器完成实例化配置，实例化一个bean之后，实现一些自定义逻辑
+你可以插入一个或多个 `BeanPostProcessor` 的实现。
+
+你可以配置多个`BeanPostProcessor`实例，同时你也能通过设置 `order` 属性来控制这些++BeanPostProcessor++s 的执行顺序。只有`BeanPostProcessor`实现了`Ordered` 接口，你才可以设置 `order` 属性。如果，你编写了自己的`BeanPostProcessor` 
+也应当考虑实现 `Ordered` 接口。欲知详情，请参考`BeanPostProcessor` 和 `Ordered`接口的javadoc。也可以看看下面的要点<<beans-factory-programmatically-registering-beanpostprocessors, programmatic registration of `BeanPostProcessors`>>
+
+[注意]
+====
+++BeanPostProcessor++s 作用在一个bean(或者对象)的__实例__上;也就是说，Spring IoC实例化一个bean实例之后，
+++BeanPostProcessor++s，才开始进行处理。
+
+++BeanPostProcessor++s作用范围是__每一个容器__。这仅仅和你正在使用容器有关。如果你在一个容器中定义了一个`BeanPostProcessor`
+，它将 __仅仅__ 后置处理那个容器中的beans。换言之，一个容器中的beans不会被另一个，容器中的`BeanPostProcessor`处理，即使这两个容器，具有相同的父类。
+
+为了改变实际的bean定义(例如， __blueprint__ 定义的bean)，你反而需要使用`BeanFactoryPostProcessor`，就像在<<beans-factory-extension-factory-postprocessors>>中描述的那样。
+====
+
+`org.springframework.beans.factory.config.BeanPostProcessor` 接口，恰好有两个回调方法组成。
+当这样的一个类注册为容器的一个后置处理器，由于每一个bean实例都是由容器创建的，这个后置处理器会从容器得到一个回调方法
+在容器的初始化方法(比如InitializingBean的__afterPropertiesSet()__和任何生命的初始化方法)被调用__之前__和任何bean实例化回调__之后__。
+后置处理器，可以对bean采取任何措施，包括忽略回到方法是否完成。一个bean后置处理器，通常会检查回调接口或者使用代理包装一个bean。一些
+Spring AOP基础设施类，为了提供包装式的代理逻辑，被实现为bean后置处理器，
+
+一个`ApplicationContext`，__自动地检测__所有定义在配置元文件中，并实现了`BeanPostProcessor`接口的bean。
+该`ApplicationContext`注册这些beans作为后置处理器，使他们可以在bean创建完成之后，被调用。
+bean后置处理器可以像其他bean一样部署到容器中。
+
+注意，当在一个配置类上，使用`@Bean`工厂方法声明一个 ++BeanPostProcessor++ ，返回类型应该是实现类自身，
+至少也要是 `org.springframework.beans.factory.config.BeanPostProcessor`接口，要清楚地表明这个bean的后置处理器本质特点。
+此外，在它完全创建之前，`ApplicationContext`将不能通过类型自动探测它。由于一个++BeanPostProcessor++，早期就需要被实例化，
+以适应上下文中其他bean的实例化，因此这个早期的类型检查是至关重要的。
+
+[注意]
+====
+
+*编程式注册 BeanPostProcessors*
+虽然推荐使用`ApplicationContext`的自动检测来注册`BeanPostProcessor`，但是对于使用了`addBeanPostProcessor`方法的`ConfigurableBeanFactory`也可以编程式地注册他们。
+在注册之前，或者是在继承层次的上下文之间复制bean后置处理器，需要对逻辑进行条件式的评估时，这是有用的。但是请注意，编程地添加的`BeanPostProcessors` __不需要考虑`Ordered`接口 __。
+也就是__注册的顺序__决定了__执行的顺序__。也要注意，编程式注册的`BeanPostProcessors`，总是预先被处理----早于通过自动检测方式注册的，同时忽略
+任何明确的排序
+====
+
+[注意]
+====
+
+*BeanPostProcessors 和 AOP 自动代理*
+实现了`BeanPostProcessor`接口的类是__特殊__的,会被容器特殊处理。所有`BeanPostProcessors`__和他们直接引用的
+beans__都会在容器启动的时候被实例化,作为`ApplicationContext`特殊启动阶段的一部分。接着，所有的`BeanPostProcessors`
+以一个有序的方式，进行注册，并应用于容器中的一切bean。因为AOP自动代理本身被实现为`BeanPostProcessor`， 这个`BeanPostProcessors` 
+和它直接应用的beans都没有资格进行自动代理，这样就没有切面编织到他们里面。
+
+对于所有这样的bean，你会看到一个info日志："__Bean foo 没有资格获取任何BeanPostProcessor接口的处理(例如，没有资格获取自动代理的)__".
+
+注意，如果你有beans使用自动装配或者`@Resource` 装配到了你的`BeanPostProcessor`中，当根据候选依赖，搜索匹配类型时，Spring也许会访问意外类型的bean；
+因此，使它们没有资格进行自动代理，或者其他类型的bean后置处理。例如，你使用`@Resource`注解一个依赖，其中字段或者set方法名，不是和bean声明的名字直接对应
+同时没有name属性被使用，然后，Spring将会根据类型，访问其他beans进行匹配。
+====
+
+下面的示例显示了如何编写，注册和在一个`ApplicationContext`中使用`BeanPostProcessor`。
+

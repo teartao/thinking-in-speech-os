@@ -1,0 +1,60 @@
+[[xsd-config-body]]
+=== XML Schema-based configuration
+
+
+
+[[xsd-config-body-referencing]]
+==== Referencing the schemas
+To switch over from the DTD-style to the new XML Schema-style, you need to make the
+following change.
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN 2.0//EN"
+			"http://www.springframework.org/dtd/spring-beans-2.0.dtd">
+
+	<beans>
+
+	<!-- bean definitions here -->
+
+	</beans>
+----
+
+The equivalent file in the XML Schema-style would be...
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="
+			http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+		<!-- bean definitions here -->
+
+	</beans>
+----
+
+[NOTE]
+====
+The `'xsi:schemaLocation'` fragment is not actually required, but can be included to
+reference a local copy of a schema (which can be useful during development).
+====
+
+The above Spring XML configuration fragment is boilerplate that you can copy and paste
+(!) and then plug `<bean/>` definitions into like you have always done. However, the
+entire point of switching over is to take advantage of the new Spring 2.0 XML tags since
+they make configuration easier. The section entitled <<xsd-config-body-schemas-util>>
+demonstrates how you can start immediately by using some of the more common utility tags.
+
+The rest of this chapter is devoted to showing examples of the new Spring XML Schema
+based configuration, with at least one example for every new tag. The format follows a
+before and after style, with a __before__ snippet of XML showing the old (but still 100%
+legal and supported) style, followed immediately by an __after__ example showing the
+equivalent in the new XML Schema-based style.
+
+
+

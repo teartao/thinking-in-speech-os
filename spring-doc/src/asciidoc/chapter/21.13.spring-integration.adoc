@@ -1,0 +1,69 @@
+[[rest-async-resttemplate]]
+==== Async RestTemplate
+
+Web applications often need to query external REST services those days. The very nature of
+HTTP and synchronous calls can lead up to challenges when scaling applications for those
+needs: multiple threads may be blocked, waiting for remote HTTP responses.
+
+`AsyncRestTemplate` and <<rest-resttemplate>>'s APIs are very similar; see
+<<rest-overview-of-resttemplate-methods-tbl>>. The main difference between those APIs is
+that `AsyncRestTemplate` returns
+{javadoc-baseurl}/org/springframework/util/concurrent/ListenableFuture.html[`ListenableFuture`]
+wrappers as opposed to concrete results.
+
+The previous `RestTemplate` example translates to:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	// async call
+	Future<ResponseEntity<String>> futureEntity = template.getForEntity(
+		"http://example.com/hotels/{hotel}/bookings/{booking}", String.class, "42", "21");
+
+	// get the concrete result - synchronous call
+	ResponseEntity<String> entity = futureEntity.get();
+----
+
+{javadoc-baseurl}/org/springframework/util/concurrent/ListenableFuture.html[`ListenableFuture`]
+accepts completion callbacks:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	ListenableFuture<ResponseEntity<String>> futureEntity = template.getForEntity(
+		"http://example.com/hotels/{hotel}/bookings/{booking}", String.class, "42", "21");
+
+	// register a callback
+	futureEntity.addCallback(new ListenableFutureCallback<ResponseEntity<String>>() {
+		@Override
+		public void onSuccess(ResponseEntity<String> entity) {
+			//...
+		}
+
+		@Override
+		public void onFailure(Throwable t) {
+			//...
+		}
+	});
+----
+
+[NOTE]
+====
+The default `AsyncRestTemplate` constructor registers a
+{javadoc-baseurl}/org/springframework/core/task/SimpleAsyncTaskExecutor.html[`SimpleAsyncTaskExecutor`
+] for executing HTTP requests.
+When dealing with a large number of short-lived requests, a thread-pooling TaskExecutor
+implementation like
+{javadoc-baseurl}/org/springframework/scheduling/concurrent/ThreadPoolTaskExecutor.html[`ThreadPoolTaskExecutor`]
+may be a good choice.
+====
+
+See the
+{javadoc-baseurl}/org/springframework/util/concurrent/ListenableFuture.html[`ListenableFuture` javadocs]
+and
+{javadoc-baseurl}/org/springframework/web/client/AsyncRestTemplate.html[`AsyncRestTemplate` javadocs]
+for more details.
+
+
+
+

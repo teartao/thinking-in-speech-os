@@ -1,0 +1,84 @@
+[[portlet]]
+== Portlet MVC Framework
+
+
+
+
+[[portlet-introduction]]
+=== Introduction
+
+.JSR-168 The Java Portlet Specification
+****
+For more general information about portlet development, please review a whitepaper from
+Oracle entitled
+http://www.oracle.com/technetwork/java/index-raji-test-141933.html["Introduction
+to JSR 168"], and of course the
+http://jcp.org/aboutJava/communityprocess/final/jsr168/[JSR-168 Specification] itself.
+****
+
+In addition to supporting conventional (servlet-based) Web development, Spring also
+supports JSR-168 Portlet development. As much as possible, the Portlet MVC framework is
+a mirror image of the Web MVC framework, and also uses the same underlying view
+abstractions and integration technology. So, be sure to review the chapters entitled
+<<mvc>> and <<view>> before continuing with this chapter.
+
+[NOTE]
+====
+Bear in mind that while the concepts of Spring MVC are the same in Spring Portlet MVC,
+there are some notable differences created by the unique workflow of JSR-168 portlets.
+====
+
+The main way in which portlet workflow differs from servlet workflow is that the request
+to the portlet can have two distinct phases: the action phase and the render phase. The
+action phase is executed only once and is where any 'backend' changes or actions occur,
+such as making changes in a database. The render phase then produces what is displayed
+to the user each time the display is refreshed. The critical point here is that for a
+single overall request, the action phase is executed only once, but the render phase may
+be executed multiple times. This provides (and requires) a clean separation between the
+activities that modify the persistent state of your system and the activities that
+generate what is displayed to the user.
+
+.Spring Web Flow
+****
+Spring Web Flow (SWF) aims to be the best solution for the management of web application
+page flow.
+
+SWF integrates with existing frameworks like Spring MVC and JSF, in both Servlet and
+Portlet environments. If you have a business process (or processes) that would benefit
+from a conversational model as opposed to a purely request model, then SWF may be the
+solution.
+
+SWF allows you to capture logical page flows as self-contained modules that are reusable
+in different situations, and as such is ideal for building web application modules that
+guide the user through controlled navigations that drive business processes.
+
+For more information about SWF, consult the Spring Web Flow website.
+****
+
+The dual phases of portlet requests are one of the real strengths of the JSR-168
+specification. For example, dynamic search results can be updated routinely on the
+display without the user explicitly rerunning the search. Most other portlet MVC
+frameworks attempt to completely hide the two phases from the developer and make it look
+as much like traditional servlet development as possible - we think this approach
+removes one of the main benefits of using portlets. So, the separation of the two phases
+is preserved throughout the Spring Portlet MVC framework. The primary manifestation of
+this approach is that where the servlet version of the MVC classes will have one method
+that deals with the request, the portlet version of the MVC classes will have two
+methods that deal with the request: one for the action phase and one for the render
+phase. For example, where the servlet version of `AbstractController` has the
+`handleRequestInternal(..)` method, the portlet version of `AbstractController` has
+`handleActionRequestInternal(..)` and `handleRenderRequestInternal(..)` methods.
+
+The framework is designed around a `DispatcherPortlet` that dispatches requests to
+handlers, with configurable handler mappings and view resolution, just as the
+`DispatcherServlet` in the web framework does. File upload is also supported in the same
+way.
+
+Locale resolution and theme resolution are not supported in Portlet MVC - these areas
+are in the purview of the portal/portlet container and are not appropriate at the Spring
+level. However, all mechanisms in Spring that depend on the locale (such as
+internationalization of messages) will still function properly because
+`DispatcherPortlet` exposes the current locale in the same way as `DispatcherServlet`.
+
+
+

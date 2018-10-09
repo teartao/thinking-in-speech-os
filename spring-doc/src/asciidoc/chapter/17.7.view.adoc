@@ -1,0 +1,69 @@
+[[view-velocity]]
+=== Velocity & FreeMarker
+http://velocity.apache.org[Velocity] 和 http://www.freemarker.org[FreeMarker] 是两种可以用于
+Spring MVC应用中的视图层技术的模板语言. 他们很相似并且使用起来也有类似的需求, 所以在这里一并讨论.
+关于两个语言在语义与句法上的区别, 请查看 http://www.freemarker.org[FreeMarker].
+
+
+
+[[view-velocity-dependencies]]
+==== 依赖
+你的web应用需要分别包含`velocity-1.x.x.jar`或者`freemarker-2.x.jar`来使用Velocity或者FreeMarker,
+并且对于Velocity你还需要`commons-collections.jar`. 通常他们都会被放在文件夹`WEB-INF/lib`中, 这样
+他们就会被Java EE服务器加载并放进应用的classpath中. 很显然是假定你也已经将`spring-webmvc.jar`放到了
+你应用的`'WEB-INF/lib'`文件夹的! 如果你打算在Velocity的视图中使用Spring的'dateToolAttribute'或者
+'numberToolAttribute', 你还需要包含进`velocity-tools-generic-1.x.jar`.
+
+
+
+[[view-velocity-contextconfig]]
+==== 上下文配置
+一个合适的配置是通过添加相关配置bean初始化到你的`'*-servlet.xml'`, 就像下面这样:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<!--
+	这个bean在一个模板根目录基础上为我们设置一个Velocity环境. 可选的, 一个properties文件可以指定来
+	对Velocity环境进行更多的控制, 但是默认的用来做基于文件的模板加载已经够了.
+	-->
+	<bean id="velocityConfig" class="org.springframework.web.servlet.view.velocity.VelocityConfigurer">
+		<property name="resourceLoaderPath" value="/WEB-INF/velocity/"/>
+	</bean>
+
+	<!--
+	视图处理也可以通过ResourceBundles或者XML文件. 如果你需要根据Locale来使用不同的视图处理, 你需要使用资源绑定处理器.
+	-->
+	<bean id="viewResolver" class="org.springframework.web.servlet.view.velocity.VelocityViewResolver">
+		<property name="cache" value="true"/>
+		<property name="prefix" value=""/>
+		<property name="suffix" value=".vm"/>
+	</bean>
+----
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<!-- freemarker 配置 -->
+	<bean id="freemarkerConfig" class="org.springframework.web.servlet.view.freemarker.FreeMarkerConfigurer">
+		<property name="templateLoaderPath" value="/WEB-INF/freemarker/"/>
+	</bean>
+
+	<!--
+	视图处理也可以通过ResourceBundles或者XML文件. 如果你需要根据Locale来使用不同的视图处理, 你需要使用资源绑定处理器.
+	-->
+	<bean id="viewResolver" class="org.springframework.web.servlet.view.freemarker.FreeMarkerViewResolver">
+		<property name="cache" value="true"/>
+		<property name="prefix" value=""/>
+		<property name="suffix" value=".ftl"/>
+	</bean>
+----
+
+[NOTE]
+====
+对于非web应用, 添加`VelocityConfigurationFactoryBean`或者`FreeMarkerConfigurationFactoryBean`
+到你的应用上下文的定义文件.
+====
+
+
+

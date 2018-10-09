@@ -1,0 +1,410 @@
+[[mail]]
+== Email
+
+
+
+
+[[mail-introduction]]
+=== 介绍
+
+.依赖库
+****
+为了你的程序能够使用Spring Framework的email库，需要在classpath中添加如下附加的jar文件。
+
+
+* The https://java.net/projects/javamail/pages/Home[JavaMail] `mail.jar` library 	- JavaMail 平台协议无关的邮件消息库
+* The http://www.oracle.com/technetwork/java/jaf11-139815.html[JAF]
+  `activation.jar` library 	- JAF [JavaBeans Activation Framework]
+
+所有这些库都可以在网上免费获取。
+****
+
+Spring Framework 提供了发送邮件的帮助工具库，把用户与底层邮件系统细节进行解耦。并且由Spring Framework负责处理客户端的底层资源。
+'org.springframework.mail'是Spring Framework对邮件支持的根级包。'MailSender'是核心发送接口；
+把简单的值对象封装到简单邮件属性中，例如：从哪里发送到哪里(可以添加更多的人)是'SimpleMailMessage'类。
+这个包同样包含了异常层次检查，例如`MailException`是根异常，在邮件系统异常从低等级异常抽象成为高等级异常。
+详细信息请去参阅javadocs文档，文档显示了详细的异常层次结构。
+
+接口`org.springframework.mail.javamail.JavaMailSender`添加了__JavaMail__ 特性，例如通过`MailSender`接口支持MIME信息(从JavaMailSender继承)
+`JavaMailSender`还为JavaMail MIME信息准备了一个回调接口，叫做`org.springframework.mail.javamail.MimeMessagePreparator`
+
+
+
+[[mail-usage]]
+=== 使用
+我们来假设有一个业务接口叫做`OrderManager`:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	public interface OrderManager {
+
+		void placeOrder(Order order);
+
+	}
+----
+
+我们还要假设一个要求说明：需要生成一个订单号并把相关订单发送给客户的邮件信息。
+
+
+
+[[mail-usage-simple]]
+==== MailSender和SimpleMailMessage的基础使用
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	import org.springframework.mail.MailException;
+	import org.springframework.mail.MailSender;
+	import org.springframework.mail.SimpleMailMessage;
+
+	public class SimpleOrderManager implements OrderManager {
+
+		private MailSender mailSender;
+		private SimpleMailMessage templateMessage;
+
+		public void setMailSender(MailSender mailSender) {
+			this.mailSender = mailSender;
+		}
+
+		public void setTemplateMessage(SimpleMailMessage templateMessage) {
+			this.templateMessage = templateMessage;
+		}
+
+		public void placeOrder(Order order) {
+
+			// 进行业务的计算...
+
+			// 通知合作伙伴继续订单...
+
+			// 给模板信息和自定义内容创建一个线程安全的"副本"
+			SimpleMailMessage msg = new SimpleMailMessage(this.templateMessage);
+			msg.setTo(order.getCustomer().getEmailAddress());
+			msg.setText(
+				"Dear " + order.getCustomer().getFirstName()
+					+ order.getCustomer().getLastName()
+					+ ", thank you for placing order. Your order number is "
+					+ order.getOrderNumber());
+			try{
+				this.mailSender.send(msg);
+			}
+			catch (MailException ex) {
+				// 简单的日志来记录，并继续执行...
+				System.err.println(ex.getMessage());
+			}
+		}
+
+	}
+----
+
+定义上面这些代码的bean如下:
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<bean id="mailSender" class="org.springframework.mail.javamail.JavaMailSenderImpl">
+		<property name="host" value="mail.mycompany.com"/>
+	</bean>
+
+	<!-- 这是一个可以预加载默认状态的模板信息 -->
+	<bean id="templateMessage" class="org.springframework.mail.SimpleMailMessage">
+		<property name="from" value="customerservice@mycompany.com"/>
+		<property name="subject" value="Your order"/>
+	</bean>
+
+	<bean id="orderManager" class="com.mycompany.businessapp.support.SimpleOrderManager">
+		<property name="mailSender" ref="mailSender"/>
+		<property name="templateMessage" ref="templateMessage"/>
+	</bean>
+----
+
+
+
+[[mail-usage-mime]]
+==== JavaMailSender和MimeMessagePreparator的使用
+
+这里是使用`MimeMessagePreparator`回调接口另外实现了`OrderManager`。
+请注意这个例子里面使用`JavaMailSender`类型作为`mailSender`的属性。
+以便我们能够使用JavaMail的`MimeMessage`类：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	import javax.mail.Message;
+	import javax.mail.MessagingException;
+	import javax.mail.internet.InternetAddress;
+	import javax.mail.internet.MimeMessage;
+
+	import javax.mail.internet.MimeMessage;
+	import org.springframework.mail.MailException;
+	import org.springframework.mail.javamail.JavaMailSender;
+	import org.springframework.mail.javamail.MimeMessagePreparator;
+
+	public class SimpleOrderManager implements OrderManager {
+
+		private JavaMailSender mailSender;
+
+		public void setMailSender(JavaMailSender mailSender) {
+			this.mailSender = mailSender;
+		}
+
+		public void placeOrder(final Order order) {
+
+			// 进行业务的计算...
+
+			// 通知合作伙伴继续订单...
+
+			MimeMessagePreparator preparator = new MimeMessagePreparator() {
+
+				public void prepare(MimeMessage mimeMessage) throws Exception {
+
+					mimeMessage.setRecipient(Message.RecipientType.TO,
+							new InternetAddress(order.getCustomer().getEmailAddress()));
+					mimeMessage.setFrom(new InternetAddress("mail@mycompany.com"));
+					mimeMessage.setText(
+							"Dear " + order.getCustomer().getFirstName() + " "
+								+ order.getCustomer().getLastName()
+								+ ", thank you for placing order. Your order number is "
+								+ order.getOrderNumber());
+				}
+			};
+
+			try {
+				this.mailSender.send(preparator);
+			}
+			catch (MailException ex) {
+				// 简单的日志来记录，并继续执行...
+				System.err.println(ex.getMessage());
+			}
+		}
+
+	}
+----
+
+[NOTE]
+====
+邮件代码作为一个横切的关注点，可能以候选的身份重构进入<<aop,custom Spring AOP aspect>>，
+邮件代码进入AOP后将会在`OrderManager`标签下适当的切面中执行。
+====
+
+Spring Framework邮件支持附带标准的JavaMail实现。
+更多信息请参阅相关联javadocs内容。
+
+
+
+
+[[mail-javamail-mime]]
+=== 使用JavaMail的MimeMessageHelper
+
+`org.springframework.mail.javamail.MimeMessageHelper`类可以很方面的处理JavaMail信息，使你与详细的JavaMail API解耦。
+很容易的用`MimeMessageHelper`创建一条`MimeMessage`：
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	// 你当然可以使用现实世界中的DI例子
+	JavaMailSenderImpl sender = new JavaMailSenderImpl();
+	sender.setHost("mail.host.com");
+
+	MimeMessage message = sender.createMimeMessage();
+	MimeMessageHelper helper = new MimeMessageHelper(message);
+	helper.setTo("test@host.com");
+	helper.setText("Thank you for ordering!");
+
+	sender.send(message);
+----
+
+
+
+[[mail-javamail-mime-attachments]]
+==== 发送附件和内嵌资源
+绝大多数电子邮件消息同时允许附件和内嵌资源。以内嵌资源举例，您希望您的图片或者表格直接显示在你的信息中，而不是以附件的形式进行显示。
+
+
+[[mail-javamail-mime-attachments-attachment]]
+===== 附件
+通过这个例子，你可以了解到如何使用`MimeMessageHelper`来发送一封带有简单的JPEG图片附件的邮件。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	JavaMailSenderImpl sender = new JavaMailSenderImpl();
+	sender.setHost("mail.host.com");
+
+	MimeMessage message = sender.createMimeMessage();
+
+	// 你需要使用true作为标记来指出你多条信息所需要发送的内容
+	MimeMessageHelper helper = new MimeMessageHelper(message, true);
+	helper.setTo("test@host.com");
+
+	helper.setText("Check out this image!");
+
+	// 让我们来把臭名昭著的windows示例文件附件上(这次我们已经复制到c:/)
+	FileSystemResource file = new FileSystemResource(new File("c:/Sample.jpg"));
+	helper.addAttachment("CoolImage.jpg", file);
+
+	sender.send(message);
+----
+
+
+[[mail-javamail-mime-attachments-inline]]
+===== 内嵌资源
+通过这个例子，你可以链接到如何使用`MimeMessageHelper`来发送一份内嵌图片的邮件。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	JavaMailSenderImpl sender = new JavaMailSenderImpl();
+	sender.setHost("mail.host.com");
+
+	MimeMessage message = sender.createMimeMessage();
+
+	// 你需要使用true作为标记来指出你多条信息所需要发送的内容
+	MimeMessageHelper helper = new MimeMessageHelper(message, true);
+	helper.setTo("test@host.com");
+
+	// 使用true作为标间指出文本包含的是HTML
+	helper.setText("<html><body><img src=''cid:identifier1234''></body></html>", true);
+
+	// 让我们把臭名昭著的windows示例文件包含进(这次我们已经复制到c:/)
+	FileSystemResource res = new FileSystemResource(new File("c:/Sample.jpg"));
+	helper.addInline("identifier1234", res);
+
+	sender.send(message);
+----
+
+[WARNING]
+====
+mime信息使用指定的`Content-ID`添加内嵌资源(在上面`identifier1234`的示例中)。你所添加的文本与资源的先后次序是__非常__重要。
+请__先添加文本信息__再添加资源。如果你以其他方式，内嵌信息是不会正常工作的。
+====
+
+
+
+[[mail-templates]]
+==== 用模板库来创建Email内容
+在前面的示例中，代码执行`message.setText(..)`函数创建email信息内容。
+上述例子是一些很简明并上下文连贯的例子，这些例子给你展示了非常基础的API。
+
+你可能在典型企业应用中有大量的原因不使用上述的方法来创建你的邮件内容：
+
+* 在Java代码中创建基于HTML的邮件内容是乏味和易错的
+* 显示逻辑和业务逻辑没有清晰的分离
+* 需要不停重写Java代码、重新编译、部署才能够改写邮件内容的显示结构
+
+解决这些问题的通常道路是以模板库的方式，例如使用例如FreeMarker或者Velocity等模板库来定义邮件的显示内容。
+这使得你代码的工作内容，仅仅需要创建邮件渲染所需的数据并发送邮件。
+哪怕你的邮件变得比以前更复杂，使用简单的Spring Framework的FreeMarker和Velocity支持类，绝对是最佳的做法。
+下面的示例展示了使用了Velocity模板库创建邮件内容。
+
+
+[[mail-templates-example]]
+===== 使用Velocity的基础例子
+使用 http://velocity.apache.org[Velocity] 创建你的邮件模板，Velocity库需要在你的classpath中可以使用。
+你需要为你的应用创建一个或多个email内容的Velocity模板。在下面示例使用了Velocity模板。
+你所看到基础的HTML内容，可以通过你喜欢HTML或者文本编辑器编辑成纯文本。
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	# in the com/foo/package
+	<html>
+		<body>
+			<h3>Hi ${user.userName}, welcome to the Chipping Sodbury On-the-Hill message boards!</h3>
+
+			<div>
+				Your email address is <a href="mailto:${user.emailAddress}">${user.emailAddress}</a>.
+			</div>
+		</body>
+	</html>
+----
+
+下面使用了一些简单的代码和Spring XML配置，在加上Velocity模板完成了创建Email内容并发送Email(s)。
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	package com.foo;
+
+	import org.apache.velocity.app.VelocityEngine;
+	import org.springframework.mail.javamail.JavaMailSender;
+	import org.springframework.mail.javamail.MimeMessageHelper;
+	import org.springframework.mail.javamail.MimeMessagePreparator;
+	import org.springframework.ui.velocity.VelocityEngineUtils;
+
+	import javax.mail.internet.MimeMessage;
+	import java.util.HashMap;
+	import java.util.Map;
+
+	public class SimpleRegistrationService implements RegistrationService {
+
+		private JavaMailSender mailSender;
+		private VelocityEngine velocityEngine;
+
+		public void setMailSender(JavaMailSender mailSender) {
+			this.mailSender = mailSender;
+		}
+
+		public void setVelocityEngine(VelocityEngine velocityEngine) {
+			this.velocityEngine = velocityEngine;
+		}
+
+		public void register(User user) {
+
+			// 这里编写登录逻辑...
+
+			sendConfirmationEmail(user);
+		}
+
+		private void sendConfirmationEmail(final User user) {
+			MimeMessagePreparator preparator = new MimeMessagePreparator() {
+				public void prepare(MimeMessage mimeMessage) throws Exception {
+					MimeMessageHelper message = new MimeMessageHelper(mimeMessage);
+					message.setTo(user.getEmailAddress());
+					message.setFrom("webmaster@csonth.gov.uk"); // 可以被参数化...
+					Map model = new HashMap();
+					model.put("user", user);
+					String text = VelocityEngineUtils.mergeTemplateIntoString(
+							velocityEngine, "com/dns/registration-confirmation.vm", model);
+					message.setText(text, true);
+				}
+			};
+			this.mailSender.send(preparator);
+		}
+
+	}
+----
+
+[source,xml,indent=0]
+[subs="verbatim,quotes"]
+----
+	<?xml version="1.0" encoding="UTF-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://www.springframework.org/schema/beans
+			http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+		<bean id="mailSender" class="org.springframework.mail.javamail.JavaMailSenderImpl">
+			<property name="host" value="mail.csonth.gov.uk"/>
+		</bean>
+
+		<bean id="registrationService" class="com.foo.SimpleRegistrationService">
+			<property name="mailSender" ref="mailSender"/>
+			<property name="velocityEngine" ref="velocityEngine"/>
+		</bean>
+
+		<bean id="velocityEngine" class="org.springframework.ui.velocity.VelocityEngineFactoryBean">
+			<property name="velocityProperties">
+				<value>
+					resource.loader=class
+					class.resource.loader.class=org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader
+				</value>
+			</property>
+		</bean>
+
+	</beans>
+----
+
+
+
+
