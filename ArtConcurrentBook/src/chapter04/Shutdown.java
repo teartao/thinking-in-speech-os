@@ -10,13 +10,13 @@ public class Shutdown {
         Runner one = new Runner();
         Thread countThread = new Thread(one, "CountThread");
         countThread.start();
-        // Ë¯Ãß1Ãë£¬mainÏß³Ì¶ÔCountThread½øĞĞÖĞ¶Ï£¬Ê¹CountThreadÄÜ¹»¸ĞÖªÖĞ¶Ï¶ø½áÊø
+        // ç¡çœ 1ç§’ï¼Œmainçº¿ç¨‹å¯¹CountThreadè¿›è¡Œä¸­æ–­ï¼Œä½¿CountThreadèƒ½å¤Ÿæ„ŸçŸ¥ä¸­æ–­è€Œç»“æŸ
         TimeUnit.SECONDS.sleep(1);
         countThread.interrupt();
         Runner two = new Runner();
         countThread = new Thread(two, "CountThread");
         countThread.start();
-        // Ë¯Ãß1Ãë£¬mainÏß³Ì¶ÔRunner two½øĞĞÈ¡Ïû£¬Ê¹CountThreadÄÜ¹»¸ĞÖªonÎªfalse¶ø½áÊø
+        // ç¡çœ 1ç§’ï¼Œmainçº¿ç¨‹å¯¹Runner twoè¿›è¡Œå–æ¶ˆï¼Œä½¿CountThreadèƒ½å¤Ÿæ„ŸçŸ¥onä¸ºfalseè€Œç»“æŸ
         TimeUnit.SECONDS.sleep(1);
         two.cancel();
     }

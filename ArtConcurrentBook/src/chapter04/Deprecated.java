@@ -16,15 +16,15 @@ public class Deprecated {
         printThread.setDaemon(true);
         printThread.start();
         TimeUnit.SECONDS.sleep(3);
-        // ½«PrintThread½øĞĞÔİÍ££¬Êä³öÄÚÈİ¹¤×÷Í£Ö¹
+        // å°†PrintThreadè¿›è¡Œæš‚åœï¼Œè¾“å‡ºå†…å®¹å·¥ä½œåœæ­¢
         printThread.suspend();
         System.out.println("main suspend PrintThread at " + format.format(new Date()));
         TimeUnit.SECONDS.sleep(20);
-        // ½«PrintThread½øĞĞ»Ö¸´£¬Êä³öÄÚÈİ¼ÌĞø
+        // å°†PrintThreadè¿›è¡Œæ¢å¤ï¼Œè¾“å‡ºå†…å®¹ç»§ç»­
         printThread.resume();
         System.out.println("main resume PrintThread at " + format.format(new Date()));
         TimeUnit.SECONDS.sleep(3);
-        // ½«PrintThread½øĞĞÖÕÖ¹£¬Êä³öÄÚÈİÍ£Ö¹
+        // å°†PrintThreadè¿›è¡Œç»ˆæ­¢ï¼Œè¾“å‡ºå†…å®¹åœæ­¢
         printThread.stop();
         System.out.println("main stop PrintThread at " + format.format(new Date()));
         TimeUnit.SECONDS.sleep(3);

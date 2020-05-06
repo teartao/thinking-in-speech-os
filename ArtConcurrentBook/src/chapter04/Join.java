@@ -9,7 +9,7 @@ public class Join {
     public static void main(String[] args) throws Exception {
         Thread previous = Thread.currentThread();
         for (int i = 0; i < 10; i++) {
-            // 每个线程拥有前一个线程的引用，需要等待前一个线程终止，才能从等待中返回
+            // 姣忎釜绾跨▼鎷ユ湁鍓嶄竴涓嚎绋嬬殑寮曠敤锛岄渶瑕佺瓑寰呭墠涓�涓嚎绋嬬粓姝紝鎵嶈兘浠庣瓑寰呬腑杩斿洖
             Thread thread = new Thread(new Domino(previous), String.valueOf(i));
             thread.start();
             previous = thread;

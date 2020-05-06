@@ -13,7 +13,7 @@ public class ThreadState {
     public static void main(String[] args) {
         new Thread(new TimeWaiting(), "TimeWaitingThread").start();
         new Thread(new Waiting(), "WaitingThread").start();
-        // Ê¹ÓÃÁ½¸öBlockedÏß³Ì£¬Ò»¸ö»ñÈ¡Ëø³É¹¦£¬ÁíÒ»¸ö±»×èÈû
+        // ä½¿ç”¨ä¸¤ä¸ªBlockedçº¿ç¨‹ï¼Œä¸€ä¸ªè·å–é”æˆåŠŸï¼Œå¦ä¸€ä¸ªè¢«é˜»å¡
         new Thread(new Blocked(), "BlockedThread-1").start();
         new Thread(new Blocked(), "BlockedThread-2").start();
         new Thread(new Sync(), "SyncThread-1").start();
@@ -21,7 +21,7 @@ public class ThreadState {
     }
 
     /**
-     * ¸ÃÏß³Ì²»¶ÏµÄ½øĞĞË¯Ãß
+     * è¯¥çº¿ç¨‹ä¸æ–­çš„è¿›è¡Œç¡çœ 
      */
     static class TimeWaiting implements Runnable {
         @Override
@@ -33,7 +33,7 @@ public class ThreadState {
     }
 
     /**
-     * ¸ÃÏß³ÌÔÚWaiting.classÊµÀıÉÏµÈ´ı
+     * è¯¥çº¿ç¨‹åœ¨Waiting.classå®ä¾‹ä¸Šç­‰å¾…
      */
     static class Waiting implements Runnable {
         @Override
@@ -51,7 +51,7 @@ public class ThreadState {
     }
 
     /**
-     * ¸ÃÏß³ÌÔÚBlocked.classÊµÀıÉÏ¼ÓËøºó£¬²»»áÊÍ·Å¸ÃËø
+     * è¯¥çº¿ç¨‹åœ¨Blocked.classå®ä¾‹ä¸ŠåŠ é”åï¼Œä¸ä¼šé‡Šæ”¾è¯¥é”
      */
     static class Blocked implements Runnable {
         public void run() {

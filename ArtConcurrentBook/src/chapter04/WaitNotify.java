@@ -25,9 +25,9 @@ public class WaitNotify {
 
     static class Wait implements Runnable {
         public void run() {
-            // ¼ÓËø£¬ÓµÓĞlockµÄMonitor
+            // åŠ é”ï¼Œæ‹¥æœ‰lockçš„Monitor
             synchronized (lock) {
-                // µ±Ìõ¼ş²»Âú×ãÊ±£¬¼ÌĞøwait£¬Í¬Ê±ÊÍ·ÅÁËlockµÄËø
+                // å½“æ¡ä»¶ä¸æ»¡è¶³æ—¶ï¼Œç»§ç»­waitï¼ŒåŒæ—¶é‡Šæ”¾äº†lockçš„é”
                 while (flag) {
                     try {
                         System.out.println(Thread.currentThread() + " flag is true. wait @ "
@@ -36,7 +36,7 @@ public class WaitNotify {
                     } catch (InterruptedException e) {
                     }
                 }
-                // Ìõ¼şÂú×ãÊ±£¬Íê³É¹¤×÷
+                // æ¡ä»¶æ»¡è¶³æ—¶ï¼Œå®Œæˆå·¥ä½œ
                 System.out.println(Thread.currentThread() + " flag is false. running @ "
                                    + new SimpleDateFormat("HH:mm:ss").format(new Date()));
             }
@@ -45,16 +45,16 @@ public class WaitNotify {
 
     static class Notify implements Runnable {
         public void run() {
-            // ¼ÓËø£¬ÓµÓĞlockµÄMonitor
+            // åŠ é”ï¼Œæ‹¥æœ‰lockçš„Monitor
             synchronized (lock) {
-                // »ñÈ¡lockµÄËø£¬È»ºó½øĞĞÍ¨Öª£¬Í¨ÖªÊ±²»»áÊÍ·ÅlockµÄËø£¬
-                // Ö±µ½µ±Ç°Ïß³ÌÊÍ·ÅÁËlockºó£¬WaitThread²ÅÄÜ´Ówait·½·¨ÖĞ·µ»Ø
+                // è·å–lockçš„é”ï¼Œç„¶åè¿›è¡Œé€šçŸ¥ï¼Œé€šçŸ¥æ—¶ä¸ä¼šé‡Šæ”¾lockçš„é”ï¼Œ
+                // ç›´åˆ°å½“å‰çº¿ç¨‹é‡Šæ”¾äº†lockåï¼ŒWaitThreadæ‰èƒ½ä»waitæ–¹æ³•ä¸­è¿”å›
                 System.out.println(Thread.currentThread() + " hold lock. notify @ " + new SimpleDateFormat("HH:mm:ss").format(new Date()));
                 lock.notifyAll();
                 flag = false;
                 SleepUtils.second(5);
             }
-            // ÔÙ´Î¼ÓËø
+            // å†æ¬¡åŠ é”
             synchronized (lock) {
                 System.out.println(Thread.currentThread() + " hold lock again. sleep @ "
                                    + new SimpleDateFormat("HH:mm:ss").format(new Date()));

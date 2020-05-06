@@ -5,11 +5,11 @@ package chapter04;
  */
 public class Synchronized {
     public static void main(String[] args) {
-        // 对Synchronized Class对象进行加锁
+        // 瀵筍ynchronized Class瀵硅薄杩涜鍔犻攣
         synchronized (Synchronized.class) {
 
         }
-        // 静态同步方法，对Synchronized Class对象进行加锁
+        // 闈欐�佸悓姝ユ柟娉曪紝瀵筍ynchronized Class瀵硅薄杩涜鍔犻攣
         m();
     }
 

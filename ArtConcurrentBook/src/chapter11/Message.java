@@ -7,7 +7,7 @@ package chapter11;
 /**
  * 
  * @author tengfei.fangtf
- * @version $Id: Message.java, v 0.1 2015-8-1 ÉÏÎç12:14:46 tengfei.fangtf Exp $
+ * @version $Id: Message.java, v 0.1 2015-8-1 ä¸Šåˆ12:14:46 tengfei.fangtf Exp $
  */
 public class Message {
 

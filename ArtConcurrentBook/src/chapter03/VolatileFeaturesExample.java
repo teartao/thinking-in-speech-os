@@ -1,17 +1,17 @@
 package chapter03;
 
 class VolatileFeaturesExample {
-    volatile long vl = 0L; //Ê¹ÓÃvolatileÉùÃ÷64Î»µÄlongĞÍ±äÁ¿
+    volatile long vl = 0L; //ä½¿ç”¨volatileå£°æ˜64ä½çš„longå‹å˜é‡
 
     public void set(long l) {
-        vl = l; //µ¥¸övolatile±äÁ¿µÄĞ´
+        vl = l; //å•ä¸ªvolatileå˜é‡çš„å†™
     }
 
     public void getAndIncrement() {
-        vl++; //¸´ºÏ£¨¶à¸ö£©volatile±äÁ¿µÄ¶Á/Ğ´
+        vl++; //å¤åˆï¼ˆå¤šä¸ªï¼‰volatileå˜é‡çš„è¯»/å†™
     }
 
     public long get() {
-        return vl; //µ¥¸övolatile±äÁ¿µÄ¶Á
+        return vl; //å•ä¸ªvolatileå˜é‡çš„è¯»
     }
 }

@@ -9,16 +9,16 @@ import java.util.concurrent.locks.Lock;
  * 10-2
  */
 public class Mutex implements Lock {
-    // ¾²Ì¬ÄÚ²¿Àà£¬×Ô¶¨ÒåÍ¬²½Æ÷
+    // é™æ€å†…éƒ¨ç±»ï¼Œè‡ªå®šä¹‰åŒæ­¥å™¨
     private static class Sync extends AbstractQueuedSynchronizer {
         private static final long serialVersionUID = -4387327721959839431L;
 
-        // ÊÇ·ñ´¦ÓÚÕ¼ÓÃ×´Ì¬
+        // æ˜¯å¦å¤„äºå ç”¨çŠ¶æ€
         protected boolean isHeldExclusively() {
             return getState() == 1;
         }
 
-        // µ±×´Ì¬Îª0µÄÊ±ºò»ñÈ¡Ëø
+        // å½“çŠ¶æ€ä¸º0çš„æ—¶å€™è·å–é”
         public boolean tryAcquire(int acquires) {
             assert acquires == 1; // Otherwise unused
             if (compareAndSetState(0, 1)) {
@@ -28,7 +28,7 @@ public class Mutex implements Lock {
             return false;
         }
 
-        // ÊÍ·ÅËø£¬½«×´Ì¬ÉèÖÃÎª0
+        // é‡Šæ”¾é”ï¼Œå°†çŠ¶æ€è®¾ç½®ä¸º0
         protected boolean tryRelease(int releases) {
             assert releases == 1; // Otherwise unused
             if (getState() == 0)
@@ -38,13 +38,13 @@ public class Mutex implements Lock {
             return true;
         }
 
-        // ·µ»ØÒ»¸öCondition£¬Ã¿¸öcondition¶¼°üº¬ÁËÒ»¸öcondition¶ÓÁĞ
+        // è¿”å›ä¸€ä¸ªConditionï¼Œæ¯ä¸ªconditionéƒ½åŒ…å«äº†ä¸€ä¸ªconditioné˜Ÿåˆ—
         Condition newCondition() {
             return new ConditionObject();
         }
     }
 
-    // ½öĞèÒª½«²Ù×÷´úÀíµ½SyncÉÏ¼´¿É
+    // ä»…éœ€è¦å°†æ“ä½œä»£ç†åˆ°Syncä¸Šå³å¯
     private final Sync sync = new Sync();
 
     public void lock() {

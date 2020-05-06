@@ -8,21 +8,21 @@ import java.util.concurrent.TimeUnit;
 public class Interrupted {
 
     public static void main(String[] args) throws Exception {
-        // sleepThread²»Í£µÄ³¢ÊÔË¯Ãß
+        // sleepThreadä¸åœçš„å°è¯•ç¡çœ 
         Thread sleepThread = new Thread(new SleepRunner(), "SleepThread");
         sleepThread.setDaemon(true);
-        // busyThread²»Í£µÄÔËĞĞ
+        // busyThreadä¸åœçš„è¿è¡Œ
         Thread busyThread = new Thread(new BusyRunner(), "BusyThread");
         busyThread.setDaemon(true);
         sleepThread.start();
         busyThread.start();
-        // ĞİÃß5Ãë£¬ÈÃsleepThreadºÍbusyThread³ä·ÖÔËĞĞ
+        // ä¼‘çœ 5ç§’ï¼Œè®©sleepThreadå’ŒbusyThreadå……åˆ†è¿è¡Œ
         TimeUnit.SECONDS.sleep(5);
         sleepThread.interrupt();
         busyThread.interrupt();
         System.out.println("SleepThread interrupted is " + sleepThread.isInterrupted());
         System.out.println("BusyThread interrupted is " + busyThread.isInterrupted());
-        // ·ÀÖ¹sleepThreadºÍbusyThreadÁ¢¿ÌÍË³ö
+        // é˜²æ­¢sleepThreadå’ŒbusyThreadç«‹åˆ»é€€å‡º
         TimeUnit.SECONDS.sleep(2);
     }
 

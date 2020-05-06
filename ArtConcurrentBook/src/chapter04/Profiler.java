@@ -6,7 +6,7 @@ import java.util.concurrent.TimeUnit;
  * 6-15
  */
 public class Profiler {
-    // µÚÒ»´Îget()·½·¨µ÷ÓÃÊ±»á½øĞĞ³õÊ¼»¯£¨Èç¹ûset·½·¨Ã»ÓĞµ÷ÓÃ£©£¬Ã¿¸öÏß³Ì»áµ÷ÓÃÒ»´Î
+    // ç¬¬ä¸€æ¬¡get()æ–¹æ³•è°ƒç”¨æ—¶ä¼šè¿›è¡Œåˆå§‹åŒ–ï¼ˆå¦‚æœsetæ–¹æ³•æ²¡æœ‰è°ƒç”¨ï¼‰ï¼Œæ¯ä¸ªçº¿ç¨‹ä¼šè°ƒç”¨ä¸€æ¬¡
     private static final ThreadLocal<Long> TIME_THREADLOCAL = new ThreadLocal<Long>() {
                                                                 protected Long initialValue() {
                                                                     return System.currentTimeMillis();

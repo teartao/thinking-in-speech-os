@@ -12,7 +12,7 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class BoundedQueue<T> {
     private Object[]  items;
-    // Ìí¼ÓµÄÏÂ±ê£¬É¾³ıµÄÏÂ±êºÍÊı×éµ±Ç°ÊıÁ¿
+    // æ·»åŠ çš„ä¸‹æ ‡ï¼Œåˆ é™¤çš„ä¸‹æ ‡å’Œæ•°ç»„å½“å‰æ•°é‡
     private int       addIndex, removeIndex, count;
     private Lock      lock     = new ReentrantLock();
     private Condition notEmpty = lock.newCondition();
@@ -22,7 +22,7 @@ public class BoundedQueue<T> {
         items = new Object[size];
     }
 
-    // Ìí¼ÓÒ»¸öÔªËØ£¬Èç¹ûÊı×éÂú£¬ÔòÌí¼ÓÏß³Ì½øÈëµÈ´ı×´Ì¬£¬Ö±µ½ÓĞ¡°¿ÕÎ»¡±
+    // æ·»åŠ ä¸€ä¸ªå…ƒç´ ï¼Œå¦‚æœæ•°ç»„æ»¡ï¼Œåˆ™æ·»åŠ çº¿ç¨‹è¿›å…¥ç­‰å¾…çŠ¶æ€ï¼Œç›´åˆ°æœ‰â€œç©ºä½â€
     public void add(T t) throws InterruptedException {
         lock.lock();
         try {
@@ -38,7 +38,7 @@ public class BoundedQueue<T> {
         }
     }
 
-    // ÓÉÍ·²¿É¾³ıÒ»¸öÔªËØ£¬Èç¹ûÊı×é¿Õ£¬ÔòÉ¾³ıÏß³Ì½øÈëµÈ´ı×´Ì¬£¬Ö±µ½ÓĞĞÂÌí¼ÓÔªËØ
+    // ç”±å¤´éƒ¨åˆ é™¤ä¸€ä¸ªå…ƒç´ ï¼Œå¦‚æœæ•°ç»„ç©ºï¼Œåˆ™åˆ é™¤çº¿ç¨‹è¿›å…¥ç­‰å¾…çŠ¶æ€ï¼Œç›´åˆ°æœ‰æ–°æ·»åŠ å…ƒç´ 
     @SuppressWarnings("unchecked")
     public T remove() throws InterruptedException {
         lock.lock();

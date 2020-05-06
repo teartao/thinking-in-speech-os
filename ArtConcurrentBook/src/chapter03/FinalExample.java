@@ -1,22 +1,22 @@
 package chapter03;
 
 public class FinalExample {
-    int                 i;  //ÆÕÍ¨±äÁ¿
-    final int           j;  //final±äÁ¿
+    int                 i;  //æ™®é€šå˜é‡
+    final int           j;  //finalå˜é‡
     static FinalExample obj;
 
-    public FinalExample() { //¹¹Ôìº¯Êı
-        i = 1; //Ğ´ÆÕÍ¨Óò
-        j = 2; //Ğ´finalÓò
+    public FinalExample() { //æ„é€ å‡½æ•°
+        i = 1; //å†™æ™®é€šåŸŸ
+        j = 2; //å†™finalåŸŸ
     }
 
-    public static void writer() { //Ğ´Ïß³ÌAÖ´ĞĞ
+    public static void writer() { //å†™çº¿ç¨‹Aæ‰§è¡Œ
         obj = new FinalExample();
     }
 
-    public static void reader() { //¶ÁÏß³ÌBÖ´ĞĞ
-        FinalExample object = obj; //¶Á¶ÔÏóÒıÓÃ
-        int a = object.i; //¶ÁÆÕÍ¨Óò
-        int b = object.j; //¶ÁfinalÓò
+    public static void reader() { //è¯»çº¿ç¨‹Bæ‰§è¡Œ
+        FinalExample object = obj; //è¯»å¯¹è±¡å¼•ç”¨
+        int a = object.i; //è¯»æ™®é€šåŸŸ
+        int b = object.j; //è¯»finalåŸŸ
     }
 }

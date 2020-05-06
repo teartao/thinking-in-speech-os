@@ -15,23 +15,23 @@ public class ProcessData {
     public void processData() {
         readLock.lock();
         if (!update) {
-            // ±ØĞëÏÈÊÍ·Å¶ÁËø
+            // å¿…é¡»å…ˆé‡Šæ”¾è¯»é”
             readLock.unlock();
-            // Ëø½µ¼¶´ÓĞ´Ëø»ñÈ¡µ½¿ªÊ¼
+            // é”é™çº§ä»å†™é”è·å–åˆ°å¼€å§‹
             writeLock.lock();
             try {
                 if (!update) {
-                    // ×¼±¸Êı¾İµÄÁ÷³Ì£¨ÂÔ£©
+                    // å‡†å¤‡æ•°æ®çš„æµç¨‹ï¼ˆç•¥ï¼‰
                     update = true;
                 }
                 readLock.lock();
             } finally {
                 writeLock.unlock();
             }
-            // Ëø½µ¼¶Íê³É£¬Ğ´Ëø½µ¼¶Îª¶ÁËø
+            // é”é™çº§å®Œæˆï¼Œå†™é”é™çº§ä¸ºè¯»é”
         }
         try {
-            // Ê¹ÓÃÊı¾İµÄÁ÷³Ì£¨ÂÔ£©
+            // ä½¿ç”¨æ•°æ®çš„æµç¨‹ï¼ˆç•¥ï¼‰
         } finally {
             readLock.unlock();
         }

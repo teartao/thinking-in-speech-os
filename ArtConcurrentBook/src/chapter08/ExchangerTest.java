@@ -1,1 +1,46 @@
-package chapter08;import java.util.concurrent.Exchanger;import java.util.concurrent.ExecutorService;import java.util.concurrent.Executors;/** *  * @author tengfei.fangtf * @version $Id: ExchangerTest.java, v 0.1 2015-8-1 ÉÏÎç12:10:37 tengfei.fangtf Exp $ */public class ExchangerTest {    private static final Exchanger<String> exgr       = new Exchanger<String>();    private static ExecutorService         threadPool = Executors.newFixedThreadPool(2);    public static void main(String[] args) {        threadPool.execute(new Runnable() {            @Override            public void run() {                try {                    String A = "ÒøĞĞÁ÷Ë®A";// AÂ¼ÈëÒøĞĞÁ÷Ë®Êı¾İ                    exgr.exchange(A);                } catch (InterruptedException e) {                }            }        });        threadPool.execute(new Runnable() {            @Override            public void run() {                try {                    String B = "ÒøĞĞÁ÷Ë®B";// BÂ¼ÈëÒøĞĞÁ÷Ë®Êı¾İ                    String A = exgr.exchange("B");                    System.out.println("AºÍBÊı¾İÊÇ·ñÒ»ÖÂ£º" + A.equals(B) + "£¬AÂ¼ÈëµÄÊÇ£º" + A + "£¬BÂ¼ÈëÊÇ£º" + B);                } catch (InterruptedException e) {                }            }        });        threadPool.shutdown();    }}
+package chapter08;
+
+import java.util.concurrent.Exchanger;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+/**
+ * 
+ * @author tengfei.fangtf
+ * @version $Id: ExchangerTest.java, v 0.1 2015-8-1 ä¸Šåˆ12:10:37 tengfei.fangtf Exp $
+ */
+public class ExchangerTest {
+
+    private static final Exchanger<String> exgr       = new Exchanger<String>();
+
+    private static ExecutorService         threadPool = Executors.newFixedThreadPool(2);
+
+    public static void main(String[] args) {
+
+        threadPool.execute(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    String A = "é“¶è¡Œæµæ°´A";// Aå½•å…¥é“¶è¡Œæµæ°´æ•°æ®
+                    exgr.exchange(A);
+                } catch (InterruptedException e) {
+                }
+            }
+        });
+
+        threadPool.execute(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    String B = "é“¶è¡Œæµæ°´B";// Bå½•å…¥é“¶è¡Œæµæ°´æ•°æ®
+                    String A = exgr.exchange("B");
+                    System.out.println("Aå’ŒBæ•°æ®æ˜¯å¦ä¸€è‡´ï¼š" + A.equals(B) + "ï¼ŒAå½•å…¥çš„æ˜¯ï¼š" + A + "ï¼ŒBå½•å…¥æ˜¯ï¼š" + B);
+                } catch (InterruptedException e) {
+                }
+            }
+        });
+
+        threadPool.shutdown();
+
+    }
+}

@@ -6,7 +6,7 @@ public class InstanceFactory {
     }
 
     public static Instance getInstance() {
-        return InstanceHolder.instance; //ÕâÀï½«µ¼ÖÂInstanceHolderÀà±»³õÊ¼»¯
+        return InstanceHolder.instance; //è¿™é‡Œå°†å¯¼è‡´InstanceHolderç±»è¢«åˆå§‹åŒ–
     }
 
     static class Instance {
