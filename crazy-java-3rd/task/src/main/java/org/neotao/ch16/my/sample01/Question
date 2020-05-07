@@ -1,0 +1,5 @@
+PrintSample00 升级版：
+3个线程轮流打印A-Z a-z 和，输出格式为1_2Aa 3_4Bb 5_6Cc ... 51_52Zz
+
+要点：2线程变为3线程(true false 变为 flag 0 1 2)
+this.notify 变为this.notifyAll
