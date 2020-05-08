@@ -12,7 +12,7 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * 使用synchronized，并拆分打印线程写法
  */
-public class SyncPrintDemo {
+public class DesignedRunnableWithLock {
     public static void main(String[] args) {
         Lock lock = new ReentrantLock();
         Condition condition = lock.newCondition();

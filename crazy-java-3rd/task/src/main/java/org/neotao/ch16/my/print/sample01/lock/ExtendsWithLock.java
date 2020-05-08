@@ -8,7 +8,7 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * 使用lock，并拆分打印线程 写法
  */
-public class AppExtendsThread {
+public class ExtendsWithLock {
     static Lock lock = new ReentrantLock();
     static Condition condition = lock.newCondition();
 

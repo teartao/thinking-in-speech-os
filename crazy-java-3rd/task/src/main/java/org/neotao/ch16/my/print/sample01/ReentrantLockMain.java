@@ -7,14 +7,14 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * reentrantLock 写法
  */
-public class ReentrantLockDemo01 {
+public class ReentrantLockMain {
     private final Lock lock = new ReentrantLock();
     private final Condition condition = lock.newCondition();
     private int count = 1;
     private int printFlag = 0;
 
     public static void main(String[] args) {
-        ReentrantLockDemo01 lockDemo01 = new ReentrantLockDemo01();
+        ReentrantLockMain lockDemo01 = new ReentrantLockMain();
         new Thread(() -> {
             for (int i = 0; i < 26; i++) {
                 lockDemo01.printNumber();
