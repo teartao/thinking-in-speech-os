@@ -17,6 +17,7 @@ public abstract class AbstractPrintThread implements Runnable {
         this.lock = lock;
         this.condition = condition;
     }
+
     @Override
     public void run() {
         loopPrint();
@@ -24,7 +25,10 @@ public abstract class AbstractPrintThread implements Runnable {
 
     private void loopPrint() {
         for (int i = 0; i < 26; i++) {
-            lockPrint();
+            // lockPrint();
+
+            // synchronized方法
+            syncPrint();
             count++;
         }
     }
@@ -43,7 +47,22 @@ public abstract class AbstractPrintThread implements Runnable {
         } finally {
             lock.unlock();
         }
+    }
 
+    private void syncPrint() {
+        // 任意全局(共享)变量 可以作为锁
+        synchronized (lock) {
+            while (myFlag() != flagMap.get(PrintConst.FLAG)) {
+                try {
+                    lock.wait();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            printContent();
+            flagMap.put(PrintConst.FLAG, nextFlag());
+            lock.notifyAll();
+        }
     }
 
 
@@ -53,7 +72,6 @@ public abstract class AbstractPrintThread implements Runnable {
     protected abstract void printContent();
 
     protected abstract int nextFlag();
-
 
 
 }
