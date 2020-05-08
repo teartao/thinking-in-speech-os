@@ -1,4 +1,4 @@
-package org.neotao.ch16.my.sample01;
+package org.neotao.ch16.my.print.sample01;
 
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -32,7 +32,7 @@ public class ReentrantLockDemo01 {
         }).start();
     }
 
-    public  void printNumber() {
+    public void printNumber() {
         try {
             lock.lock();
             while (printFlag != 0) {
@@ -50,7 +50,7 @@ public class ReentrantLockDemo01 {
         }
     }
 
-    public  void printUpper() {
+    public void printUpper() {
         try {
             lock.lock();
             while (printFlag != 1) {
@@ -66,7 +66,7 @@ public class ReentrantLockDemo01 {
         }
     }
 
-    public  void printLower() {
+    public void printLower() {
         try {
             lock.lock();
             while (printFlag != 2) {

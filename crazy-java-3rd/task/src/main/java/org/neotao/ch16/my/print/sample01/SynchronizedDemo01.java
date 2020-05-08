@@ -1,4 +1,4 @@
-package org.neotao.ch16.my.sample01;
+package org.neotao.ch16.my.print.sample01;
 
 /**
  * synchronized 写法
@@ -62,13 +62,13 @@ public class SynchronizedDemo01 {
          * 第一种写法：通过一层for循环控制三个线程执行次数(因为它们都是26倍数)
          */
         for (int i = 0; i < 26; i++) {
-            new Thread(()->{
+            new Thread(() -> {
                 synchronizedDemo01.printNum();
             }).start();
-            new Thread(()->{
+            new Thread(() -> {
                 synchronizedDemo01.printUpperCase();
             }).start();
-            new Thread(()->{
+            new Thread(() -> {
                 synchronizedDemo01.printLowerCase();
             }).start();
         }

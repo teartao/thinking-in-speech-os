@@ -1,11 +1,11 @@
-package org.neotao.ch16.my.sample00;
+package org.neotao.ch16.my.print.sample00;
 
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- *
+ * Main方法全局变量lock写法
  */
 public class ReentrantLockDemo {
 
