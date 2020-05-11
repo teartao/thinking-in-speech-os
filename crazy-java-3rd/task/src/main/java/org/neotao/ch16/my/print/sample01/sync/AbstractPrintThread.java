@@ -49,7 +49,10 @@ public abstract class AbstractPrintThread implements Runnable {
         }
     }
 
-    private void syncPrint() {
+    // 方法上的synchronized 锁的是当前类的实例对象(即：this)，
+    // 由于3个线程，实例各自独立，
+    // 因此这种写法无法实现3个线程间通信
+    private /*synchronized*/ void syncPrint() {
         // 任意全局(共享)变量 可以作为锁
         synchronized (lock) {
             while (myFlag() != flagMap.get(PrintConst.FLAG)) {
